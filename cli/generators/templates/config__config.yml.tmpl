@@ -1,0 +1,56 @@
+production:
+  database:
+{{- if eq .db "postgres" }}
+    type: postgres
+    host: "${DATABASE_HOST}"
+    port: ${DATABASE_PORT:5432}
+    username: "${DATABASE_USERNAME}"
+    password: "${DATABASE_PASSWORD}"
+    database: "${DATABASE_NAME}"
+    ssl_mode: "${DATABASE_SSL_MODE}"
+{{- else if eq .db "sqlite" }}
+    type: sqlite
+    file: "${DATABASE_FILE:{{ .db_filepath }}}"
+{{- end }}
+  server:
+    host: "${SERVER_HOST}"
+    port: "${SERVER_PORT:8080}"
+    url: "${SERVER_URL}"
+  storage:
+    type: s3
+    bucket: "${STORAGE_BUCKET}"
+    region: "${STORAGE_REGION}"
+    access_key: "${STORAGE_ACCESS_KEY}"
+    secret_key: "${STORAGE_SECRET_KEY}"
+    endpoint: "${STORAGE_ENDPOINT}"
+    secure: ${STORAGE_SECURE:true}
+  logging:
+    level: "${LOG_LEVEL}"
+
+development: &dev
+  database:
+{{- if eq .db "postgres" }}
+    type: postgres
+    host: "${DATABASE_HOST:localhost}"
+    port: ${DATABASE_PORT:9632}
+    username: "${DATABASE_USERNAME:postgres}"
+    password: "${DATABASE_PASSWORD:root}"
+    database: "${DATABASE_NAME:test}"
+    ssl_mode: "${DATABASE_SSL_MODE:disable}"
+{{- else if eq .db "sqlite" }}
+    type: sqlite
+    file: "${DATABASE_FILE:{{ .db_filepath }}}"
+{{- end }}
+  server:
+    host: "${SERVER_HOST:localhost}"
+    port: ${SERVER_PORT:8080}
+    url: "${SERVER_URL:http://localhost:8080}"
+  storage:
+    type: disk
+    path: "${STORAGE_PATH:./tmp_storage}"
+  logging:
+    level: debug
+
+test: *dev
+
+current_environment: "${APP_ENVIRONMENT:development}"

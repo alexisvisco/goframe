@@ -1,0 +1,50 @@
+package providers
+
+import (
+  "context"
+  "database/sql"
+  "fmt"
+  "github.com/alexisvisco/goframe/db/migrate"
+  {{ .imports }}
+)
+
+func DB(withMigration bool) func (cfg *config.Config) (*gorm.DB, *sql.DB, error) {
+  return func(cfg *config.Config) (*gorm.DB, *sql.DB, error) {
+    var (
+      gormDB *gorm.DB
+      err    error
+    )
+
+    {{- if eq .db "sqlite" }}
+    gormDB, err = gorm.Open(sqlite.Open(cfg.GetDatabase().File), &gorm.Config{})
+    {{- else if eq .db "postgres" }}
+    dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+      cfg.GetDatabase().Host,
+      cfg.GetDatabase().Port,
+      cfg.GetDatabase().Username,
+      cfg.GetDatabase().Password,
+      cfg.GetDatabase().Database,
+      cfg.GetDatabase().SSLMode,
+    )
+    gormDB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+    if err != nil {
+      return nil, nil, fmt.Errorf("failed to connect to PostgreSQL: %w", err)
+    }
+    {{- end }}
+
+    // execute migrations
+    sqlDB, err := gormDB.DB()
+    if err != nil {
+      return nil, nil, fmt.Errorf("failed to get database instance: %w", err)
+    }
+
+    if withMigration {
+      err = migrate.New(sqlDB).Up(context.Background(), db.Migrations)
+      if err != nil {
+        return nil, nil, fmt.Errorf("failed to run migrations: %w", err)
+      }
+    }
+
+    return gormDB, sqlDB, nil
+  }
+}

@@ -1,0 +1,38 @@
+package main
+
+import (
+  {{ .imports }}
+  "log/slog"
+  "os"
+
+  "go.uber.org/fx"
+)
+
+func main() {
+  cfg, err := config.LoadConfig()
+  if err != nil {
+    slog.Error("failed to load configuration", "error", err)
+    os.Exit(1)
+  }
+
+	slog.Info("configuration loaded", "environment", cfg.Env)
+
+  app := fx.New(
+    fx.Supply(cfg),
+    fx.Provide(
+      {{- range .provides }}
+      {{ . }},
+      {{- end }}
+    ),
+    {{- if .invokes }}
+    fx.Invoke(
+      {{- range .invokes }}
+      {{ . }},
+      {{- end }}
+    ),
+    {{- end }}
+  )
+
+  app.Run()
+}
+

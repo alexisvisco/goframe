@@ -1,0 +1,25 @@
+package migrations
+
+import (
+	"context"
+	"time"
+
+	"github.com/alexisvisco/goframe/db/migrate"
+)
+
+type {{.struct}} struct {}
+
+func ({{.struct}}) Up(ctx context.Context, db migrate.DB) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func ({{.struct}}) Down(ctx context.Context, db migrate.DB) error{
+	//TODO implement me
+	panic("implement me")
+}
+
+func ({{.struct}}) Version() (name string, at time.Time) {
+	return "{{.name}}", time.Date({{.date}}, time.UTC)
+}
+

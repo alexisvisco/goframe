@@ -1,0 +1,55 @@
+package main
+
+import (
+  "context"
+  "database/sql"
+  "log/slog"
+  "os"
+
+  "github.com/alexisvisco/goframe/cli/rootcmd"
+  {{ .imports }}
+)
+
+var (
+  exitOK    = 0
+  exitError = 1
+)
+
+func main() {
+  os.Exit(run())
+}
+
+func run() int {
+  ctx, ctxCancel := context.WithCancel(context.Background())
+  defer ctxCancel()
+
+  cfg, err := config.LoadConfig()
+  if err != nil {
+    slog.Error("failed to load configuration", "error", err)
+    return exitError
+  }
+
+  slog.Info("configuration loaded", "environment", cfg.Env)
+
+	connector := func() (*sql.DB, error) {
+    _, sqlDB, err := providers.DB(false)(cfg)
+    if err != nil {
+      return nil, err
+    }
+		return sqlDB, nil
+  }
+
+  cmdRoot := rootcmd.NewCmdRoot(
+		rootcmd.WithMigrations(db.Migrations),
+		rootcmd.WithDB(connector),
+	)
+  if _, err := cmdRoot.ExecuteContextC(ctx); err != nil {
+		slog.Error("error", "error", err)
+    switch {
+    default:
+      return exitError
+    }
+  }
+
+  return exitOK
+}

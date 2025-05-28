@@ -1,0 +1,73 @@
+package config
+
+import (
+  "github.com/alexisvisco/goframe/core/configuration"
+  "fmt"
+  _ "embed"
+)
+
+//go:embed config.yml
+var config []byte
+
+type Env string
+
+var (
+  EnvProduction  Env = "production"
+  EnvDevelopment Env = "development"
+  EnvTest        Env = "test"
+)
+
+type Environment struct {
+  Database configuration.Database `yaml:"database"`
+  Server   configuration.Server   `yaml:"server"`
+  Logging  configuration.Logging  `yaml:"logging"`
+  Storage  configuration.Storage  `yaml:"storage"`
+}
+
+type Config struct {
+  Production  Environment `yaml:"production"`
+  Development Environment `yaml:"development"`
+  Test        Environment `yaml:"test"`
+
+  Env Env `yaml:"current_environment"`
+}
+
+func LoadConfig() (*Config, error) {
+  var cfg Config
+  err := configuration.Parse(config, &cfg)
+  if err != nil {
+    return nil, fmt.Errorf("failed to parse configuration: %w", err)
+  }
+
+  return &cfg, nil
+}
+
+// getEnvironment returns the appropriate environment based on the current Env setting
+func (c *Config) getEnvironment() Environment {
+  switch c.Env {
+  case EnvProduction:
+    return c.Production
+  case EnvDevelopment:
+    return c.Development
+  case EnvTest:
+    return c.Test
+  default:
+    return c.Development // Fallback to development
+  }
+}
+
+func (c *Config) GetDatabase() configuration.Database {
+  return c.getEnvironment().Database
+}
+
+func (c *Config) GetServer() configuration.Server {
+  return c.getEnvironment().Server
+}
+
+func (c *Config) GetLogging() configuration.Logging {
+  return c.getEnvironment().Logging
+}
+
+func (c *Config) GetStorage() configuration.Storage {
+  return c.getEnvironment().Storage
+}
