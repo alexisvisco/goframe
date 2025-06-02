@@ -18,6 +18,9 @@ var (
 	//go:embed providers__provide_db.go.tmpl
 	ProvidersProvideDBGo []byte
 
+	//go:embed providers__provide_storage.go.tmpl
+	ProvidersProvideStorageGo []byte
+
 	//go:embed db__migrations__file.go.tmpl
 	DBMigrationsFileGo []byte
 
@@ -26,4 +29,10 @@ var (
 
 	//go:embed cmd__cli__main.go.tmpl
 	CmdCLIMainGo []byte
+
+	//go:embed Dockerfile.tmpl
+	Dockerfile []byte
+
+	//go:embed docker-compose.yml.tmpl
+	DockerComposeYml []byte
 )

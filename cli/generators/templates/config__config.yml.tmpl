@@ -32,10 +32,10 @@ development: &dev
 {{- if eq .db "postgres" }}
     type: postgres
     host: "${DATABASE_HOST:localhost}"
-    port: ${DATABASE_PORT:9632}
+    port: ${DATABASE_PORT:7894}
     username: "${DATABASE_USERNAME:postgres}"
-    password: "${DATABASE_PASSWORD:root}"
-    database: "${DATABASE_NAME:test}"
+    password: "${DATABASE_PASSWORD:postgres}"
+    database: "${DATABASE_NAME:postgres}"
     ssl_mode: "${DATABASE_SSL_MODE:disable}"
 {{- else if eq .db "sqlite" }}
     type: sqlite
@@ -47,7 +47,7 @@ development: &dev
     url: "${SERVER_URL:http://localhost:8080}"
   storage:
     type: disk
-    path: "${STORAGE_PATH:./tmp_storage}"
+    directory: "${STORAGE_PATH:./tmp_storage}"
   logging:
     level: debug
 

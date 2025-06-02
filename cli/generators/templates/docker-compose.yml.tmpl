@@ -1,0 +1,29 @@
+services:
+  mailpit:
+    image: mailpit/mailpit:latest
+    container_name: mailpit
+    ports:
+      - "8888:8025"  # Web interface
+      - "2525:1025"  # SMTP server
+    volumes:
+      - mailpit_data:/data
+    restart: unless-stopped
+{{- if eq .db "postgres"}}
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "7894:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+{{- end}}
+
+volumes:
+  mailpit_data:
+{{- if eq .db "postgres" }}
+  postgres_data:
+{{- end }}

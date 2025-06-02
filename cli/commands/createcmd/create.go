@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alexisvisco/goframe/cli/commands/generatecmd"
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
 	"github.com/alexisvisco/goframe/cli/generators/templates"
 	"github.com/spf13/cobra"
@@ -113,6 +114,11 @@ Required binaries:
 				return fmt.Errorf("missing required binaries: %v", err)
 			}
 
+			err = i.ensureGoModCanBeCreated()
+			if err != nil {
+				return err
+			}
+
 			for path, fn := range dockerFiles {
 				err := fn(path)
 				if err != nil {
@@ -186,13 +192,15 @@ func (i *initializer) generateCmdApp(path string) error {
 
 	err = genhelper.New("main", templates.CmdAppMainGo).
 		WithImport(filepath.Join(i.goModName, "config"), "config").
+		WithImport("github.com/alexisvisco/goframe/core/helpers/fxutil", "fxutil").
+		WithImport("github.com/alexisvisco/goframe/core/contracts", "contracts").
+		WithImport("github.com/alexisvisco/goframe/storage", "storage").
 		WithImport(filepath.Join(i.goModName, "internal/providers"), "providers").
-		WithVar("invokes", []string{
-			"fxutil.Logger",
-		}).
 		WithVar("provides", []string{
 			"fxutil.Logger",
 			"providers.DB(true)",
+			"fx.Annotate(storage.NewRepository(cfg.GetDatabase()), fx.As(new(contracts.StorageRepository)))",
+			"providers.Storage",
 		}).Generate(file)
 	if err != nil {
 		return fmt.Errorf("failed to generate main.go file: %v", err)
@@ -353,30 +361,14 @@ func (i *initializer) generateDockerfile(path string) error {
 		return nil
 	}
 
-	// Generate Dockerfile for the application
-	dockerFileLines := []string{
-		"FROM golang:1.20-alpine AS builder",
-		"WORKDIR /app",
-		"COPY go.mod .",
-		"COPY go.sum .",
-		"RUN go mod download",
-		"COPY . .",
-		"RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app ./cmd/app",
-		"",
-		"FROM alpine:latest",
-		"WORKDIR /root/",
-		"COPY --from=builder /app .",
-		"CMD [\"./app\"]",
-		"",
-	}
-	err := os.WriteFile(path, []byte(strings.Join(dockerFileLines, "\n")), 0644)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create Dockerfile: %v", err)
 	}
 
 	i.filesCreated = append(i.filesCreated, fileinfo{dir: false, path: path})
 
-	return nil
+	return genhelper.New("docker", templates.Dockerfile).Generate(file)
 }
 
 func (i *initializer) generateDockerCompose(path string) error {
@@ -384,48 +376,16 @@ func (i *initializer) generateDockerCompose(path string) error {
 		return nil
 	}
 
-	dcLines := []string{
-		"version: '3.8'",
-		"services:",
-		"  mailpit:",
-		"    image: axllent/mailpit:latest",
-		"    ports:",
-		"      - 8025:8025",
-		"      - 8026:8026",
-		"    volumes:",
-		"      - ./data:/data",
-		"    environment:",
-		"      MP_MAX_MESSAGES: 5000",
-		"      MP_DATABASE: /data/mailpit.db",
-		"      MP_SMTP_AUTH_ACCEPT_ANY: 1",
-		"      MP_SMTP_AUTH_ALLOW_INSECURE: 1",
-	}
+	i.filesCreated = append(i.filesCreated, fileinfo{dir: false, path: path})
 
-	if i.databaseName == "postgres" {
-		dcLines = append(dcLines, "  postgres:")
-		dcLines = append(dcLines, "    image: postgres:latest")
-		dcLines = append(dcLines, "    environment:")
-		dcLines = append(dcLines, "      POSTGRES_PASSWORD: root")
-		dcLines = append(dcLines, "      POSTGRES_DB: test")
-		dcLines = append(dcLines, "    ports:")
-		dcLines = append(dcLines, "      - 9632:5432")
-		dcLines = append(dcLines, "    volumes:")
-		dcLines = append(dcLines, "      - postgres_data:/var/lib/postgresql/data")
-	}
-
-	dcLines = append(dcLines, "volumes:")
-	if i.databaseName == "postgres" {
-		dcLines = append(dcLines, "  postgres_data:")
-	}
-
-	err := os.WriteFile(path, []byte(strings.Join(dcLines, "\n")), 0644)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create docker-compose.yaml: %v", err)
 	}
 
-	i.filesCreated = append(i.filesCreated, fileinfo{dir: false, path: path})
-
-	return nil
+	return genhelper.New("docker", templates.DockerComposeYml).
+		WithVar("db", i.databaseName).
+		Generate(file)
 }
 
 func (i *initializer) generateDockerIgnore(path string) error {
@@ -437,7 +397,6 @@ func (i *initializer) generateDockerIgnore(path string) error {
 		"*.log",
 		"*.tmp",
 		"*.db",
-		"*.sqlite",
 		"db/storage.db",
 		".env",
 		".git",
@@ -461,7 +420,6 @@ func (i *initializer) generateGoMod(_ string) error {
 		return fmt.Errorf("failed to create go.mod file: %v", err)
 	}
 
-	// add dependencies
 	file, err := os.OpenFile("go.mod", os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open go.mod file: %v", err)
@@ -469,10 +427,15 @@ func (i *initializer) generateGoMod(_ string) error {
 
 	defer file.Close()
 
-	dependencies := []string{
+	goframeDeps := []string{
 		"github.com/alexisvisco/goframe/core",
-		"github.com/alexisvisco/goframe/core",
+		"github.com/alexisvisco/goframe/http",
+		"github.com/alexisvisco/goframe/db",
+		"github.com/alexisvisco/goframe/cli",
+		"github.com/alexisvisco/goframe/storage",
 	}
+
+	dependencies := goframeDeps
 
 	if i.orm == "gorm" {
 		dependencies = append(dependencies, "gorm.io/gorm")
@@ -490,8 +453,11 @@ func (i *initializer) generateGoMod(_ string) error {
 	}
 
 	if i.maintainer {
-		file.WriteString(fmt.Sprintf(`replace %s => %s`, "github.com/alexisvisco/goframe", "../"))
-		file.WriteString("\n")
+		for _, dependency := range goframeDeps {
+			mod := filepath.Base(dependency)
+			file.WriteString(fmt.Sprintf(`replace %s => ../%s`, dependency, mod))
+			file.WriteString("\n")
+		}
 	}
 
 	i.filesCreated = append(i.filesCreated, fileinfo{dir: false, path: "go.mod"})
@@ -581,7 +547,47 @@ func (i *initializer) goModTidy() error {
 }
 
 func (i *initializer) generateFileStorageProvider(path string) error {
+	err := os.MkdirAll(filepath.Dir(path), 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create providers directory: %v", err)
+	}
 
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create provide_filestorage.go file: %v", err)
+	}
+
+	i.filesCreated = append(i.filesCreated, fileinfo{dir: false, path: path})
+
+	err = genhelper.New("providers", templates.ProvidersProvideStorageGo).
+		WithImport(filepath.Join(i.goModName, "config"), "config").
+		Generate(file)
+
+	if err != nil {
+		return fmt.Errorf("failed to generate provide_filestorage.go file: %v", err)
+	}
+
+	fileCreated, err := generatecmd.GenerateSQLMigrationFile("storage")
+	if err != nil {
+		return fmt.Errorf("failed to generate SQL migration file for storage: %v", err)
+	}
+
+	i.filesCreated = append(i.filesCreated, fileinfo{dir: false, path: fileCreated})
+
+	return nil
+}
+
+func (i *initializer) ensureGoModCanBeCreated() error {
+	// check if the go.mod file exists
+	if _, err := os.Stat("go.mod"); err == nil {
+		return fmt.Errorf("go.mod file already exists, please remove it or choose a different folder")
+	}
+
+	if i.goModName == "" {
+		return fmt.Errorf("go module name must be specified with --gomod flag")
+	}
+
+	return nil
 }
 
 // formatFilesList converts a slice of file paths to a formatted string with indentation and dashes

@@ -102,8 +102,8 @@ func TestReplaceVariables(t *testing.T) {
 		},
 		{
 			name:     "dollar variable at end",
-			input:    "Path: $HOME",
-			expected: "Path: /home/user",
+			input:    "Directory: $HOME",
+			expected: "Directory: /home/user",
 		},
 
 		// Mixed format tests

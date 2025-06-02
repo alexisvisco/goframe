@@ -1,0 +1,23 @@
+package providers
+
+import (
+  "fmt"
+
+  "github.com/alexisvisco/goframe/core/configuration"
+  "github.com/alexisvisco/goframe/core/contracts"
+  "github.com/alexisvisco/goframe/storage"
+  {{ .imports }}
+)
+
+func Storage(cfg *config.Config, repository contracts.StorageRepository) (contracts.Storage, error) {
+  var cfgStorage configuration.Storage = cfg.GetStorage()
+
+  switch cfgStorage.Type {
+  case configuration.StorageTypeS3:
+    return storage.NewS3Storage(cfgStorage, repository)
+  case configuration.StorageTypeDisk:
+    return storage.NewDiskStorage(cfgStorage, repository), nil
+  }
+
+  return nil, fmt.Errorf("unsupported storage type: %s", cfgStorage.Type)
+}

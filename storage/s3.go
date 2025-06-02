@@ -18,7 +18,6 @@ import (
 	"github.com/alexisvisco/goframe/core/helpers/str"
 	"github.com/alexisvisco/goframe/http/httpx"
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/minio/minio-go"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/nrednav/cuid2"
@@ -26,14 +25,16 @@ import (
 
 type (
 	S3Storage struct {
-		config     *configuration.Storage
+		config     configuration.Storage
 		repository contracts.StorageRepository
 		client     *minio.Client
 	}
 )
 
+var _ contracts.Storage = (*S3Storage)(nil)
+
 func NewS3Storage(
-	cfg *configuration.Storage,
+	cfg configuration.Storage,
 	repository contracts.StorageRepository,
 ) (*S3Storage, error) {
 	// Initialize MinIO client
@@ -53,7 +54,7 @@ func NewS3Storage(
 	}, nil
 }
 
-func (s *S3Storage) UploadAttachment(ctx context.Context, opts UploadAttachmentOptions) (*coretypes.Attachment, error) {
+func (s *S3Storage) UploadAttachment(ctx context.Context, opts coretypes.UploadAttachmentOptions) (*coretypes.Attachment, error) {
 	// Generate a unique ID for the attachment if not replacing existing
 	id := cuid2.Generate()
 	if opts.CurrentAttachmentID != nil {

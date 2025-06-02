@@ -2,7 +2,7 @@ package configuration
 
 type (
 	Database struct {
-		Type string `yaml:"type"`
+		Type DatabaseType `yaml:"type"`
 
 		Host     string `yaml:"host,omitempty"`
 		Port     int    `yaml:"port,omitempty"`
@@ -25,7 +25,7 @@ type (
 	}
 
 	Storage struct {
-		Type string `yaml:"type"`
+		Type StorageType `yaml:"type"`
 
 		Endpoint        string `yaml:"endpoint"`
 		Bucket          string `yaml:"bucket"`
@@ -34,6 +34,20 @@ type (
 		SecretAccessKey string `yaml:"secret_access_key"`
 		Secure          bool   `yaml:"secure"`
 
-		Path string `yaml:"path"`
+		Directory string `yaml:"directory"`
 	}
+
+	StorageType string
+
+	DatabaseType string
+)
+
+const (
+	StorageTypeDisk StorageType = "disk"
+	StorageTypeS3   StorageType = "s3"
+)
+
+const (
+	DatabaseTypeSQLite   DatabaseType = "sqlite"
+	DatabaseTypePostgres DatabaseType = "postgres"
 )

@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -14,33 +15,25 @@ import (
 type (
 	DefaultRepository struct {
 		db     *sql.DB
-		driver string
+		driver configuration.DatabaseType
 	}
 )
 
-func NewRepository(cfg configuration.Database) func(db *sql.DB) (*DefaultRepository, error) {
-	return func(db *sql.DB) (*DefaultRepository, error) {
+func NewRepository(cfg configuration.Database) func(db *sql.DB) *DefaultRepository {
+	return func(db *sql.DB) *DefaultRepository {
 		repo := &DefaultRepository{
 			db:     db,
 			driver: cfg.Type,
 		}
-
-		// Create tables if they don't exist
-		if err := repo.createTables(); err != nil {
-			return nil, fmt.Errorf("failed to create tables: %w", err)
-		}
-
-		return repo, nil
+		return repo
 	}
 }
 
-// createTables creates the attachments table with appropriate SQL for each database
-func (r *DefaultRepository) createTables() error {
-	var createTableSQL string
-
-	switch r.driver {
-	case "sqlite3":
-		createTableSQL = `
+// Migration returns the SQL statements for creating and dropping the attachments table
+func (r *DefaultRepository) Migration(databaseType configuration.DatabaseType) (string, string, error) {
+	switch databaseType {
+	case configuration.DatabaseTypeSQLite:
+		return `
 			CREATE TABLE IF NOT EXISTS attachments (
 				id TEXT PRIMARY KEY,
 				filename TEXT NOT NULL,
@@ -53,9 +46,9 @@ func (r *DefaultRepository) createTables() error {
 			);
 			CREATE INDEX IF NOT EXISTS idx_attachments_created_at ON attachments(created_at);
 			CREATE INDEX IF NOT EXISTS idx_attachments_deleted_at ON attachments(deleted_at);
-		`
-	case "postgres":
-		createTableSQL = `
+		`, "DROP TABLE IF EXISTS attachments;", nil
+	case configuration.DatabaseTypePostgres:
+		return `
 			CREATE TABLE IF NOT EXISTS attachments (
 				id TEXT PRIMARY KEY,
 				filename TEXT NOT NULL,
@@ -68,25 +61,11 @@ func (r *DefaultRepository) createTables() error {
 			);
 			CREATE INDEX IF NOT EXISTS idx_attachments_created_at ON attachments(created_at);
 			CREATE INDEX IF NOT EXISTS idx_attachments_deleted_at ON attachments(deleted_at);
-		`
+		`, "DROP TABLE IF EXISTS attachments;", nil
+
 	default:
-		return fmt.Errorf("unsupported database driver: %s", r.driver)
+		return "", "", fmt.Errorf("unsupported database driver: %s", r.driver)
 	}
-
-	// Execute each statement separately for better error handling
-	statements := strings.Split(createTableSQL, ";")
-	for _, stmt := range statements {
-		stmt = strings.TrimSpace(stmt)
-		if stmt == "" {
-			continue
-		}
-
-		if _, err := r.db.Exec(stmt); err != nil {
-			return fmt.Errorf("failed to execute statement '%s': %w", stmt, err)
-		}
-	}
-
-	return nil
 }
 
 // SaveAttachment saves an attachment record to the database
@@ -98,7 +77,7 @@ func (r *DefaultRepository) SaveAttachment(ctx context.Context, attachment *core
 
 	// Adjust query syntax for different databases
 	switch r.driver {
-	case "postgres":
+	case configuration.DatabaseTypePostgres:
 		query = `
 			INSERT INTO attachments (id, filename, content_type, byte_size, key, checksum, created_at, deleted_at)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -133,7 +112,7 @@ func (r *DefaultRepository) GetAttachment(ctx context.Context, id string) (*core
 		WHERE id = ? AND deleted_at IS NULL
 	`
 
-	if r.driver == "postgres" {
+	if r.driver == configuration.DatabaseTypePostgres {
 		query = strings.ReplaceAll(query, "?", "$1")
 	}
 
@@ -154,7 +133,7 @@ func (r *DefaultRepository) GetAttachment(ctx context.Context, id string) (*core
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil // Attachment not found
 		}
 		return nil, fmt.Errorf("failed to get attachment: %w", err)
@@ -183,7 +162,7 @@ func (r *DefaultRepository) DeleteAttachment(ctx context.Context, id string, cle
 		WHERE id = ? AND deleted_at IS NULL
 	`
 
-	if r.driver == "postgres" {
+	if r.driver == configuration.DatabaseTypePostgres {
 		query = `
 			UPDATE attachments 
 			SET deleted_at = $1 

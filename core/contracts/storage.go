@@ -13,6 +13,7 @@ type (
 		DeleteAttachment(ctx context.Context, id string, cleanup func() error) error
 		GetAttachment(ctx context.Context, id string) (*coretypes.Attachment, error)
 	}
+
 	Storage interface {
 		UploadAttachment(ctx context.Context, opts coretypes.UploadAttachmentOptions) (*coretypes.Attachment, error)
 		DeleteAttachment(ctx context.Context, id string) error
