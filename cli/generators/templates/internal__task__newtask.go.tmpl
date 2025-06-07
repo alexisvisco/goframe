@@ -1,0 +1,49 @@
+package task
+
+import (
+  "context"
+
+  "github.com/alexisvisco/goframe/cli/cmdplugin"
+  "github.com/spf13/cobra"
+  "go.uber.org/fx"
+)
+
+type (
+  {{ .name_pascal_case}}Task struct {
+		// any dependencies can be added here
+  }
+
+  {{ .name_pascal_case}}TaskOptions struct {
+    // any options for the task can be added here (e.g., flags)
+  }
+
+	{{ .name_camel_case}}TaskCli struct {
+    task *{{ .name_pascal_case}}Task
+  }
+)
+
+func New{{ .name_pascal_case }}TaskOptions(/* add dependencies here if needed */) *{{ .name_pascal_case}}TaskOptions {
+  return &{{ .name_pascal_case}}TaskOptions{}
+}
+
+func (t {{ .name_pascal_case}}Task) Run(ctx context.Context, opts *{{ .name_pascal_case}}TaskOptions) error {
+  return nil
+}
+
+func (t {{ .name_camel_case}}TaskCli) run(ctx context.Context, opts *{{ .name_pascal_case}}TaskOptions) error {
+  return t.task.Run(ctx, opts)
+}
+
+func New{{ .name_pascal_case }}Task(options []fx.Option) *cobra.Command {
+  opts := {{ .name_pascal_case}}TaskOptions{}
+  cmd := &cobra.Command{
+    Use:   "{{ .name_kebab_case }}",
+    Short: "{{ .description }}",
+    RunE:  cmdplugin.RunE(func(task *{{ .name_pascal_case}}Task, cmd *cobra.Command, args []string) error {
+      cli := &{{ .name_camel_case}}TaskCli{task: task}
+      return cli.run(cmd.Context(), &opts)
+    }, append(options, fx.Provide(New{{ .name_pascal_case }}TaskOptions))...),
+  }
+
+  return cmd
+}

@@ -190,6 +190,15 @@ func bindStruct(v reflect.Value, req *http.Request, opts *bindOptions) error {
 			}
 		}
 
+		if pathTag, ok := field.Tag.Lookup("path"); ok && fieldValue.IsZero() {
+			if err := bindPath(pathTag, field, fieldValue, req, opts); err != nil {
+				if opts.strictMode {
+					return err
+				}
+				errs = append(errs, err)
+			}
+		}
+
 		// Try headers tag (only if field is still zero)
 		if headerTag, ok := field.Tag.Lookup("headers"); ok && fieldValue.IsZero() {
 			if err := bindHeader(headerTag, field, fieldValue, req, opts); err != nil {
@@ -405,6 +414,53 @@ func bindQuery(tag string, field reflect.StructField, value reflect.Value, req *
 
 	// Regular (non-slice) field
 	paramValue := query.Get(paramName)
+	if paramValue == "" {
+		return nil // No value found
+	}
+
+	return setValueFromString(value, paramValue, field)
+}
+
+// bindPath binds a value from path parameters. It uses the new req.PathValue() method
+func bindPath(tag string, field reflect.StructField, value reflect.Value, req *http.Request, opts *bindOptions) error {
+	paramName := tag
+
+	// Check if we need to use the exploder
+	exploderTag, hasExploder := field.Tag.Lookup("exploder")
+
+	// If this is a slice, handle it specially
+	if value.Kind() == reflect.Slice {
+		// Get all values for this parameter
+		var pathValues []string
+		pathValue := req.PathValue(paramName)
+
+		// Try with square brackets too (e.g., param[]=value)
+		bracketParamValues := req.PathValue(paramName + "[]")
+		pathValues = append(pathValues, pathValue, bracketParamValues)
+
+		// If we have an exploder, try to use it
+		singleParam := req.PathValue(paramName)
+		exploderValue := ""
+		if hasExploder {
+			exploderValue = exploderTag
+		}
+		pathValues = getValueSlice(pathValues, exploderValue, singleParam)
+
+		// Process all values
+		if err := processSliceValues(value, pathValues, field); err != nil {
+			return &BindingError{
+				Field:   field.Name,
+				Type:    "path",
+				Message: "failed to set value from path parameter",
+				Err:     err,
+			}
+		}
+
+		return nil
+	}
+
+	// Regular (non-slice) field
+	paramValue := req.PathValue(paramName)
 	if paramValue == "" {
 		return nil // No value found
 	}

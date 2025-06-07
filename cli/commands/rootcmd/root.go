@@ -9,8 +9,11 @@ import (
 
 	"github.com/alexisvisco/goframe/cli/commands/dbcmd"
 	"github.com/alexisvisco/goframe/cli/commands/generatecmd"
+	"github.com/alexisvisco/goframe/cli/commands/routescmd"
+	"github.com/alexisvisco/goframe/cli/commands/taskcmd"
 	"github.com/alexisvisco/goframe/db/migrate"
 	"github.com/spf13/cobra"
+	"go.uber.org/fx"
 	"golang.org/x/mod/modfile"
 )
 
@@ -19,6 +22,8 @@ type OptionFunc func(*options)
 type options struct {
 	Migrations []migrate.Migration
 	DB         func() (*sql.DB, error)
+	Commands   map[string][]*cobra.Command
+	FxOptions  []fx.Option
 }
 
 func WithMigrations(migrations []migrate.Migration) OptionFunc {
@@ -30,6 +35,21 @@ func WithMigrations(migrations []migrate.Migration) OptionFunc {
 func WithDB(dbConnector func() (*sql.DB, error)) OptionFunc {
 	return func(o *options) {
 		o.DB = dbConnector
+	}
+}
+
+func WithCommand(name string, subCommands ...*cobra.Command) OptionFunc {
+	return func(o *options) {
+		if o.Commands == nil {
+			o.Commands = make(map[string][]*cobra.Command)
+		}
+		o.Commands[name] = append(o.Commands[name], subCommands...)
+	}
+}
+
+func WithFxOptions(opts ...fx.Option) OptionFunc {
+	return func(o *options) {
+		o.FxOptions = append(o.FxOptions, opts...)
 	}
 }
 
@@ -78,8 +98,13 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 		},
 	}
 
+	taskCommand := taskcmd.NewCmdRootTask(defaultOpts.Commands["task"]...)
+	generateCommand := generatecmd.NewCmdRootGenerate(defaultOpts.Commands["generate"]...)
+
 	cmd.AddCommand(dbcmd.NewCmdRootMigrate())
-	cmd.AddCommand(generatecmd.NewCmdRootGenerate())
+	cmd.AddCommand(taskCommand)
+	cmd.AddCommand(generateCommand)
+	cmd.AddCommand(routescmd.NewCmdRoutes())
 
 	return cmd
 }

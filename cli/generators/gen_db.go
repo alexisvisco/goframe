@@ -13,7 +13,7 @@ import (
 )
 
 type (
-	GenerateDatabaseFiles struct {
+	DatabaseGenerator struct {
 		g *Generator
 	}
 
@@ -30,24 +30,127 @@ type (
 	}
 )
 
-func (g *GenerateDatabaseFiles) CreateMigration(params CreateMigrationParams) error {
-	if params.Sql {
-		if _, err := g.generateSQLMigrationFile(params); err != nil {
-			return fmt.Errorf("failed to generate SQL migration file: %w", err)
-		}
-	} else {
-		if err := g.generateGoMigrationFile(params); err != nil {
-			return fmt.Errorf("failed to generate Go migration file: %w", err)
+func (g *DatabaseGenerator) Generate() error {
+	if err := g.g.CreateDirectory("db/migrations", CategoryDatabase); err != nil {
+		return fmt.Errorf("failed to create migrations directory: %w", err)
+	}
+
+	files := []FileConfig{
+		g.createDBProvider("internal/providers/db.go"),
+	}
+
+	for _, file := range files {
+		if err := g.g.GenerateFile(file); err != nil {
+			return fmt.Errorf("failed to create database file %s: %w", file.Path, err)
 		}
 	}
 
-	return g.UpdateMigrations()
+	if err := g.UpdateOrCreateMigrations(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (g *GenerateDatabaseFiles) UpdateMigrations() error {
-	file, err := os.OpenFile("db/migrations.go", os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to create migrations.go file: %v", err)
+// createDBProvider creates the FileConfig for the database provider
+func (g *DatabaseGenerator) createDBProvider(path string) FileConfig {
+	return FileConfig{
+		Path:     path,
+		Template: templates.ProvidersProvideDBGo,
+		Gen: func(gen *genhelper.GenHelper) {
+			gen.WithImport(filepath.Join(g.g.GoModuleName, "config"), "config").
+				WithImport(filepath.Join(g.g.GoModuleName, "db"), "db").
+				WithImport("gorm.io/gorm", "gorm").
+				WithVar("db", g.g.DatabaseType)
+
+			switch g.g.DatabaseType {
+			case "postgres":
+				gen.WithImport("gorm.io/driver/postgres", "postgres")
+			case "sqlite":
+				gen.WithImport("gorm.io/driver/sqlite", "sqlite")
+			}
+		},
+		Category:  CategoryDatabase,
+		Condition: true,
+	}
+}
+func (g *DatabaseGenerator) CreateMigration(params CreateMigrationParams) error {
+	var migrationFile FileConfig
+
+	if params.Sql {
+		migrationFile = g.createSQLMigrationFile(params)
+	} else {
+		migrationFile = g.createGoMigrationFile(params)
+	}
+
+	if err := g.g.GenerateFile(migrationFile); err != nil {
+		return fmt.Errorf("failed to generate migration file: %w", err)
+	}
+
+	return g.UpdateOrCreateMigrations()
+}
+
+// createGoMigrationFile creates the FileConfig for a Go migration file
+func (g *DatabaseGenerator) createGoMigrationFile(c CreateMigrationParams) FileConfig {
+	timestamp := c.At.UTC().Format("20060102150405")
+	nameSnakeCase := str.ToSnakeCase(c.Name)
+	namePascalCase := str.ToPascalCase(c.Name)
+	version := fmt.Sprintf("%s_%s", timestamp, nameSnakeCase)
+	structName := namePascalCase + timestamp
+
+	nowUTC := time.Now().UTC()
+	date := fmt.Sprintf("%d, %d, %d, %d, %d, %d, %d",
+		nowUTC.Year(), nowUTC.Month(), nowUTC.Day(),
+		nowUTC.Hour(), nowUTC.Minute(), nowUTC.Second(), time.Now().Nanosecond())
+
+	return FileConfig{
+		Path:     fmt.Sprintf("db/migrations/%s.go", version),
+		Template: templates.DBMigrationsFileGo,
+		Gen: func(gen *genhelper.GenHelper) {
+			gen.WithVar("struct", structName).
+				WithVar("date", date).
+				WithVar("version", version).
+				WithVar("name", nameSnakeCase)
+		},
+		Category:  CategoryDatabase,
+		Condition: true,
+	}
+}
+
+// createSQLMigrationFile creates the FileConfig for a SQL migration file
+func (g *DatabaseGenerator) createSQLMigrationFile(c CreateMigrationParams) FileConfig {
+	timestamp := c.At.UTC().Format("20060102150405")
+	nameSnakeCase := str.ToSnakeCase(c.Name)
+	version := fmt.Sprintf("%s_%s", timestamp, nameSnakeCase)
+
+	return FileConfig{
+		Path:     fmt.Sprintf("db/migrations/%s.sql", version),
+		Template: templates.DBMigrationsFileSQL,
+		Gen: func(gen *genhelper.GenHelper) {
+			gen.WithVar("name", version).
+				WithVar("up", c.Up).
+				WithVar("down", c.Down)
+		},
+		Category:  CategoryDatabase,
+		Condition: true,
+	}
+}
+
+func (g *DatabaseGenerator) UpdateOrCreateMigrations() error {
+	// Create or open the migrations.go file
+	var file *os.File
+	if _, err := os.Stat("db/migrations.go"); os.IsNotExist(err) {
+		// If the file does not exist, create it
+		file, err = os.Create("db/migrations.go")
+		if err != nil {
+			return fmt.Errorf("failed to create migrations.go file: %v", err)
+		}
+	} else {
+		// If the file exists, open it for writing
+		file, err = os.OpenFile("db/migrations.go", os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to open migrations.go file: %v", err)
+		}
 	}
 
 	hasSQLMigrations, hasGoMigrations, list := g.buildMigrationList()
@@ -63,12 +166,14 @@ func (g *GenerateDatabaseFiles) UpdateMigrations() error {
 		gh.WithImport(filepath.Join(g.g.GoModuleName, "db/migrations"), "migrations")
 	}
 
+	g.g.TrackFile("db/migrations.go", false, CategoryDatabase)
+
 	return gh.
 		WithVar("migrations", list).
 		Generate(file)
 }
 
-func (g *GenerateDatabaseFiles) buildMigrationList() (bool, bool, []string) {
+func (g *DatabaseGenerator) buildMigrationList() (bool, bool, []string) {
 	migrationsDir := "db/migrations"
 
 	entries, err := os.ReadDir(migrationsDir)
@@ -106,55 +211,4 @@ func (g *GenerateDatabaseFiles) buildMigrationList() (bool, bool, []string) {
 	}
 
 	return hasSqlFiles, hasGoFiles, migrations
-}
-
-func (g *GenerateDatabaseFiles) generateGoMigrationFile(c CreateMigrationParams) error {
-	timestamp := c.At.UTC().Format("20060102150405")
-	nameSnakeCase := str.ToSnakeCase(c.Name)
-	namePascalCase := str.ToPascalCase(c.Name)
-	version := fmt.Sprintf("%s_%s", timestamp, nameSnakeCase)
-	structName := namePascalCase + timestamp
-
-	nowUTC := time.Now().UTC()
-	date := fmt.Sprintf("%d, %d, %d, %d, %d, %d, %d",
-		nowUTC.Year(), nowUTC.Month(), nowUTC.Day(),
-		nowUTC.Hour(), nowUTC.Minute(), nowUTC.Second(), time.Now().Nanosecond())
-
-	file, err := os.Create(fmt.Sprintf("db/migrations/%s.go", version))
-	if err != nil {
-		return fmt.Errorf("failed to create migration file: %w", err)
-	}
-	defer file.Close()
-
-	return genhelper.New("migration", templates.DBMigrationsFileGo).
-		WithVar("struct", structName).
-		WithVar("date", date).
-		WithVar("version", version).
-		WithVar("name", nameSnakeCase).
-		Generate(file)
-}
-
-func (g *GenerateDatabaseFiles) generateSQLMigrationFile(c CreateMigrationParams) (string, error) {
-	timestamp := c.At.UTC().Format("20060102150405")
-	nameSnakeCase := str.ToSnakeCase(c.Name)
-	version := fmt.Sprintf("%s_%s", timestamp, nameSnakeCase)
-
-	file, err := os.Create(fmt.Sprintf("db/migrations/%s.sql", version))
-	if err != nil {
-		return "", fmt.Errorf("failed to create SQL migration file: %w", err)
-	}
-
-	defer file.Close()
-
-	gh := genhelper.New("migration", templates.DBMigrationsFileSQL).
-		WithVar("name", version).
-		WithVar("up", c.Up).
-		WithVar("down", c.Down)
-
-	err = gh.Generate(file)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("db/migrations/%s.sql", version), nil
 }

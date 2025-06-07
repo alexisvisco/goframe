@@ -35,4 +35,31 @@ var (
 
 	//go:embed docker-compose.yml.tmpl
 	DockerComposeYml []byte
+
+	//go:embed providers__provide_http.go.tmpl
+	ProvidersProvideHTTPServerGo []byte
+
+	//go:embed internal__repository__repository_example.go.tmpl
+	InternalRepositoryExampleGo []byte
+
+	//go:embed internal__service__service_example.go.tmpl
+	InternalServiceExampleGo []byte
+
+	//go:embed internal__v1handler__example.go.tmpl
+	InternalV1HandlerExampleGo []byte
+
+	//go:embed internal__types__example.go.tmpl
+	InternalTypesExampleGo []byte
+
+	//go:embed internal__v1handler__router.go.tmpl
+	InternalV1HandlerRouterGo []byte
+
+	//go:embed bin__goframe.tmpl
+	InternalBinGoframe []byte
+
+	//go:embed internal__app__module.go.tmpl
+	InternalAppModuleGo []byte
+
+	//go:embed internal__task__newtask.go.tmpl
+	InternalTaskNewTaskGo []byte
 )

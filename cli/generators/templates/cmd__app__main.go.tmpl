@@ -17,22 +17,15 @@ func main() {
 
 	slog.Info("configuration loaded", "environment", cfg.Env)
 
-  app := fx.New(
-    fx.Supply(cfg),
-    fx.Provide(
-      {{- range .provides }}
-      {{ . }},
-      {{- end }}
-    ),
-    {{- if .invokes }}
-    fx.Invoke(
-      {{- range .invokes }}
-      {{ . }},
-      {{- end }}
-    ),
+  options := app.Module(cfg)
+  {{- if .invokes }}
+  options = append(options, fx.Invoke(
+    {{- range .invokes }}
+    {{ . }},
     {{- end }}
-  )
+  ))
+  {{- end }}
 
-  app.Run()
+  fx.New(options...).Run()
 }
 

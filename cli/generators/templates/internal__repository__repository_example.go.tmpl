@@ -1,0 +1,60 @@
+package repository
+
+import (
+  "fmt"
+
+  {{ .imports }}
+)
+
+type NoteRepository struct {
+	fakeDatabase map[string]*types.Note
+}
+
+func NewNoteRepository() *NoteRepository {
+  return &NoteRepository{
+    fakeDatabase: make(map[string]*types.Note),
+  }
+}
+
+func (r *NoteRepository) Create(note *types.Note) error {
+  if note == nil || note.ID == "" {
+    return fmt.Errorf("note cannot be nil and must have a valid ID")
+  }
+  r.fakeDatabase[note.ID] = note
+  return nil
+}
+
+func (r *NoteRepository) GetByID(id string) (*types.Note, error) {
+  note, exists := r.fakeDatabase[id]
+  if !exists {
+    return nil, types.ErrNoteNotFound
+  }
+  return note, nil
+}
+
+func (r *NoteRepository) Update(note *types.Note) error {
+  if note == nil || note.ID == "" {
+    return fmt.Errorf("note cannot be nil and must have a valid ID")
+  }
+  if _, exists := r.fakeDatabase[note.ID]; !exists {
+    return types.ErrNoteNotFound
+  }
+  r.fakeDatabase[note.ID] = note
+  return nil
+}
+
+func (r *NoteRepository) Delete(id string) error {
+  if _, exists := r.fakeDatabase[id]; !exists {
+    return types.ErrNoteNotFound
+  }
+  delete(r.fakeDatabase, id)
+  return nil
+}
+
+func (r *NoteRepository) List() ([]*types.Note, error) {
+  notes := make([]*types.Note, 0, len(r.fakeDatabase))
+  for _, note := range r.fakeDatabase {
+    notes = append(notes, note)
+  }
+  return notes, nil
+}

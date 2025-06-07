@@ -19,14 +19,13 @@ type (
 	}
 )
 
-func NewRepository(cfg configuration.Database) func(db *sql.DB) *DefaultRepository {
-	return func(db *sql.DB) *DefaultRepository {
-		repo := &DefaultRepository{
-			db:     db,
-			driver: cfg.Type,
-		}
-		return repo
+func NewRepository(cfg configuration.Database, db *sql.DB) *DefaultRepository {
+	repo := &DefaultRepository{
+		db:     db,
+		driver: cfg.Type,
 	}
+	return repo
+
 }
 
 // Migration returns the SQL statements for creating and dropping the attachments table

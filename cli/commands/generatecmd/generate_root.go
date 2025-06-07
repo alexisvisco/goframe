@@ -2,7 +2,7 @@ package generatecmd
 
 import "github.com/spf13/cobra"
 
-func NewCmdRootGenerate() *cobra.Command {
+func NewCmdRootGenerate(subCommands ...*cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "generate <subcommand> [flags]",
 		Aliases: []string{"gen", "g"},
@@ -10,6 +10,10 @@ func NewCmdRootGenerate() *cobra.Command {
 	}
 
 	cmd.AddCommand(migrationCmd())
+	cmd.AddCommand(taskCmd())
+	for _, subCmd := range subCommands {
+		cmd.AddCommand(subCmd)
+	}
 
 	return cmd
 }

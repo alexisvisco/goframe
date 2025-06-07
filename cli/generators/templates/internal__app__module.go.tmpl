@@ -1,0 +1,20 @@
+package app
+
+import (
+  "github.com/alexisvisco/goframe/core/helpers/fxutil"
+  "go.uber.org/fx"
+
+	{{ .imports }}
+)
+
+func Module(cfg *config.Config) []fx.Option {
+  return []fx.Option{
+    fxutil.Logger(),
+    fx.Supply(cfg, cfg.GetDatabase()),
+    fx.Provide(
+      {{- range .provides }}
+      {{ . }},
+      {{- end }}
+    ),
+  }
+}

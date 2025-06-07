@@ -2,8 +2,10 @@ package httpx
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
+	"github.com/alexisvisco/goframe/core/coretypes"
 	"github.com/alexisvisco/goframe/core/helpers/clog"
 )
 
@@ -54,9 +56,6 @@ func Wrap(handler HandlerFunc) http.HandlerFunc {
 			ctx, line := clog.FromContext(r.Context())
 			line.Error(err)
 			r.WithContext(ctx)
-
-			onError(w, r, err)
-			return
 		}
 		if resp != nil {
 			if err := resp.WriteTo(w, r); err != nil {
@@ -66,6 +65,8 @@ func Wrap(handler HandlerFunc) http.HandlerFunc {
 
 				onError(w, r, err)
 			}
+		} else if err != nil {
+			onError(w, r, err)
 		}
 	}
 }
@@ -164,6 +165,7 @@ type RedirectResponse struct {
 
 func (r RedirectResponse) WriteTo(w http.ResponseWriter, _ *http.Request) error {
 	http.Redirect(w, nil, r.url, r.statusCode)
+	return nil
 }
 
 func NewRedirectResponse(url string, statusCode int) RedirectResponse {
@@ -383,13 +385,31 @@ var ErrorMapper = map[error]Error{}
 
 // DefaultHTTPError is the default error handler for unexpected errors
 var DefaultHTTPError = func(w http.ResponseWriter, r *http.Request, err error) {
-	_ = JSON.InternalServerError("").WriteTo(w, r)
+	var validationError *coretypes.ValidationError
+	if errors.As(err, &validationError) {
+		m := make(map[string]any, len(validationError.Errors))
+		for k, v := range validationError.Errors {
+			m[k] = v
+		}
+
+		err := Error{
+			Message:  "validation error",
+			Code:     "VALIDATION_ERROR",
+			Metadata: m,
+		}
+
+		_ = NewJSONResponse(http.StatusBadRequest, err).WriteTo(w, r)
+	} else {
+		_ = JSON.InternalServerError("").WriteTo(w, r)
+	}
 }
 
 // onError handles errors that occur during request processing
 func onError(w http.ResponseWriter, r *http.Request, err error) {
 	if customError, ok := ErrorMapper[err]; ok {
-		http.Error(w, customError.Message, customError.StatusCode)
+		//http.Error(w, customError.Message, customError.StatusCode)
+		resp := NewJSONResponse(customError.StatusCode, customError)
+		_ = resp.WriteTo(w, r)
 		return
 	}
 

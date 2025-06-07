@@ -1,0 +1,54 @@
+package providers
+
+import (
+  "context"
+  "fmt"
+  "log/slog"
+  "net"
+  "net/http"
+  "time"
+
+  "github.com/alexisvisco/goframe/core/configuration"
+  "github.com/alexisvisco/goframe/http/middlewares"
+  "go.uber.org/fx"
+
+  {{ .imports }}
+)
+
+func HTTP(cfg *config.Config, lc fx.Lifecycle) (*http.ServeMux) {
+  var srvConfig configuration.Server = cfg.GetServer()
+  handler := http.NewServeMux()
+
+
+
+  srv := &http.Server{
+    Addr:              fmt.Sprintf("%s:%s", srvConfig.Host, srvConfig.Port),
+    ReadTimeout:       15 * time.Second, // Time to read request headers and body
+    WriteTimeout:      15 * time.Second, // Time to write response
+    IdleTimeout:       60 * time.Second, // Time to keep connection alive for reuse
+    ReadHeaderTimeout: 5 * time.Second,  // Time to read request headers
+
+    MaxHeaderBytes: 1 << 20, // 1 MB max header size
+
+    ErrorLog: slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
+
+		Handler: middlewares.LoggerMiddleware(nil)(handler),
+  }
+
+  lc.Append(fx.Hook{
+    OnStart: func(ctx context.Context) error {
+      ln, err := net.Listen("tcp", srv.Addr)
+      if err != nil {
+        return err
+      }
+      slog.Info("HTTP server listening", "address", srv.Addr)
+      go srv.Serve(ln)
+      return nil
+    },
+    OnStop: func(ctx context.Context) error {
+      slog.Info("shutting down HTTP server", "address", srv.Addr)
+      return srv.Shutdown(ctx)
+    },
+  })
+  return handler
+}

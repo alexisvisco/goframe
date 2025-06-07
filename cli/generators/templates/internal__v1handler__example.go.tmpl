@@ -1,0 +1,108 @@
+package v1handler
+
+import (
+  "net/http"
+
+  "github.com/alexisvisco/goframe/http/httpx"
+  "github.com/alexisvisco/goframe/http/params"
+
+  {{ .imports }}
+)
+
+type NoteHandler struct {
+  svc types.NoteService
+}
+
+func NewNoteHandler(svc types.NoteService) *NoteHandler {
+	httpx.ErrorMapper[types.ErrNoteNotFound] = httpx.Error{
+    Message:    "note not found",
+    Code:       "NOTE_NOT_FOUND",
+    StatusCode: http.StatusNotFound,
+  }
+
+  return &NoteHandler{svc: svc}
+}
+
+type CreateNoteRequest struct {
+  Title   string `json:"title"`
+  Content string `json:"content"`
+}
+
+func (h *NoteHandler) CreateNote() http.HandlerFunc {
+  return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+    var req CreateNoteRequest
+    err := params.Bind(&req, r)
+    if err != nil {
+      return httpx.JSON.BadRequest("invalid request body"), err
+    }
+
+    note := &types.Note{
+      Title:   req.Title,
+      Content: req.Content,
+    }
+    if err := h.svc.Create(note); err != nil {
+      return nil, err
+    }
+
+    return httpx.JSON.Ok(note), nil
+  })
+}
+
+type UpdateNoteRequest struct {
+  ID      string `path:"id"`
+  Title   string `json:"title"`
+  Content string `json:"content"`
+}
+
+func (h *NoteHandler) UpdateNote() http.HandlerFunc {
+  return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+    var req UpdateNoteRequest
+    if err := params.Bind(&req, r); err != nil {
+      return httpx.JSON.BadRequest("invalid request parameters"), err
+    }
+
+		note := &types.Note{
+      ID:      req.ID,
+      Title:   req.Title,
+      Content: req.Content,
+    }
+
+    if err := h.svc.Update(note); err != nil {
+      return nil, err
+    }
+
+    return httpx.JSON.Ok(note), nil
+  })
+}
+
+type DeleteNoteRequest struct {
+  ID string `path:"id"`
+}
+
+func (h *NoteHandler) DeleteNote() http.HandlerFunc {
+  return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+    var req DeleteNoteRequest
+    if err := params.Bind(&req, r); err != nil {
+      return httpx.JSON.BadRequest("invalid request parameters"), err
+    }
+
+    if err := h.svc.Delete(req.ID); err != nil {
+      return nil, err
+    }
+
+    return httpx.JSON.NoContent(), nil
+  })
+}
+
+type ListNotesRequest struct{}
+
+func (h *NoteHandler) ListNotes() http.HandlerFunc {
+  return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+    notes, err := h.svc.List()
+    if err != nil {
+      return nil, err
+    }
+
+    return httpx.JSON.Ok(notes), nil
+  })
+}

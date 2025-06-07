@@ -1,0 +1,65 @@
+package service
+
+import (
+  "fmt"
+  "github.com/Oudwins/zog"
+  "github.com/alexisvisco/goframe/core/coretypes"
+  "github.com/nrednav/cuid2"
+
+  {{ .imports }}
+)
+
+type NoteService struct {
+  repo types.NoteRepository
+}
+
+func NewNoteService(repo types.NoteRepository) *NoteService {
+  return &NoteService{repo: repo}
+}
+
+func (s *NoteService) Create(note *types.Note) error {
+  if note.ID == "" {
+    note.ID = cuid2.Generate()
+  }
+
+  if err := s.validateNote(note); err != nil {
+    return fmt.Errorf("validation error: %w", err)
+  }
+
+  return s.repo.Create(note)
+}
+
+func (s *NoteService) Update(note *types.Note) error {
+  if note.ID == "" {
+    return fmt.Errorf("note ID cannot be empty")
+  }
+
+  if err := s.validateNote(note); err != nil {
+    return fmt.Errorf("validation error: %w", err)
+  }
+
+  return s.repo.Update(note)
+}
+
+func (s *NoteService) Delete(id string) error {
+  if id == "" {
+    return fmt.Errorf("note ID cannot be empty")
+  }
+
+  return s.repo.Delete(id)
+}
+
+func (s *NoteService) List() ([]*types.Note, error) {
+  return s.repo.List()
+}
+
+var schema = zog.Struct(zog.Shape{
+  "ID":      zog.String().Required(),
+  "Title":   zog.String().Required().Min(1).Max(100),
+  "Content": zog.String().Required().Min(1).Max(10_000),
+})
+
+func (s *NoteService) validateNote(note *types.Note) error {
+  return coretypes.ValidationErrorFromZog(schema.Validate(note))
+}
+
