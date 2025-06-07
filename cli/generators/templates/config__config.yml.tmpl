@@ -26,6 +26,13 @@ production:
     secure: ${STORAGE_SECURE:true}
   logging:
     level: "${LOG_LEVEL}"
+  i18n: &i18n
+    default_locale: "en"
+    supported_locales: ["en"]
+    fallback_locale: ["en"]
+    folder: "config/i18n"
+    package: "i18n"
+
 
 development: &dev
   database:
@@ -48,6 +55,7 @@ development: &dev
   storage:
     type: disk
     directory: "${STORAGE_PATH:./tmp_storage}"
+  i18n: *i18n
   logging:
     level: debug
 

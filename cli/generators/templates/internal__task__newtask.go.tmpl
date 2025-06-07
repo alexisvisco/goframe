@@ -3,7 +3,7 @@ package task
 import (
   "context"
 
-  "github.com/alexisvisco/goframe/cli/cmdplugin"
+  "github.com/alexisvisco/goframe/cli/cobradi"
   "github.com/spf13/cobra"
   "go.uber.org/fx"
 )
@@ -39,7 +39,7 @@ func New{{ .name_pascal_case }}Task(options []fx.Option) *cobra.Command {
   cmd := &cobra.Command{
     Use:   "{{ .name_kebab_case }}",
     Short: "{{ .description }}",
-    RunE:  cmdplugin.RunE(func(task *{{ .name_pascal_case}}Task, cmd *cobra.Command, args []string) error {
+    RunE:  cobradi.RunE(func(task *{{ .name_pascal_case}}Task, cmd *cobra.Command, args []string) error {
       cli := &{{ .name_camel_case}}TaskCli{task: task}
       return cli.run(cmd.Context(), &opts)
     }, append(options, fx.Provide(New{{ .name_pascal_case }}TaskOptions))...),

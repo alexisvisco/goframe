@@ -9,8 +9,10 @@ import (
 
 	"github.com/alexisvisco/goframe/cli/commands/dbcmd"
 	"github.com/alexisvisco/goframe/cli/commands/generatecmd"
+	"github.com/alexisvisco/goframe/cli/commands/i18ncmd"
 	"github.com/alexisvisco/goframe/cli/commands/routescmd"
 	"github.com/alexisvisco/goframe/cli/commands/taskcmd"
+	"github.com/alexisvisco/goframe/core/configuration"
 	"github.com/alexisvisco/goframe/db/migrate"
 	"github.com/spf13/cobra"
 	"go.uber.org/fx"
@@ -24,6 +26,7 @@ type options struct {
 	DB         func() (*sql.DB, error)
 	Commands   map[string][]*cobra.Command
 	FxOptions  []fx.Option
+	Config     any
 }
 
 func WithMigrations(migrations []migrate.Migration) OptionFunc {
@@ -50,6 +53,12 @@ func WithCommand(name string, subCommands ...*cobra.Command) OptionFunc {
 func WithFxOptions(opts ...fx.Option) OptionFunc {
 	return func(o *options) {
 		o.FxOptions = append(o.FxOptions, opts...)
+	}
+}
+
+func WithConfig(cfg any) OptionFunc {
+	return func(o *options) {
+		o.Config = cfg
 	}
 }
 
@@ -93,6 +102,7 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 			cmd.SetContext(context.WithValue(cmd.Context(), "module", moduleName))
 			cmd.SetContext(context.WithValue(cmd.Context(), "migrations", defaultOpts.Migrations))
 			cmd.SetContext(context.WithValue(cmd.Context(), "db", defaultOpts.DB))
+			setConfigs(cmd, defaultOpts.Config)
 
 			return nil
 		},
@@ -105,8 +115,32 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 	cmd.AddCommand(taskCommand)
 	cmd.AddCommand(generateCommand)
 	cmd.AddCommand(routescmd.NewCmdRoutes())
+	cmd.AddCommand(i18ncmd.NewCmdI18n())
 
 	return cmd
+}
+
+func setConfigs(cmd *cobra.Command, config any) {
+	if config == nil {
+		return
+	}
+
+	type i18nConfig interface {
+		GetI18n() configuration.I18n
+	}
+
+	i18nCfg, ok := config.(i18nConfig)
+	if ok {
+		cmd.SetContext(context.WithValue(cmd.Context(), "config.i18n", i18nCfg.GetI18n()))
+	}
+
+	type dbConfig interface {
+		GetDatabase() configuration.Database
+	}
+	dbCfg, ok := config.(dbConfig)
+	if ok {
+		cmd.SetContext(context.WithValue(cmd.Context(), "config.db", dbCfg.GetDatabase()))
+	}
 }
 
 // findGoMod searches for go.mod file starting from current directory and going up

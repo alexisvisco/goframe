@@ -62,4 +62,7 @@ var (
 
 	//go:embed internal__task__newtask.go.tmpl
 	InternalTaskNewTaskGo []byte
+
+	//go:embed config__i18n__translation.go.tmpl
+	ConfigI18nTranslationGo []byte
 )

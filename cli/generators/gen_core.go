@@ -17,7 +17,6 @@ type CoreGenerator struct {
 }
 
 func (g *CoreGenerator) Generate() error {
-	fmt.Println("bonjour")
 	// Create go.mod file
 	if err := g.GenerateGoMod(); err != nil {
 		return fmt.Errorf("failed to generate go.mod: %w", err)

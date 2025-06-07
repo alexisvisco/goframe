@@ -1,4 +1,4 @@
-package cmdplugin
+package cobradi
 
 import (
 	"context"
@@ -8,12 +8,13 @@ import (
 	"go.uber.org/fx"
 )
 
-func RunE(fn interface{}, modules ...fx.Option) func(*cobra.Command, []string) error {
+// RunE is a helper function that wraps a function to be executed within an fx application.
+// It allows you to pass the command and its arguments as parameters to the function.
+func RunE(fn any, modules ...fx.Option) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		// Vérifie que fn est une fonction
 		fnType := reflect.TypeOf(fn)
 		if fnType.Kind() != reflect.Func {
-			panic("RunE: fn doit être une fonction")
+			panic("RunE: fn must be a function")
 		}
 
 		var err error
@@ -35,7 +36,6 @@ func RunE(fn interface{}, modules ...fx.Option) func(*cobra.Command, []string) e
 			}),
 		)
 
-		// Démarrer l'application fx
 		startCtx := cmd.Context()
 		if startCtx == nil {
 			startCtx = context.Background()

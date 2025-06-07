@@ -127,6 +127,11 @@ func (g *Generator) Storage() *StorageGenerator {
 	return &StorageGenerator{g: g, db: g.Databases()}
 }
 
+// I18n returns an i18n file generator
+func (g *Generator) I18n() *I18nGenerator {
+	return &I18nGenerator{g: g}
+}
+
 // Web returns a web file generator
 func (g *Generator) Web() *WebGenerator {
 	return &WebGenerator{g: g}

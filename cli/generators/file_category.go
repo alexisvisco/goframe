@@ -25,4 +25,6 @@ const (
 	CategoryStorage = "Storage"
 
 	CategoryTasks = "Task"
+
+	CategoryI18n = "I18n"
 )

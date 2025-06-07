@@ -27,7 +27,7 @@ func NewCmdRoutes() *cobra.Command {
 			}
 			routes := parseRoutes(string(readFile))
 			if len(routes) == 0 {
-				fmt.Println("No routes found.")
+				slog.Info("no route found")
 				return nil
 			}
 

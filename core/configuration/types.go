@@ -37,6 +37,14 @@ type (
 		Directory string `yaml:"directory"`
 	}
 
+	I18n struct {
+		DefaultLocale    string   `yaml:"default_locale"`
+		SupportedLocales []string `yaml:"supported_locales"`
+		FallbackLocale   []string `yaml:"fallback_locale"`
+		Folder           string   `yaml:"folder"`
+		Package          string   `yaml:"package"`
+	}
+
 	StorageType string
 
 	DatabaseType string
