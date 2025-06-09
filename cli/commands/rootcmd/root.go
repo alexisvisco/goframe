@@ -86,8 +86,6 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 		Version:      "0.0.1",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// find the go mod file and find the module name to set it in the ctx
-			// if not found go .. until it finds it
-			// if not found, return an error
 			goModPath, err := findGoMod(".")
 			if err != nil {
 				return fmt.Errorf("failed to find go.mod: %w", err)
@@ -98,11 +96,16 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 				return fmt.Errorf("failed to parse module name from go.mod: %w", err)
 			}
 
-			// Set the module name in the command context
-			cmd.SetContext(context.WithValue(cmd.Context(), "module", moduleName))
-			cmd.SetContext(context.WithValue(cmd.Context(), "migrations", defaultOpts.Migrations))
-			cmd.SetContext(context.WithValue(cmd.Context(), "db", defaultOpts.DB))
-			setConfigs(cmd, defaultOpts.Config)
+			// Build a new context carrying needed values and propagate it to the root
+			ctx := cmd.Context()
+			ctx = context.WithValue(ctx, "module", moduleName)
+			ctx = context.WithValue(ctx, "migrations", defaultOpts.Migrations)
+			ctx = context.WithValue(ctx, "db", defaultOpts.DB)
+			ctx = applyConfigs(ctx, defaultOpts.Config)
+
+			// ensure subcommands inherit the context
+			cmd.Root().SetContext(ctx)
+			cmd.SetContext(ctx)
 
 			return nil
 		},
@@ -120,9 +123,9 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 	return cmd
 }
 
-func setConfigs(cmd *cobra.Command, config any) {
+func applyConfigs(ctx context.Context, config any) context.Context {
 	if config == nil {
-		return
+		return ctx
 	}
 
 	type i18nConfig interface {
@@ -131,7 +134,7 @@ func setConfigs(cmd *cobra.Command, config any) {
 
 	i18nCfg, ok := config.(i18nConfig)
 	if ok {
-		cmd.SetContext(context.WithValue(cmd.Context(), "config.i18n", i18nCfg.GetI18n()))
+		ctx = context.WithValue(ctx, "config.i18n", i18nCfg.GetI18n())
 	}
 
 	type dbConfig interface {
@@ -139,7 +142,7 @@ func setConfigs(cmd *cobra.Command, config any) {
 	}
 	dbCfg, ok := config.(dbConfig)
 	if ok {
-		cmd.SetContext(context.WithValue(cmd.Context(), "config.db", dbCfg.GetDatabase()))
+		ctx = context.WithValue(ctx, "config.db", dbCfg.GetDatabase())
 	}
 
 	type workerConfig interface {
@@ -147,8 +150,10 @@ func setConfigs(cmd *cobra.Command, config any) {
 	}
 	wCfg, ok := config.(workerConfig)
 	if ok {
-		cmd.SetContext(context.WithValue(cmd.Context(), "config.worker", wCfg.GetWorker()))
+		ctx = context.WithValue(ctx, "config.worker", wCfg.GetWorker())
 	}
+
+	return ctx
 }
 
 // findGoMod searches for go.mod file starting from current directory and going up
