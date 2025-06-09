@@ -73,6 +73,7 @@ func NewInitCmd() *cobra.Command {
 				WebFiles:        i.web,
 				ExampleWebFiles: i.webExamples,
 				DockerFiles:     i.docker,
+				WorkerType:      i.worker,
 			}
 
 			generators := []generators.FileCreator{
@@ -82,6 +83,7 @@ func NewInitCmd() *cobra.Command {
 				g.Docker(),
 				g.Storage(),
 				g.Web(),
+				g.Worker(),
 			}
 
 			for _, gen := range generators {
@@ -105,6 +107,7 @@ func NewInitCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&i.goModName, "gomod", "g", "", "Create a go.mod file with go module name if set")
 	cmd.Flags().BoolVarP(&i.maintainer, "maintainer", "m", false, "Add specific maintainer thing to test the framework")
 	cmd.Flags().StringVarP(&i.orm, "orm", "o", "gorm", "ORM to use (only gorm is supported for now)")
+	cmd.Flags().StringVar(&i.worker, "worker", "temporal", "Worker type to use (only temporal is supported for now)")
 
 	return cmd
 }
@@ -122,6 +125,7 @@ type initializer struct {
 	web          bool
 	webExamples  bool
 	docker       bool
+	worker       string
 }
 
 func (i *initializer) mustProjectNotBeInitialized() error {

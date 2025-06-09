@@ -1,0 +1,44 @@
+package providers
+
+import (
+  {{ .imports }}
+)
+
+type ParamsWorker struct {
+  fx.In
+  workflow.Registry
+
+  Config *config.Config
+  Lc     fx.Lifecycle
+}
+
+func Worker(p ParamsWorker) (worker.Worker, error) {
+  c, err := client.Dial(client.Options{
+    HostPort:  p.Config.GetWorker().TemporalAddress,
+    Namespace: p.Config.GetWorker().TemporalNamespace,
+    Logger:    temporalutil.NewLoggerWithSlog(slog.Default()),
+  })
+  if err != nil {
+    return nil, err
+  }
+
+  w := worker.New(c, p.Config.GetWorker().TemporalTaskQueue, worker.Options{})
+  workflow.Register(w, p.Registry)
+
+  p.Lc.Append(fx.Hook{
+    OnStart: func(ctx context.Context) error {
+      go func() {
+        if err := w.Run(worker.InterruptCh()); err != nil {
+          slog.Error("worker", "err", err)
+        }
+      }()
+      return nil
+    },
+    OnStop: func(ctx context.Context) error {
+      c.Close()
+      return nil
+    },
+  })
+
+  return w, nil
+}

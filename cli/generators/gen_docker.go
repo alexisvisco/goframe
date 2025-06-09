@@ -45,7 +45,8 @@ func (d *DockerGenerator) createDockerCompose(path string) FileConfig {
 		Path:     path,
 		Template: templates.DockerComposeYml,
 		Gen: func(g *genhelper.GenHelper) {
-			g.WithVar("db", d.g.DatabaseType)
+			g.WithVar("db", d.g.DatabaseType).
+				WithVar("worker", d.g.WorkerType)
 		},
 		Category:  CategoryDocker,
 		Condition: d.g.DockerFiles,

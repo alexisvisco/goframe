@@ -63,6 +63,12 @@ var (
 	//go:embed internal__task__newtask.go.tmpl
 	InternalTaskNewTaskGo []byte
 
+	//go:embed internal__workflow__registry.go.tmpl
+	InternalWorkflowRegistryGo []byte
+
+	//go:embed providers__provide_worker.go.tmpl
+	ProvidersProvideWorkerGo []byte
+
 	//go:embed config__i18n__translation.go.tmpl
 	ConfigI18nTranslationGo []byte
 )

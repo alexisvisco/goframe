@@ -27,4 +27,6 @@ const (
 	CategoryTasks = "Task"
 
 	CategoryI18n = "I18n"
+
+	CategoryWorker = "Worker"
 )

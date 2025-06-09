@@ -16,6 +16,11 @@ production:
     host: "${SERVER_HOST}"
     port: "${SERVER_PORT:8080}"
     url: "${SERVER_URL}"
+  worker:
+    type: {{ .worker }}
+    temporal_address: "${WORKER_TEMPORAL_ADDRESS}"
+    temporal_namespace: "${WORKER_TEMPORAL_NAMESPACE}"
+    temporal_task_queue: "${WORKER_TEMPORAL_TASK_QUEUE}"
   storage:
     type: s3
     bucket: "${STORAGE_BUCKET}"
@@ -52,6 +57,11 @@ development: &dev
     host: "${SERVER_HOST:localhost}"
     port: ${SERVER_PORT:8080}
     url: "${SERVER_URL:http://localhost:8080}"
+  worker:
+    type: {{ .worker }}
+    temporal_address: "${WORKER_TEMPORAL_ADDRESS:localhost:7233}"
+    temporal_namespace: "${WORKER_TEMPORAL_NAMESPACE:default}"
+    temporal_task_queue: "${WORKER_TEMPORAL_TASK_QUEUE:default}"
   storage:
     type: disk
     directory: "${STORAGE_PATH:./tmp_storage}"

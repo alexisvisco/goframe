@@ -22,6 +22,7 @@ type Environment struct {
   Server   configuration.Server   `yaml:"server"`
   Logging  configuration.Logging  `yaml:"logging"`
   Storage  configuration.Storage  `yaml:"storage"`
+  Worker   configuration.Worker   `yaml:"worker"`
   I18n     configuration.I18n     `yaml:"i18n"`
 }
 
@@ -71,6 +72,10 @@ func (c *Config) GetLogging() configuration.Logging {
 
 func (c *Config) GetStorage() configuration.Storage {
   return c.getEnvironment().Storage
+}
+
+func (c *Config) GetWorker() configuration.Worker {
+  return c.getEnvironment().Worker
 }
 
 func (c *Config) GetI18n() configuration.I18n {

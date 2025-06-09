@@ -51,14 +51,19 @@ func (g *GenHelper) Generate(at io.Writer) error {
 
 	imports := make([]string, 0, len(g.registry.imports))
 	for importPath, alias := range g.registry.alias {
-		if alias != "" {
+		// Extract the default package name from the import path
+		parts := strings.Split(importPath, "/")
+		defaultPackageName := parts[len(parts)-1]
+
+		// Only add explicit alias if it differs from the default package name
+		if alias != "" && alias != defaultPackageName {
 			imports = append(imports, fmt.Sprintf("%s \"%s\"", alias, importPath))
 		} else {
 			imports = append(imports, fmt.Sprintf("\"%s\"", importPath))
 		}
 	}
 
-	importsTemplate := strings.Join(imports, "\n	")
+	importsTemplate := strings.Join(imports, "\n\t")
 
 	g.WithVar("imports", importsTemplate)
 
