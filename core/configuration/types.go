@@ -36,6 +36,12 @@ type (
 
 		Directory string `yaml:"directory"`
 	}
+	Worker struct {
+		Type      WorkerType `yaml:"type"`
+		HostPort  string     `yaml:"host_port"`
+		Namespace string     `yaml:"namespace"`
+		TaskQueue string     `yaml:"task_queue"`
+	}
 
 	I18n struct {
 		DefaultLocale    string   `yaml:"default_locale"`
@@ -48,6 +54,7 @@ type (
 	StorageType string
 
 	DatabaseType string
+	WorkerType   string
 )
 
 const (
@@ -58,4 +65,8 @@ const (
 const (
 	DatabaseTypeSQLite   DatabaseType = "sqlite"
 	DatabaseTypePostgres DatabaseType = "postgres"
+)
+
+const (
+	WorkerTypeTemporal WorkerType = "temporal"
 )

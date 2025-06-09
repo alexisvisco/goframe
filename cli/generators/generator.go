@@ -36,6 +36,7 @@ type Generator struct {
 	WebFiles        bool
 	ExampleWebFiles bool
 	DockerFiles     bool
+	WorkerType      string
 
 	filesCreated []FileInfo
 }
@@ -135,6 +136,10 @@ func (g *Generator) I18n() *I18nGenerator {
 // Web returns a web file generator
 func (g *Generator) Web() *WebGenerator {
 	return &WebGenerator{g: g}
+}
+
+func (g *Generator) Worker() *WorkerGenerator {
+	return &WorkerGenerator{g: g}
 }
 
 // CreateDirectory creates a directory if it doesn't exist

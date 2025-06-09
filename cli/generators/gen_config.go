@@ -34,7 +34,8 @@ func (c *ConfigGenerator) CreateConfigYaml(path string) FileConfig {
 		Template: templates.ConfigConfigYml,
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithVar("db", c.g.DatabaseType).
-				WithVar("db__filepath", "db/storage.db")
+				WithVar("db__filepath", "db/storage.db").
+				WithVar("worker", c.g.WorkerType)
 		},
 		Category:  CategoryConfig,
 		Condition: true,

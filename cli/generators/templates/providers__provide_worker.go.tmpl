@@ -1,0 +1,38 @@
+package providers
+
+import (
+  "context"
+  "log/slog"
+
+  {{ .imports }}
+)
+
+func Worker(cfg *config.Config, lc fx.Lifecycle) (worker.Worker, error) {
+  c, err := client.Dial(client.Options{
+    HostPort: cfg.GetWorker().HostPort,
+    Namespace: cfg.GetWorker().Namespace,
+  })
+  if err != nil {
+    return nil, err
+  }
+
+  w := worker.New(c, cfg.GetWorker().TaskQueue, worker.Options{})
+  workflow.Register(w)
+
+  lc.Append(fx.Hook{
+    OnStart: func(ctx context.Context) error {
+      go func() {
+        if err := w.Run(worker.InterruptCh()); err != nil {
+          slog.Error("worker", "err", err)
+        }
+      }()
+      return nil
+    },
+    OnStop: func(ctx context.Context) error {
+      c.Close()
+      return nil
+    },
+  })
+
+  return w, nil
+}

@@ -73,6 +73,7 @@ func NewInitCmd() *cobra.Command {
 				WebFiles:        i.web,
 				ExampleWebFiles: i.webExamples,
 				DockerFiles:     i.docker,
+				WorkerType:      i.worker,
 			}
 
 			generators := []generators.FileCreator{
@@ -82,6 +83,7 @@ func NewInitCmd() *cobra.Command {
 				g.Docker(),
 				g.Storage(),
 				g.Web(),
+				g.Worker(),
 			}
 
 			for _, gen := range generators {
