@@ -179,9 +179,11 @@ func (g *CoreGenerator) createAppMain(path string) FileConfig {
 
 			if g.g.WebFiles {
 				invokes = append(invokes, "v1handler.Router")
+				genh.WithImport(filepath.Join(g.g.GoModuleName, "internal/v1handler"), "v1handler")
 			}
 
 			genh.WithImport(filepath.Join(g.g.GoModuleName, "internal/app"), "app").
+				WithImport(filepath.Join(g.g.GoModuleName, "config"), "config").
 				WithVar("invokes", invokes)
 		},
 		Category:  CategoryCore,

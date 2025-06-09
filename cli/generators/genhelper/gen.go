@@ -63,7 +63,7 @@ func (g *GenHelper) Generate(at io.Writer) error {
 		}
 	}
 
-	importsTemplate := strings.Join(imports, "\n ")
+	importsTemplate := strings.Join(imports, "\n\t")
 
 	g.WithVar("imports", importsTemplate)
 

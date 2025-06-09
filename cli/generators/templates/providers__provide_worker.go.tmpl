@@ -12,7 +12,7 @@ type ParamsWorker struct {
   Lc     fx.Lifecycle
 }
 
-func Worker(p *ParamsWorker) (worker.Worker, error) {
+func Worker(p ParamsWorker) (worker.Worker, error) {
   c, err := client.Dial(client.Options{
     HostPort:  p.Config.GetWorker().TemporalAddress,
     Namespace: p.Config.GetWorker().TemporalNamespace,
