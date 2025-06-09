@@ -86,6 +86,8 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 		Version:      "0.0.1",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// find the go mod file and find the module name to set it in the ctx
+			// if not found go .. until it finds it
+			// if not found, return an error
 			goModPath, err := findGoMod(".")
 			if err != nil {
 				return fmt.Errorf("failed to find go.mod: %w", err)

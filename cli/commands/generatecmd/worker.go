@@ -12,13 +12,6 @@ func workerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "worker <subcommand> [flags]",
 		Short: "Generate worker related files",
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			cfg, ok := cmd.Context().Value("config.worker").(configuration.Worker)
-			if !ok || cfg.Type != configuration.WorkerTypeTemporal {
-				return fmt.Errorf("worker commands are only available for temporal workers")
-			}
-			return nil
-		},
 	}
 
 	cmd.AddCommand(workerWorkflowCmd())
@@ -33,6 +26,11 @@ func workerWorkflowCmd() *cobra.Command {
 		Aliases: []string{"wf"},
 		Short:   "Create a new workflow",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, ok := cmd.Context().Value("config.worker").(configuration.Worker)
+			if !ok || cfg.Type != configuration.WorkerTypeTemporal {
+				return fmt.Errorf("only available for temporal workers, got %v", cfg.Type)
+			}
+
 			if len(args) < 1 {
 				return fmt.Errorf("workflow name is required")
 			}
@@ -60,6 +58,10 @@ func workerActivityCmd() *cobra.Command {
 		Use:   "activity <name>",
 		Short: "Create a new activity",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, ok := cmd.Context().Value("config.worker").(configuration.Worker)
+			if !ok || cfg.Type != configuration.WorkerTypeTemporal {
+				return fmt.Errorf("only available for temporal workers, got %v", cfg.Type)
+			}
 			if len(args) < 1 {
 				return fmt.Errorf("activity name is required")
 			}
