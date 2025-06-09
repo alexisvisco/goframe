@@ -1,17 +1,17 @@
 services:
   mailpit:
-    image: mailpit/mailpit:latest
-    container_name: mailpit
+    image: axllent/mailpit:latest
     ports:
       - "8888:8025"  # Web interface
       - "2525:1025"  # SMTP server
     volumes:
       - mailpit_data:/data
     restart: unless-stopped
+    networks:
+      - app-network
 {{- if eq .db "postgres"}}
   postgres:
     image: postgres:latest
-    container_name: postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -20,10 +20,62 @@ services:
       - "7894:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
 {{- end}}
+{{- if eq .worker "temporal" }}
+  temporal:
+    image: temporalio/auto-setup:latest
+    depends_on:
+      - postgres
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PWD=postgres
+      - POSTGRES_SEEDS=postgres
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    ports:
+      - "7233:7233"
+    restart: unless-stopped
+    networks:
+      - app-network
+  temporal-ui:
+    image: temporalio/ui:latest
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    ports:
+      - "8233:8080"
+    restart: unless-stopped
+    networks:
+      - app-network
+  temporal-admin-tools:
+    image: temporalio/admin-tools:latest
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    networks:
+      - app-network
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+{{- end}}
+
 
 volumes:
   mailpit_data:
 {{- if eq .db "postgres" }}
   postgres_data:
 {{- end }}
+
+
+
+networks:
+  app-network:
+    driver: bridge
