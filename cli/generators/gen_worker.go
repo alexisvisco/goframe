@@ -29,7 +29,7 @@ func (w *WorkerGenerator) Generate() error {
 	}
 
 	files := []FileConfig{
-		w.createWorkerProvider("internal/providers/provider_worker.go"),
+		w.createWorkerProvider("internal/providers/worker.go"),
 	}
 
 	for _, file := range files {
@@ -51,6 +51,7 @@ func (w *WorkerGenerator) createWorkerProvider(path string) FileConfig {
 				WithImport("go.temporal.io/sdk/client", "client").
 				WithImport("go.temporal.io/sdk/worker", "worker").
 				WithImport("go.uber.org/fx", "fx").
+				WithImport("github.com/alexisvisco/goframe/core/helpers/temporalutil", "temporalutil").
 				WithImport(filepath.Join(w.g.GoModuleName, "config"), "config").
 				WithImport(filepath.Join(w.g.GoModuleName, "internal/workflow"), "workflow")
 		},
@@ -77,7 +78,7 @@ func (w *WorkerGenerator) updateOrCreateRegistrations() error {
 	}
 	defer file.Close()
 
-	hasActivities, hasWorkflows, activities, workflows := w.buildRegistrationList()
+	hasActivities, _, activities, workflows := w.buildRegistrationList()
 
 	gh := genhelper.New("workflow", templates.InternalWorkflowRegistryGo)
 	gh.WithImport("go.temporal.io/sdk/worker", "worker")

@@ -1,22 +1,20 @@
 package providers
 
 import (
-  "context"
-  "log/slog"
-
   {{ .imports }}
 )
 
 func Worker(cfg *config.Config, lc fx.Lifecycle) (worker.Worker, error) {
   c, err := client.Dial(client.Options{
-    HostPort: cfg.GetWorker().HostPort,
-    Namespace: cfg.GetWorker().Namespace,
+    HostPort: cfg.GetWorker().TemporalAddress,
+    Namespace: cfg.GetWorker().TemporalNamespace,
+    Logger: temporalutil.NewLoggerWithSlog(slog.Default()),
   })
   if err != nil {
     return nil, err
   }
 
-  w := worker.New(c, cfg.GetWorker().TaskQueue, worker.Options{})
+  w := worker.New(c, cfg.GetWorker().TemporalTaskQueue, worker.Options{})
   workflow.Register(w)
 
   lc.Append(fx.Hook{
