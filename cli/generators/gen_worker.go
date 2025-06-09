@@ -15,6 +15,53 @@ type WorkerGenerator struct {
 	g *Generator
 }
 
+func (w *WorkerGenerator) updateAppModule() error {
+	path := "internal/app/module.go"
+	data, err := os.ReadFile(path)
+	if err != nil {
+		// app module may not exist yet
+		return nil
+	}
+
+	lines := strings.Split(string(data), "\n")
+	hasImport := false
+	for _, l := range lines {
+		if strings.Contains(l, "/internal/workflow") {
+			hasImport = true
+			break
+		}
+	}
+
+	if !hasImport {
+		for i, l := range lines {
+			if strings.TrimSpace(l) == "import (" {
+				importLine := fmt.Sprintf("\t\"%s\"", filepath.Join(w.g.GoModuleName, "internal/workflow"))
+				lines = append(lines[:i+1], append([]string{importLine}, lines[i+1:]...)...)
+				break
+			}
+		}
+	}
+
+	hasProvide := false
+	for _, l := range lines {
+		if strings.Contains(l, "workflow.Dependencies") {
+			hasProvide = true
+			break
+		}
+	}
+
+	if !hasProvide {
+		for i, l := range lines {
+			if strings.Contains(l, "fx.Provide(") {
+				lines = append(lines[:i], append([]string{"    fx.Provide(workflow.Dependencies...),"}, lines[i:]...)...)
+				break
+			}
+		}
+	}
+
+	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0644)
+}
+
 func (w *WorkerGenerator) Generate() error {
 	dirs := []string{
 		"internal/workflow",
@@ -89,9 +136,13 @@ func (w *WorkerGenerator) UpdateOrCreateRegistrations() error {
 
 	w.g.TrackFile(regPath, false, CategoryWorker)
 
-	return gh.WithVar("activities", activities).
+	if err := gh.WithVar("activities", activities).
 		WithVar("workflows", workflows).
-		Generate(file)
+		Generate(file); err != nil {
+		return err
+	}
+
+	return w.updateAppModule()
 }
 
 func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []string) {
@@ -143,7 +194,7 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []strin
 	return hasActivities, hasWorkflows, acts, wfs
 }
 
-func (w *WorkerGenerator) createWorkflowFile(name string) error {
+func (w *WorkerGenerator) createWorkflowFile(name string, activities []string) error {
 	path := fmt.Sprintf("internal/workflow/workflow_%s.go", str.ToSnakeCase(name))
 	return w.g.GenerateFile(FileConfig{
 		Path:      path,
@@ -151,7 +202,24 @@ func (w *WorkerGenerator) createWorkflowFile(name string) error {
 		Condition: true,
 		Category:  CategoryWorker,
 		Gen: func(g *genhelper.GenHelper) {
-			g.WithVar("name_pascal_case", str.ToPascalCase(name))
+			pascalName := str.ToPascalCase(name)
+			g.WithVar("name_pascal_case", pascalName)
+
+			var acts []string
+			for _, a := range activities {
+				p := str.ToPascalCase(a)
+				if !strings.HasSuffix(p, "Activity") {
+					p += "Activity"
+				}
+				acts = append(acts, p)
+			}
+			if len(acts) > 0 {
+				g.WithImport(filepath.Join(w.g.GoModuleName, "internal/workflow/activity"), "activity")
+			}
+
+			g.WithImport("go.temporal.io/sdk/workflow", "workflow").
+				WithImport("go.uber.org/fx", "fx").
+				WithVar("activities", acts)
 		},
 	})
 }
@@ -176,7 +244,7 @@ func (w *WorkerGenerator) CreateWorkflow(name string, activities []string) error
 		}
 	}
 
-	if err := w.createWorkflowFile(name); err != nil {
+	if err := w.createWorkflowFile(name, activities); err != nil {
 		return fmt.Errorf("failed to create workflow %s: %w", name, err)
 	}
 

@@ -12,8 +12,17 @@ type Registry struct {
   {{- range .activities }}
   {{ . }} *activity.{{ . }}
   {{- end }}
+}
+
+var Dependencies = []any{
+  {{- range .activities }}
+  activity.New{{ . }},
+  {{- end }}
+  {{- range .workflows }}
+  New{{ . }},
+  {{- end }}
   {{- if and (eq (len .workflows) 0) (eq (len .activities) 0) }}
-  /* todo: dependencies for workflows and activities */
+  // TODO: add workflows and activities constructors
   {{- end }}
 }
 

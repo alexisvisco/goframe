@@ -1,13 +1,30 @@
 package workflow
 
-import "go.temporal.io/sdk/workflow"
+import (
+  {{ .imports }}
+)
 
 // {{ .name_pascal_case }}Workflow is a Temporal workflow.
-type {{ .name_pascal_case }}Workflow struct{}
+type {{ .name_pascal_case }}Workflow struct{
+  {{- range .activities }}
+  {{ . }} *activity.{{ . }}
+  {{- end }}
+}
+
+type {{ .name_pascal_case }}WorkflowParams struct{
+  fx.In
+  {{- range .activities }}
+  {{ . }} *activity.{{ . }}
+  {{- end }}
+}
 
 // New{{ .name_pascal_case }}Workflow creates a new {{ .name_pascal_case }}Workflow.
-func New{{ .name_pascal_case }}Workflow() *{{ .name_pascal_case }}Workflow {
-  return &{{ .name_pascal_case }}Workflow{}
+func New{{ .name_pascal_case }}Workflow(p {{ .name_pascal_case }}WorkflowParams) *{{ .name_pascal_case }}Workflow {
+  return &{{ .name_pascal_case }}Workflow{
+    {{- range .activities }}
+    {{ . }}: p.{{ . }},
+    {{- end }}
+  }
 }
 
 // Execute runs the workflow logic.
