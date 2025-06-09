@@ -77,4 +77,19 @@ var (
 
 	//go:embed config__i18n__translation.go.tmpl
 	ConfigI18nTranslationGo []byte
+
+	//go:embed internal__repository__new.go.tmpl
+	InternalRepositoryNewGo []byte
+
+	//go:embed internal__service__new.go.tmpl
+	InternalServiceNewGo []byte
+
+	//go:embed internal__repository__registry.go.tmpl
+	InternalRepositoryRegistryGo []byte
+
+	//go:embed internal__service__registry.go.tmpl
+	InternalServiceRegistryGo []byte
+
+	//go:embed internal__types__new.go.tmpl
+	InternalTypesNewGo []byte
 )

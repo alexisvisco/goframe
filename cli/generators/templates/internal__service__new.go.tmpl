@@ -1,0 +1,17 @@
+package service
+
+{{- if .imports }}
+import (
+  {{ .imports }}
+)
+{{- end }}
+
+type {{ .name_pascal }}Service struct {
+  {{- if .with_repo }}
+  repo types.{{ .name_pascal }}Repository
+  {{- end }}
+}
+
+func New{{ .name_pascal }}Service({{ if .with_repo }}repo types.{{ .name_pascal }}Repository{{ end }}) *{{ .name_pascal }}Service {
+  return &{{ .name_pascal }}Service{ {{- if .with_repo }}repo: repo{{- end }} }
+}

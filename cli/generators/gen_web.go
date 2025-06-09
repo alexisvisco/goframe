@@ -18,13 +18,20 @@ func (p *WebGenerator) Generate() error {
 		p.createRouter("internal/v1handler/router.go"),
 		p.createExampleV1handler("internal/v1handler/handler_note.go"),
 		p.createExampleTypes("internal/types/note.go"),
-		p.createExampleRepository("internal/repository/repository_note.go"),
-		p.createExampleService("internal/service/service_note.go"),
 	}
 
 	for _, file := range files {
 		if err := p.g.GenerateFile(file); err != nil {
 			return fmt.Errorf("failed to create web file %s: %w", file.Path, err)
+		}
+	}
+
+	if p.g.ExampleWebFiles {
+		if err := p.g.Repository().Create("note"); err != nil {
+			return err
+		}
+		if err := p.g.Service().Create("note", true); err != nil {
+			return err
 		}
 	}
 
@@ -56,37 +63,11 @@ func (p *WebGenerator) createRouter(path string) FileConfig {
 	}
 }
 
-// createExampleRepository creates the FileConfig for the example repository
-func (p *WebGenerator) createExampleRepository(path string) FileConfig {
-	return FileConfig{
-		Path:     path,
-		Template: templates.InternalRepositoryExampleGo,
-		Gen: func(g *genhelper.GenHelper) {
-			g.WithImport(filepath.Join(p.g.GoModuleName, "internal/types"), "types")
-		},
-		Category:  CategoryWeb,
-		Condition: p.g.ExampleWebFiles,
-	}
-}
-
 // createExampleTypes creates the FileConfig for the example types
 func (p *WebGenerator) createExampleTypes(path string) FileConfig {
 	return FileConfig{
 		Path:      path,
 		Template:  templates.InternalTypesExampleGo,
-		Category:  CategoryWeb,
-		Condition: p.g.ExampleWebFiles,
-	}
-}
-
-// createExampleTypesFile creates the FileConfig for the example types file
-func (p *WebGenerator) createExampleService(path string) FileConfig {
-	return FileConfig{
-		Path:     path,
-		Template: templates.InternalServiceExampleGo,
-		Gen: func(g *genhelper.GenHelper) {
-			g.WithImport(filepath.Join(p.g.GoModuleName, "internal/types"), "types")
-		},
 		Category:  CategoryWeb,
 		Condition: p.g.ExampleWebFiles,
 	}
