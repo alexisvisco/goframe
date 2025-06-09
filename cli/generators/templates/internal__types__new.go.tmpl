@@ -1,12 +1,2 @@
 package types
 
-import "fmt"
-
-type (
-  {{ .name_pascal }}Repository interface{}
-  {{ .name_pascal }}Service interface{}
-)
-
-var (
-  Err{{ .name_pascal }}NotFound = fmt.Errorf("{{ .name_snake }} not found")
-)

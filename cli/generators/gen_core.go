@@ -150,8 +150,7 @@ func (g *CoreGenerator) createInternalAppModule(path string) FileConfig {
 			if g.g.ExampleWebFiles {
 				providers = append(providers, "v1handler.NewNoteHandler")
 
-				genh.WithImport(filepath.Join(g.g.GoModuleName, "internal/types"), "types").
-					WithImport(filepath.Join(g.g.GoModuleName, "internal/v1handler"), "v1handler")
+				genh.WithImport(filepath.Join(g.g.GoModuleName, "internal/v1handler"), "v1handler")
 			}
 
 			genh.

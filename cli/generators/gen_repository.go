@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
@@ -34,16 +35,10 @@ func (r *RepositoryGenerator) ensureTypes(name string) error {
 	}
 	content := string(data)
 	pascal := str.ToPascalCase(name)
-	snake := str.ToSnakeCase(name)
+	re := regexp.MustCompile(pascal + `Repository\s+interface`)
 	var add []string
-	if !strings.Contains(content, pascal+"Repository interface") {
+	if !re.MatchString(content) {
 		add = append(add, fmt.Sprintf("type %sRepository interface{}\n", pascal))
-	}
-	if !strings.Contains(content, pascal+"Service interface") {
-		add = append(add, fmt.Sprintf("type %sService interface{}\n", pascal))
-	}
-	if !strings.Contains(content, "Err"+pascal+"NotFound") {
-		add = append(add, fmt.Sprintf("var Err%sNotFound = fmt.Errorf(\"%s not found\")\n", pascal, snake))
 	}
 	if len(add) == 0 {
 		return nil
