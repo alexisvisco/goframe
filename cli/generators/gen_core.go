@@ -140,6 +140,7 @@ func (g *CoreGenerator) createInternalAppModule(path string) FileConfig {
 				"providers.DB(true)",
 				"fxutil.As(storage.NewRepository, new(contracts.StorageRepository))",
 				"providers.Storage",
+				"providers.Worker",
 			}
 
 			if g.g.WebFiles {
