@@ -141,6 +141,14 @@ func setConfigs(cmd *cobra.Command, config any) {
 	if ok {
 		cmd.SetContext(context.WithValue(cmd.Context(), "config.db", dbCfg.GetDatabase()))
 	}
+
+	type workerConfig interface {
+		GetWorker() configuration.Worker
+	}
+	wCfg, ok := config.(workerConfig)
+	if ok {
+		cmd.SetContext(context.WithValue(cmd.Context(), "config.worker", wCfg.GetWorker()))
+	}
 }
 
 // findGoMod searches for go.mod file starting from current directory and going up

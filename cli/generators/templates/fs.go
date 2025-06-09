@@ -66,6 +66,12 @@ var (
 	//go:embed internal__workflow__registry.go.tmpl
 	InternalWorkflowRegistryGo []byte
 
+	//go:embed internal__workflow__newworkflow.go.tmpl
+	InternalWorkflowNewWorkflowGo []byte
+
+	//go:embed internal__workflow__activity__newactivity.go.tmpl
+	InternalWorkflowActivityNewActivityGo []byte
+
 	//go:embed providers__provide_worker.go.tmpl
 	ProvidersProvideWorkerGo []byte
 

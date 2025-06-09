@@ -38,7 +38,7 @@ func (w *WorkerGenerator) Generate() error {
 		}
 	}
 
-	return w.updateOrCreateRegistrations()
+	return w.UpdateOrCreateRegistrations()
 }
 
 func (w *WorkerGenerator) createWorkerProvider(path string) FileConfig {
@@ -60,7 +60,8 @@ func (w *WorkerGenerator) createWorkerProvider(path string) FileConfig {
 	}
 }
 
-func (w *WorkerGenerator) updateOrCreateRegistrations() error {
+// UpdateOrCreateRegistrations regenerates the worker registration file.
+func (w *WorkerGenerator) UpdateOrCreateRegistrations() error {
 	var file *os.File
 	regPath := "internal/workflow/register.go"
 	if _, err := os.Stat(regPath); os.IsNotExist(err) {
@@ -132,4 +133,51 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []strin
 	}
 
 	return hasActivities, hasWorkflows, acts, wfs
+}
+
+func (w *WorkerGenerator) createWorkflowFile(name string) error {
+	path := fmt.Sprintf("internal/workflow/%s.go", str.ToSnakeCase(name))
+	return w.g.GenerateFile(FileConfig{
+		Path:      path,
+		Template:  templates.InternalWorkflowNewWorkflowGo,
+		Condition: true,
+		Category:  CategoryWorker,
+		Gen: func(g *genhelper.GenHelper) {
+			g.WithVar("name_pascal_case", str.ToPascalCase(name))
+		},
+	})
+}
+
+func (w *WorkerGenerator) createActivityFile(name string) error {
+	path := fmt.Sprintf("internal/workflow/activity/%s.go", str.ToSnakeCase(name))
+	return w.g.GenerateFile(FileConfig{
+		Path:      path,
+		Template:  templates.InternalWorkflowActivityNewActivityGo,
+		Condition: true,
+		Category:  CategoryWorker,
+		Gen: func(g *genhelper.GenHelper) {
+			g.WithVar("name_pascal_case", str.ToPascalCase(name))
+		},
+	})
+}
+
+func (w *WorkerGenerator) CreateWorkflow(name string, activities []string) error {
+	for _, act := range activities {
+		if err := w.createActivityFile(act); err != nil {
+			return fmt.Errorf("failed to create activity %s: %w", act, err)
+		}
+	}
+
+	if err := w.createWorkflowFile(name); err != nil {
+		return fmt.Errorf("failed to create workflow %s: %w", name, err)
+	}
+
+	return nil
+}
+
+func (w *WorkerGenerator) CreateActivity(name string) error {
+	if err := w.createActivityFile(name); err != nil {
+		return err
+	}
+	return nil
 }

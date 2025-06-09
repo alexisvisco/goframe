@@ -1,0 +1,16 @@
+package activity
+
+import "context"
+
+// {{ .name_pascal_case }}Activity is a Temporal activity.
+type {{ .name_pascal_case }}Activity struct{}
+
+// New{{ .name_pascal_case }}Activity creates a new {{ .name_pascal_case }}Activity.
+func New{{ .name_pascal_case }}Activity() *{{ .name_pascal_case }}Activity {
+  return &{{ .name_pascal_case }}Activity{}
+}
+
+// Execute runs the activity logic.
+func (a *{{ .name_pascal_case }}Activity) Execute(ctx context.Context) error {
+  return nil
+}

@@ -1,0 +1,16 @@
+package workflow
+
+import "go.temporal.io/sdk/workflow"
+
+// {{ .name_pascal_case }}Workflow is a Temporal workflow.
+type {{ .name_pascal_case }}Workflow struct{}
+
+// New{{ .name_pascal_case }}Workflow creates a new {{ .name_pascal_case }}Workflow.
+func New{{ .name_pascal_case }}Workflow() *{{ .name_pascal_case }}Workflow {
+  return &{{ .name_pascal_case }}Workflow{}
+}
+
+// Execute runs the workflow logic.
+func (w *{{ .name_pascal_case }}Workflow) Execute(ctx workflow.Context) error {
+  return nil
+}
