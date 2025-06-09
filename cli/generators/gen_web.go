@@ -30,7 +30,31 @@ func (p *WebGenerator) Generate() error {
 		if err := p.g.Repository().Create("note"); err != nil {
 			return err
 		}
+		// overwrite with example repository implementation
+		if err := p.g.GenerateFile(FileConfig{
+			Path:      "internal/repository/repository_note.go",
+			Template:  templates.InternalRepositoryExampleGo,
+			Category:  CategoryWeb,
+			Condition: true,
+			Gen: func(g *genhelper.GenHelper) {
+				g.WithImport(filepath.Join(p.g.GoModuleName, "internal/types"), "types")
+			},
+		}); err != nil {
+			return err
+		}
 		if err := p.g.Service().Create("note", true); err != nil {
+			return err
+		}
+		// overwrite with example service implementation
+		if err := p.g.GenerateFile(FileConfig{
+			Path:      "internal/service/service_note.go",
+			Template:  templates.InternalServiceExampleGo,
+			Category:  CategoryWeb,
+			Condition: true,
+			Gen: func(g *genhelper.GenHelper) {
+				g.WithImport(filepath.Join(p.g.GoModuleName, "internal/types"), "types")
+			},
+		}); err != nil {
 			return err
 		}
 	}

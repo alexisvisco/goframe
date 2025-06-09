@@ -36,10 +36,10 @@ func (r *RepositoryGenerator) ensureTypes(name string) error {
 	pascal := str.ToPascalCase(name)
 	snake := str.ToSnakeCase(name)
 	var add []string
-	if !strings.Contains(content, "type "+pascal+"Repository") {
+	if !strings.Contains(content, pascal+"Repository interface") {
 		add = append(add, fmt.Sprintf("type %sRepository interface{}\n", pascal))
 	}
-	if !strings.Contains(content, "type "+pascal+"Service") {
+	if !strings.Contains(content, pascal+"Service interface") {
 		add = append(add, fmt.Sprintf("type %sService interface{}\n", pascal))
 	}
 	if !strings.Contains(content, "Err"+pascal+"NotFound") {
