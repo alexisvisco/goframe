@@ -148,14 +148,9 @@ func (g *CoreGenerator) createInternalAppModule(path string) FileConfig {
 			}
 
 			if g.g.ExampleWebFiles {
-				providers = append(providers, "fxutil.As(repository.NewNoteRepository, new(types.NoteRepository))")
-				providers = append(providers, "fxutil.As(service.NewNoteService, new(types.NoteService))")
 				providers = append(providers, "v1handler.NewNoteHandler")
 
-				genh.WithImport(filepath.Join(g.g.GoModuleName, "internal/types"), "types").
-					WithImport(filepath.Join(g.g.GoModuleName, "internal/repository"), "repository").
-					WithImport(filepath.Join(g.g.GoModuleName, "internal/service"), "service").
-					WithImport(filepath.Join(g.g.GoModuleName, "internal/v1handler"), "v1handler")
+				genh.WithImport(filepath.Join(g.g.GoModuleName, "internal/v1handler"), "v1handler")
 			}
 
 			genh.

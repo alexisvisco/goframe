@@ -142,6 +142,14 @@ func (g *Generator) Worker() *WorkerGenerator {
 	return &WorkerGenerator{g: g}
 }
 
+func (g *Generator) Repository() *RepositoryGenerator {
+	return &RepositoryGenerator{g: g}
+}
+
+func (g *Generator) Service() *ServiceGenerator {
+	return &ServiceGenerator{g: g}
+}
+
 // CreateDirectory creates a directory if it doesn't exist
 func (g *Generator) CreateDirectory(path string, category FileCategory) error {
 
