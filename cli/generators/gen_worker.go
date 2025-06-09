@@ -114,7 +114,11 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []strin
 			continue
 		}
 		name := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
+		name = strings.TrimPrefix(name, "activity_")
 		structName := str.ToPascalCase(name)
+		if !strings.HasSuffix(structName, "Activity") {
+			structName += "Activity"
+		}
 		acts = append(acts, structName)
 		hasActivities = true
 	}
@@ -127,7 +131,11 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []strin
 			continue
 		}
 		name := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
+		name = strings.TrimPrefix(name, "workflow_")
 		structName := str.ToPascalCase(name)
+		if !strings.HasSuffix(structName, "Workflow") {
+			structName += "Workflow"
+		}
 		wfs = append(wfs, structName)
 		hasWorkflows = true
 	}
@@ -136,7 +144,7 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []strin
 }
 
 func (w *WorkerGenerator) createWorkflowFile(name string) error {
-	path := fmt.Sprintf("internal/workflow/%s.go", str.ToSnakeCase(name))
+	path := fmt.Sprintf("internal/workflow/workflow_%s.go", str.ToSnakeCase(name))
 	return w.g.GenerateFile(FileConfig{
 		Path:      path,
 		Template:  templates.InternalWorkflowNewWorkflowGo,
@@ -149,7 +157,7 @@ func (w *WorkerGenerator) createWorkflowFile(name string) error {
 }
 
 func (w *WorkerGenerator) createActivityFile(name string) error {
-	path := fmt.Sprintf("internal/workflow/activity/%s.go", str.ToSnakeCase(name))
+	path := fmt.Sprintf("internal/workflow/activity/activity_%s.go", str.ToSnakeCase(name))
 	return w.g.GenerateFile(FileConfig{
 		Path:      path,
 		Template:  templates.InternalWorkflowActivityNewActivityGo,
