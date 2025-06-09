@@ -4,20 +4,28 @@ import (
   {{ .imports }}
 )
 
-func Worker(cfg *config.Config, lc fx.Lifecycle) (worker.Worker, error) {
+type ParamsWorker struct {
+  fx.In
+  workflow.Registry
+
+  Config *config.Config
+  Lc     fx.Lifecycle
+}
+
+func Worker(p *ParamsWorker) (worker.Worker, error) {
   c, err := client.Dial(client.Options{
-    HostPort: cfg.GetWorker().TemporalAddress,
-    Namespace: cfg.GetWorker().TemporalNamespace,
-    Logger: temporalutil.NewLoggerWithSlog(slog.Default()),
+    HostPort:  p.Config.GetWorker().TemporalAddress,
+    Namespace: p.Config.GetWorker().TemporalNamespace,
+    Logger:    temporalutil.NewLoggerWithSlog(slog.Default()),
   })
   if err != nil {
     return nil, err
   }
 
-  w := worker.New(c, cfg.GetWorker().TemporalTaskQueue, worker.Options{})
-  workflow.Register(w)
+  w := worker.New(c, p.Config.GetWorker().TemporalTaskQueue, worker.Options{})
+  workflow.Register(w, p.Registry)
 
-  lc.Append(fx.Hook{
+  p.Lc.Append(fx.Hook{
     OnStart: func(ctx context.Context) error {
       go func() {
         if err := w.Run(worker.InterruptCh()); err != nil {
