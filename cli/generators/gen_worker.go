@@ -114,7 +114,7 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []strin
 		}
 		name := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
 		structName := str.ToPascalCase(name)
-		acts = append(acts, fmt.Sprintf("activity.%s", structName))
+		acts = append(acts, structName)
 		hasActivities = true
 	}
 
