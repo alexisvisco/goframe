@@ -26,6 +26,7 @@ func (g *CoreGenerator) Generate() error {
 		g.createAppMain("cmd/app/main.go"),
 		g.createCliMain("cmd/cli/main.go"),
 		g.createBinGoFrame("bin/goframe"),
+		g.createBinMJML("bin/mjml"),
 		g.createInternalAppModule("internal/app/module.go"),
 	}
 
@@ -129,6 +130,16 @@ func (g *CoreGenerator) createBinGoFrame(path string) FileConfig {
 	}
 }
 
+func (g *CoreGenerator) createBinMJML(path string) FileConfig {
+	return FileConfig{
+		Path:       path,
+		Template:   templates.BinMJML,
+		Category:   CategoryCore,
+		Condition:  true,
+		Executable: true,
+	}
+}
+
 func (g *CoreGenerator) createInternalAppModule(path string) FileConfig {
 	return FileConfig{
 		Path:      path,
@@ -195,7 +206,8 @@ func (g *CoreGenerator) createCliMain(path string) FileConfig {
 			genh.WithImport(filepath.Join(g.g.GoModuleName, "config"), "config").
 				WithImport(filepath.Join(g.g.GoModuleName, "internal/app"), "app").
 				WithImport(filepath.Join(g.g.GoModuleName, "internal/providers"), "providers").
-				WithImport(filepath.Join(g.g.GoModuleName, "db"), "db")
+				WithImport(filepath.Join(g.g.GoModuleName, "db"), "db").
+				WithImport("github.com/alexisvisco/goframe/cli/commands/mailcmd", "mailcmd")
 		},
 		Category:  CategoryCore,
 		Condition: true,

@@ -43,6 +43,14 @@ type (
 		TemporalTaskQueue string     `yaml:"temporal_task_queue"`
 	}
 
+	Mail struct {
+		Host     string `yaml:"host"`
+		Port     int    `yaml:"port"`
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+		From     string `yaml:"from"`
+	}
+
 	I18n struct {
 		DefaultLocale    string   `yaml:"default_locale"`
 		SupportedLocales []string `yaml:"supported_locales"`

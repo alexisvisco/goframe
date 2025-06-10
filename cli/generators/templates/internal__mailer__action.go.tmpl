@@ -1,0 +1,11 @@
+func (m *{{ .mailer_pascal }}Mailer) {{ .action_pascal }}(ctx context.Context, to string, vars any) error {
+  var wf workflow.SendEmailWorkflow
+  _, err := m.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{}, wf.Execute, workflow.SendEmailParams{
+    To: to,
+    Subject: "{{ .action_pascal }}",
+    View: "{{ .mailer_snake }}_{{ .action_snake }}",
+    Variables: vars,
+  })
+  return err
+}
+

@@ -38,11 +38,12 @@ func run() int {
   }
 
   cmdRoot := rootcmd.NewCmdRoot(
-		rootcmd.WithMigrations(db.Migrations),
-		rootcmd.WithDB(connector),
-		rootcmd.WithConfig(cfg),
+                rootcmd.WithMigrations(db.Migrations),
+                rootcmd.WithDB(connector),
+                rootcmd.WithConfig(cfg),
+                rootcmd.WithCommand("mails", mailcmd.NewCmdMails()),
     rootcmd.WithFxOptions(app.Module(cfg)...),
-	)
+        )
   if _, err := cmdRoot.ExecuteContextC(ctx); err != nil {
 		slog.Error("error", "error", err)
     switch {

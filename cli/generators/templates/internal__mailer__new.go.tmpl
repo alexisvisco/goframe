@@ -1,0 +1,18 @@
+package mailer
+
+import (
+  {{ .imports }}
+)
+
+type {{ .mailer_pascal }}Mailer struct {
+  client client.Client
+}
+
+type {{ .mailer_pascal }}MailerParams struct {
+  fx.In
+  Client client.Client
+}
+
+func New{{ .mailer_pascal }}Mailer(p {{ .mailer_pascal }}MailerParams) *{{ .mailer_pascal }}Mailer {
+  return &{{ .mailer_pascal }}Mailer{client: p.Client}
+}
