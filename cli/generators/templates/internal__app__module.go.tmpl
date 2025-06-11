@@ -2,6 +2,7 @@ package app
 
 import (
   "github.com/alexisvisco/goframe/core/helpers/fxutil"
+  mail "github.com/alexisvisco/goframe/mailer"
   "go.uber.org/fx"
 
 	{{ .imports }}
@@ -11,6 +12,7 @@ func Module(cfg *config.Config) []fx.Option {
   return []fx.Option{
     fxutil.Logger(),
     fx.Supply(cfg, cfg.GetDatabase()),
+		fx.Supply(mail.NewSender(cfg.GetMail())),
     fx.Provide(
       {{- range .provides }}
       {{ . }},

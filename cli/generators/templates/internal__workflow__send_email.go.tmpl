@@ -1,29 +1,27 @@
 package workflow
 
 import (
+  "context"
+
+  "github.com/alexisvisco/goframe/mail"
+  "go.uber.org/fx"
+
   {{ .imports }}
 )
 
 type SendEmailWorkflow struct {
-  sender *mailer.Sender
+  sender *mail.Sender
 }
 
 type SendEmailWorkflowParams struct {
   fx.In
-  Sender *mailer.Sender
+  Sender *mail.Sender
 }
 
 func NewSendEmailWorkflow(p SendEmailWorkflowParams) *SendEmailWorkflow {
   return &SendEmailWorkflow{sender: p.Sender}
 }
 
-type SendEmailParams struct {
-  To      string
-  Subject string
-  View     string
-  Variables any
-}
-
-func (w *SendEmailWorkflow) Execute(ctx workflow.Context, p SendEmailParams) error {
-  return w.sender.Send(context.Background(), mailer.Message{To: p.To, Subject: p.Subject, View: p.View, Variables: p.Variables})
+func (w *SendEmailWorkflow) Execute(_ workflow.Context, p mail.Message) error {
+  return w.sender.Send(context.Background(), p)
 }

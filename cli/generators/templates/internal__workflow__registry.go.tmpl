@@ -2,10 +2,12 @@
 package workflow
 
 import (
+  "go.uber.org/fx"
   {{ .imports }}
 )
 
 type Registry struct {
+  fx.In
   {{- range .workflows }}
   {{ . }} *{{ . }}
   {{- end }}

@@ -64,6 +64,7 @@ func (g *CoreGenerator) GenerateGoMod() error {
 		"github.com/alexisvisco/goframe/db",
 		"github.com/alexisvisco/goframe/cli",
 		"github.com/alexisvisco/goframe/storage",
+		"github.com/alexisvisco/goframe/mail",
 	}
 
 	dependencies := goframeDeps
@@ -103,7 +104,7 @@ func (g *CoreGenerator) GenerateGoMod() error {
 	g.g.TrackFile("go.mod", false, CategoryGo)
 
 	// Run go mod tidy
-	return g.RunGoModTidy()
+	return nil
 }
 
 // RunGoModTidy runs go mod tidy to update dependencies
@@ -206,8 +207,7 @@ func (g *CoreGenerator) createCliMain(path string) FileConfig {
 			genh.WithImport(filepath.Join(g.g.GoModuleName, "config"), "config").
 				WithImport(filepath.Join(g.g.GoModuleName, "internal/app"), "app").
 				WithImport(filepath.Join(g.g.GoModuleName, "internal/providers"), "providers").
-				WithImport(filepath.Join(g.g.GoModuleName, "db"), "db").
-				WithImport("github.com/alexisvisco/goframe/cli/commands/mailcmd", "mailcmd")
+				WithImport(filepath.Join(g.g.GoModuleName, "db"), "db")
 		},
 		Category:  CategoryCore,
 		Condition: true,

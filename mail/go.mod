@@ -1,4 +1,4 @@
-module github.com/alexisvisco/goframe/mailer
+module github.com/alexisvisco/goframe/mail
 
 go 1.24
 

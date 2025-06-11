@@ -1,11 +1,16 @@
-func (m *{{ .mailer_pascal }}Mailer) {{ .action_pascal }}(ctx context.Context, to string, vars any) error {
+type {{ .action_pascal }}Params struct {
+  To []string
+}
+
+func (m *{{ .mailer_pascal }}Mailer) {{ .action_pascal }}(ctx context.Context, vars {{ .action_pascal }}Params) error {
   var wf workflow.SendEmailWorkflow
-  _, err := m.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{}, wf.Execute, workflow.SendEmailParams{
-    To: to,
+  _, err := m.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
+    ID: "{{ .mailer_snake }}_{{ .action_snake }}_" + cuid2.Generate(),
+  }, wf.Execute, mail.Message{
+    To: vars.To,
     Subject: "{{ .action_pascal }}",
     View: "{{ .mailer_snake }}_{{ .action_snake }}",
     Variables: vars,
   })
   return err
 }
-

@@ -75,10 +75,10 @@ func (w *WorkerGenerator) Generate() error {
 		}
 	}
 
-       files := []FileConfig{
-               w.createWorkerProvider("internal/providers/worker.go"),
-               w.createSendEmailWorkflow("internal/workflow/workflow_send_email.go"),
-       }
+	files := []FileConfig{
+		w.createWorkerProvider("internal/providers/worker.go"),
+		w.createSendEmailWorkflow("internal/workflow/workflow_send_email.go"),
+	}
 
 	for _, file := range files {
 		if err := w.g.GenerateFile(file); err != nil {
@@ -239,18 +239,16 @@ func (w *WorkerGenerator) createActivityFile(name string) error {
 }
 
 func (w *WorkerGenerator) createSendEmailWorkflow(path string) FileConfig {
-       return FileConfig{
-               Path:     path,
-               Template: templates.InternalWorkflowSendEmailGo,
-               Condition: true,
-               Category:  CategoryWorker,
-               Gen: func(g *genhelper.GenHelper) {
-                       g.WithImport("context", "context").
-                               WithImport("go.temporal.io/sdk/workflow", "workflow").
-                               WithImport("go.uber.org/fx", "fx").
-                               WithImport(filepath.Join(w.g.GoModuleName, "mailer"), "mailer")
-               },
-       }
+	return FileConfig{
+		Path:      path,
+		Template:  templates.InternalWorkflowSendEmailGo,
+		Condition: true,
+		Category:  CategoryWorker,
+		Gen: func(g *genhelper.GenHelper) {
+			g.WithImport("context", "context").
+				WithImport("go.temporal.io/sdk/workflow", "workflow")
+		},
+	}
 }
 
 func (w *WorkerGenerator) CreateWorkflow(name string, activities []string) error {

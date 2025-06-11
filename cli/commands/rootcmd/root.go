@@ -116,13 +116,12 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 
 	taskCommand := taskcmd.NewCmdRootTask(defaultOpts.Commands["task"]...)
 	generateCommand := generatecmd.NewCmdRootGenerate(defaultOpts.Commands["generate"]...)
-	mailCommand := mailcmd.NewCmdRootMail(defaultOpts.Commands["mails"]...)
 
 	cmd.AddCommand(dbcmd.NewCmdRootMigrate())
 	cmd.AddCommand(taskCommand)
 	cmd.AddCommand(generateCommand)
-	cmd.AddCommand(mailCommand)
 	cmd.AddCommand(routescmd.NewCmdRoutes())
+	cmd.AddCommand(mailcmd.NewCmdMail())
 	cmd.AddCommand(i18ncmd.NewCmdI18n())
 
 	return cmd

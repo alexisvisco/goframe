@@ -6,5 +6,5 @@ use (
         ./db
         ./http
         ./storage
-        ./mailer
+        ./mail
 )

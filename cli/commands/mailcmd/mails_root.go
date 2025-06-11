@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewCmdRootMail(subCommands ...*cobra.Command) *cobra.Command {
+func NewCmdMail(subCommands ...*cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "mails <subcommand>",
 		Short: "Mail utilities",

@@ -29,4 +29,6 @@ const (
 	CategoryI18n = "I18n"
 
 	CategoryWorker = "Worker"
+
+	CategoryMailer = "Mailer"
 )
