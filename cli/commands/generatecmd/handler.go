@@ -8,15 +8,15 @@ import (
 )
 
 func handlerCmd() *cobra.Command {
-	var services []string
 	cmd := &cobra.Command{
-		Use:   "handler <name>",
+		Use:   "handler <name> [services...]",
 		Short: "Create a new HTTP handler",
 		RunE: withFileDiff(func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return fmt.Errorf("handler name is required")
 			}
 			name := args[0]
+			services := args[1:]
 			g := generators.Generator{GoModuleName: cmd.Context().Value("module").(string)}
 			if err := g.Handler().Create(name, services); err != nil {
 				return fmt.Errorf("failed to create handler: %w", err)
@@ -24,6 +24,5 @@ func handlerCmd() *cobra.Command {
 			return nil
 		}),
 	}
-	cmd.Flags().StringSliceVar(&services, "services", nil, "services to inject")
 	return cmd
 }

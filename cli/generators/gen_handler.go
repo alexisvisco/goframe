@@ -17,11 +17,15 @@ type HandlerGenerator struct {
 
 func (h *HandlerGenerator) createHandlerFile(name string, services []string) error {
 	path := filepath.Join("internal/v1handler", fmt.Sprintf("handler_%s.go", str.ToSnakeCase(name)))
+	fileMustNotExist := true
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		fileMustNotExist = false
+	}
 	return h.g.GenerateFile(FileConfig{
 		Path:      path,
 		Template:  templates.InternalV1HandlerNewGo,
 		Category:  CategoryWeb,
-		Condition: true,
+		Condition: fileMustNotExist,
 		Gen: func(g *genhelper.GenHelper) {
 			pascal := str.ToPascalCase(name)
 			g.WithVar("name_pascal", pascal)
@@ -124,5 +128,24 @@ func (h *HandlerGenerator) Create(name string, services []string) error {
 	if err := h.updateRegistry(); err != nil {
 		return err
 	}
+	if err := h.updateRouter(str.ToPascalCase(name) + "Handler"); err != nil {
+		return fmt.Errorf("failed to update router: %w", err)
+	}
 	return h.updateAppModule()
+}
+
+func (h *HandlerGenerator) updateRouter(handlerType string) error {
+	path := "internal/v1handler/router.go"
+	gofile, err := genhelper.LoadGoFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to load router file: %w", err)
+	}
+
+	gofile.AddLineAfterRegex(`Mux\s+\*http.ServeMux`, fmt.Sprintf("\t%s *%s", handlerType, handlerType))
+
+	if err := gofile.Save(); err != nil {
+		return err
+	}
+
+	return nil
 }
