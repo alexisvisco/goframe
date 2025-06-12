@@ -1,0 +1,26 @@
+.layout {
+  font-family: sans-serif;
+  padding: 2rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.search input {
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+.results {
+  margin-top: 0.5rem;
+  list-style: none;
+  padding: 0;
+}
+
+.results li {
+  margin: 0.25rem 0;
+}
