@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"text/tabwriter"
 
 	"github.com/alexisvisco/goframe/cli/generators"
+	"github.com/alexisvisco/goframe/cli/termcolor"
 	"github.com/alexisvisco/goframe/core/configuration"
 	"github.com/spf13/cobra"
 )
@@ -23,16 +25,7 @@ func NewInitCmd() *cobra.Command {
 		"go",
 	}
 
-	longDescription := fmt.Sprintf(`Generates a new project with the following modules:
-	- cmd/app/main.go: Main application entry point
-	- cmd/cli/main.go: CLI application entry point
-	
-	- configuration files
-	- databases related files
-	- Docker files (if --docker=true)
-	- web files (if --web=true)
-	- storage provider
-	`)
+	longDescription := fmt.Sprintf(`Generates a new project`)
 
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -93,11 +86,47 @@ func NewInitCmd() *cobra.Command {
 				}
 			}
 
-			fmt.Println("Project initialized!")
-			fmt.Println("Postgres port: 7894 (if enabled)")
-			fmt.Println("Temporal UI port: 8233 (if enabled)")
-			fmt.Println("Mailpit UI port: 8888")
-			fmt.Println("Run 'docker compose up -d' then 'go run cmd/app/main.go' to start the app")
+			fmt.Println(termcolor.WrapCyan(`   _______     ______    _______   _______        __       ___      ___   _______  
+  /" _   "|   /    " \  /"     "| /"      \      /""\     |"  \    /"  | /"     "| 
+ (: ( \___)  // ____  \(: ______)|:        |    /    \     \   \  //   |(: ______) 
+  \/ \      /  /    ) :)\/    |  |_____/   )   /' /\  \    /\\  \/.    | \/    |   
+  //  \ ___(: (____/ // // ___)   //      /   //  __'  \  |: \.        | // ___)_  
+ (:   _(  _|\        / (:  (     |:  __   \  /   /  \\  \ |.  \    /:  |(:      "| 
+  \_______)  \"_____/   \__/     |__|  \___)(___/    \___)|___|\__/|___| \_______) 
+	                                                                      v.alpha.beta.omega `))
+
+			type kv struct {
+				Key   string
+				Value string
+			}
+
+			var keyvalues []kv
+
+			if i.databaseName == string(configuration.DatabaseTypePostgres) {
+				keyvalues = append(keyvalues, kv{"Database", fmt.Sprintf("Postgres (%s)", termcolor.WrapBlue("localhost:7894"))})
+			} else if i.databaseName == string(configuration.DatabaseTypeSQLite) {
+				keyvalues = append(keyvalues, kv{"Database", fmt.Sprintf("SQLite (%s)", termcolor.WrapBlue(i.folder))})
+			}
+
+			if i.worker == string(configuration.WorkerTypeTemporal) {
+				keyvalues = append(keyvalues, kv{"Worker", fmt.Sprintf("Temporal (%s, UI at %s)", termcolor.WrapBlue("localhost:7233"), termcolor.WrapBlue("http://localhost:8233"))})
+			}
+
+			if i.web {
+				keyvalues = append(keyvalues, kv{"HTTP Server", termcolor.WrapBlue("http://localhost:8080")})
+			}
+
+			keyvalues = append(keyvalues, kv{"Mailpit", fmt.Sprintf("%s (for email testing)", termcolor.WrapBlue("http://localhost:8025"))})
+
+			tw := new(tabwriter.Writer)
+
+			tw.Init(os.Stdout, 0, 8, 1, '\t', 0)
+			for _, kv := range keyvalues {
+				fmt.Fprintf(tw, "  %s\t%s\n", kv.Key, kv.Value)
+			}
+
+			tw.Flush()
+			fmt.Println("\nRun 'docker compose up -d' then 'go run cmd/app/main.go' to start the app")
 
 			return nil
 		},
