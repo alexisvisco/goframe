@@ -25,7 +25,7 @@ func workerWorkflowCmd() *cobra.Command {
 		Use:     "workflow <name> [activities...]",
 		Aliases: []string{"wf"},
 		Short:   "Create a new workflow",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: withFileDiff(func(cmd *cobra.Command, args []string) error {
 			cfg, ok := cmd.Context().Value("config.worker").(configuration.Worker)
 			if !ok || cfg.Type != configuration.WorkerTypeTemporal {
 				return fmt.Errorf("only available for temporal workers, got %v", cfg.Type)
@@ -49,7 +49,7 @@ func workerWorkflowCmd() *cobra.Command {
 				return fmt.Errorf("failed to update registrations: %w", err)
 			}
 			return nil
-		},
+		}),
 	}
 }
 
@@ -57,7 +57,7 @@ func workerActivityCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "activity <name>",
 		Short: "Create a new activity",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: withFileDiff(func(cmd *cobra.Command, args []string) error {
 			cfg, ok := cmd.Context().Value("config.worker").(configuration.Worker)
 			if !ok || cfg.Type != configuration.WorkerTypeTemporal {
 				return fmt.Errorf("only available for temporal workers, got %v", cfg.Type)
@@ -75,6 +75,6 @@ func workerActivityCmd() *cobra.Command {
 				return fmt.Errorf("failed to update registrations: %w", err)
 			}
 			return nil
-		},
+		}),
 	}
 }

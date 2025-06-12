@@ -101,8 +101,6 @@ func (w *WorkerGenerator) UpdateOrCreateRegistrations() error {
 		gh.WithImport(filepath.Join(w.g.GoModuleName, "internal/workflow/activity"), "activity")
 	}
 
-	w.g.TrackFile(regPath, false, CategoryWorker)
-
 	if err := gh.WithVar("activities", activities).
 		WithVar("workflows", workflows).
 		WriteTo(file); err != nil {

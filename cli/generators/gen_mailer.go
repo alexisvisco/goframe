@@ -60,7 +60,6 @@ func (m *MailerGenerator) updateRegistry() error {
 	defer file.Close()
 
 	gh := genhelper.New("mailer", templates.InternalMailerRegistryGo)
-	m.g.TrackFile(path, false, CategoryMailer)
 	return gh.WithVar("mailers", mailers).WriteTo(file)
 }
 
@@ -104,7 +103,6 @@ func (m *MailerGenerator) ensureAction(name, action string) error {
 		WithVar("mailer_snake", str.ToSnakeCase(name)).
 		WithVar("action_pascal", pascalAction).
 		WithVar("action_snake", str.ToSnakeCase(action))
-	m.g.TrackFile(path, false, CategoryMailer)
 	action, err = gh.Generate()
 	if err != nil {
 		return fmt.Errorf("failed to generate action %s for mailer %s: %w", action, name, err)

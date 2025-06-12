@@ -13,7 +13,7 @@ func taskCmd() *cobra.Command {
 		Use:   "task <name>",
 		Short: "Create a new task file",
 		Long:  "Create a new task file with the specified name.",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: withFileDiff(func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return fmt.Errorf("task name is required")
 			}
@@ -24,7 +24,7 @@ func taskCmd() *cobra.Command {
 				return fmt.Errorf("failed to create task: %w", err)
 			}
 			return nil
-		},
+		}),
 	}
 
 	cmd.Flags().StringVarP(&flagDescription, "description", "d", "", "Description of the task")

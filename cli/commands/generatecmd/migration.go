@@ -14,7 +14,7 @@ func migrationCmd() *cobra.Command {
 		Use:   "migration <name>",
 		Short: "Create a new migration file",
 		Long:  "Create a new migration file with a timestamp and the specified name.",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: withFileDiff(func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return fmt.Errorf("migration name is required")
 			}
@@ -31,7 +31,7 @@ func migrationCmd() *cobra.Command {
 				Name: name,
 				At:   time.Now(),
 			})
-		},
+		}),
 	}
 
 	cmd.Flags().BoolVarP(&flagSql, "sql", "s", false, "WriteTo SQL migration file instead of Go code")
