@@ -54,6 +54,12 @@ var (
 	//go:embed internal__v1handler__router.go.tmpl
 	InternalV1HandlerRouterGo []byte
 
+	//go:embed internal__v1handler__registry.go.tmpl
+	InternalV1HandlerRegistryGo []byte
+
+	//go:embed internal__v1handler__new.go.tmpl
+	InternalV1HandlerNewGo []byte
+
 	//go:embed bin__goframe.tmpl
 	InternalBinGoframe []byte
 

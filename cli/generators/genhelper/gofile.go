@@ -99,7 +99,72 @@ func (g *GoFile) HasMethod(structName, methodName string) bool {
 	return false
 }
 
+// findMultiLinePattern finds the position where a multi-line pattern matches
+func (g *GoFile) findMultiLinePattern(pattern string, regex bool) int {
+	patternLines := strings.Split(pattern, "\n")
+
+	var patternRegexes []*regexp.Regexp
+	if regex {
+		patternRegexes = make([]*regexp.Regexp, len(patternLines))
+		for i, patternLine := range patternLines {
+			r, err := regexp.Compile(patternLine)
+			if err != nil {
+				panic("finding multi-line pattern: invalid regex pattern: " + err.Error())
+			}
+			patternRegexes[i] = r
+		}
+	}
+
+	// Search for the pattern starting at each line
+	for i := 0; i <= len(g.lines)-len(patternLines); i++ {
+		match := true
+		for j, patternLine := range patternLines {
+			var lineMatch bool
+			if regex {
+				lineMatch = patternRegexes[j].MatchString(g.lines[i+j])
+			} else {
+				lineMatch = strings.Contains(g.lines[i+j], patternLine)
+			}
+			if !lineMatch {
+				match = false
+				break
+			}
+		}
+		if match {
+			// Return the position after the last matching line
+			return i + len(patternLines) - 1
+		}
+	}
+	return -1 // Pattern not found
+}
+
 func (g *GoFile) addLine(pattern, line string, before, regex bool) {
+	// Check if pattern contains multiple lines
+	patternLines := strings.Split(pattern, "\n")
+	linesToAdd := strings.Split(line, "\n")
+
+	if g.hasConsecutiveLines(linesToAdd) {
+		return
+	}
+
+	if len(patternLines) > 1 {
+		// Multi-line pattern matching
+		matchPos := g.findMultiLinePattern(pattern, regex)
+		if matchPos != -1 {
+			if before {
+				// Insert before the first line of the pattern
+				insertPos := matchPos - len(patternLines) + 1
+				g.lines = append(g.lines[:insertPos], append(linesToAdd, g.lines[insertPos:]...)...)
+			} else {
+				// Insert after the last line of the pattern
+				insertPos := matchPos + 1
+				g.lines = append(g.lines[:insertPos], append(linesToAdd, g.lines[insertPos:]...)...)
+			}
+		}
+		return
+	}
+
+	// Single line pattern matching (original logic)
 	var r *regexp.Regexp
 	var err error
 	if regex {
@@ -107,12 +172,6 @@ func (g *GoFile) addLine(pattern, line string, before, regex bool) {
 		if err != nil {
 			panic("adding line in gofile: invalid regex pattern: " + err.Error())
 		}
-	}
-
-	linesToAdd := strings.Split(line, "\n")
-
-	if g.hasConsecutiveLines(linesToAdd) {
-		return
 	}
 
 	for i, l := range g.lines {

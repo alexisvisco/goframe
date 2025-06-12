@@ -71,6 +71,10 @@ func (g *Generator) Mailer() *MailerGenerator {
 	return &MailerGenerator{g: g}
 }
 
+func (g *Generator) Handler() *HandlerGenerator {
+	return &HandlerGenerator{g: g}
+}
+
 func (g *Generator) Task() *TaskGenerator {
 	return &TaskGenerator{g: g}
 }
