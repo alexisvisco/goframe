@@ -132,7 +132,7 @@ func (s *ServiceGenerator) updateAppModule() error {
 	}
 
 	gf.AddNamedImport("", filepath.Join(s.g.GoModuleName, "internal/service"))
-	if err := gf.AddReturnCompositeElement("Module", "fx.Provide(service.Dependencies...)"); err != nil {
+	if err := gf.AddLineBeforeRegex("^\\s*\\}$", "\tfx.Provide(service.Dependencies...),"); err != nil {
 		return err
 	}
 	return gf.Save()

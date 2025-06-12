@@ -37,8 +37,8 @@ func (t *TaskGenerator) updateCliMain(name string) error {
 	}
 
 	gf.AddNamedImport("", filepath.Join(t.g.GoModuleName, "internal/task"))
-	arg := fmt.Sprintf("rootcmd.WithCommand(\"task\", task.New%sTask(app.Module(cfg)))", str.ToPascalCase(name))
-	if err := gf.AddArgToFuncCall("run", "rootcmd.NewCmdRoot", arg); err != nil {
+	line := fmt.Sprintf("    rootcmd.WithCommand(\"task\", task.New%sTask(app.Module(cfg))),", str.ToPascalCase(name))
+	if err := gf.AddLineAfterString("rootcmd.WithFxOptions(app.Module(cfg)...),", line); err != nil {
 		return err
 	}
 	return gf.Save()

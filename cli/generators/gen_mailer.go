@@ -155,7 +155,7 @@ func (m *MailerGenerator) updateAppModule() error {
 	}
 
 	gf.AddNamedImport("", filepath.Join(m.g.GoModuleName, "internal/mailer"))
-	if err := gf.AddReturnCompositeElement("Module", "fx.Provide(mailer.Dependencies...)"); err != nil {
+	if err := gf.AddLineBeforeRegex("^\\s*\\}$", "\tfx.Provide(mailer.Dependencies...),"); err != nil {
 		return err
 	}
 	return gf.Save()

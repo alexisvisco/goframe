@@ -52,12 +52,7 @@ func (g *GoFile) Save(path ...string) error {
 
 // HasImport checks if the file already imports the given path.
 func (g *GoFile) HasImport(path string) bool {
-	for _, imp := range g.File.Imports {
-		if strings.Trim(imp.Path.Value, "\"") == path {
-			return true
-		}
-	}
-	return false
+	return astutil.UsesImport(g.File, path)
 }
 
 // AddNamedImport adds an import with an optional alias.
@@ -69,97 +64,6 @@ func (g *GoFile) AddNamedImport(name, path string) {
 }
 
 // exprToString returns the formatted string representation of an expression.
-func (g *GoFile) exprToString(e ast.Expr) string {
-	var buf bytes.Buffer
-	format.Node(&buf, g.fset, e)
-	return buf.String()
-}
-
-// AddArgToFuncCall appends an argument to a specific function call inside the given function.
-// call should be of the form pkg.Func.
-func (g *GoFile) AddArgToFuncCall(funcName, call, arg string) error {
-	parts := strings.Split(call, ".")
-	if len(parts) != 2 {
-		return fmt.Errorf("call should be pkg.Func")
-	}
-	pkg, fun := parts[0], parts[1]
-
-	expr, err := parser.ParseExpr(arg)
-	if err != nil {
-		return err
-	}
-
-	ast.Inspect(g.File, func(n ast.Node) bool {
-		fd, ok := n.(*ast.FuncDecl)
-		if !ok || fd.Name.Name != funcName {
-			return true
-		}
-		ast.Inspect(fd.Body, func(nn ast.Node) bool {
-			ce, ok := nn.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			sel, ok := ce.Fun.(*ast.SelectorExpr)
-			if !ok {
-				return true
-			}
-			ident, ok := sel.X.(*ast.Ident)
-			if !ok {
-				return true
-			}
-			if ident.Name == pkg && sel.Sel.Name == fun {
-				// check if arg already exists
-				for _, a := range ce.Args {
-					if g.exprToString(a) == g.exprToString(expr) {
-						return false
-					}
-				}
-				ce.Args = append(ce.Args, expr)
-				return false
-			}
-			return true
-		})
-		return false
-	})
-	return nil
-}
-
-// AddReturnCompositeElement adds an element to the composite literal returned in the given function.
-func (g *GoFile) AddReturnCompositeElement(funcName, element string) error {
-	expr, err := parser.ParseExpr(element)
-	if err != nil {
-		return err
-	}
-
-	ast.Inspect(g.File, func(n ast.Node) bool {
-		fd, ok := n.(*ast.FuncDecl)
-		if !ok || fd.Name.Name != funcName {
-			return true
-		}
-		ast.Inspect(fd.Body, func(nn ast.Node) bool {
-			ret, ok := nn.(*ast.ReturnStmt)
-			if !ok {
-				return true
-			}
-			for _, res := range ret.Results {
-				cl, ok := res.(*ast.CompositeLit)
-				if !ok {
-					continue
-				}
-				for _, el := range cl.Elts {
-					if g.exprToString(el) == g.exprToString(expr) {
-						return false
-					}
-				}
-				cl.Elts = append([]ast.Expr{expr}, cl.Elts...)
-				return false
-			}
-			return true
-		})
-		return false
-	})
-	return nil
-}
 
 func (g *GoFile) HasFunc(name string) bool {
 	for _, decl := range g.File.Decls {

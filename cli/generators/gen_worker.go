@@ -23,7 +23,7 @@ func (w *WorkerGenerator) updateAppModule() error {
 	}
 
 	gf.AddNamedImport("", filepath.Join(w.g.GoModuleName, "internal/workflow"))
-	if err := gf.AddReturnCompositeElement("Module", "fx.Provide(workflow.Dependencies...)"); err != nil {
+	if err := gf.AddLineBeforeRegex("^\\s*\\}$", "\tfx.Provide(workflow.Dependencies...),"); err != nil {
 		return err
 	}
 

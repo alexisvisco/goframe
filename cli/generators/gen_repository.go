@@ -128,7 +128,7 @@ func (r *RepositoryGenerator) updateAppModule() error {
 	}
 
 	gf.AddNamedImport("", filepath.Join(r.g.GoModuleName, "internal/repository"))
-	if err := gf.AddReturnCompositeElement("Module", "fx.Provide(repository.Dependencies...)"); err != nil {
+	if err := gf.AddLineBeforeRegex("^\\s*\\}$", "\tfx.Provide(repository.Dependencies...),"); err != nil {
 		return err
 	}
 	return gf.Save()
