@@ -26,7 +26,7 @@ func (p *StorageGenerator) Generate() error {
 		p.CreateStorageProvider("internal/provide/provide_storage.go"),
 	}
 
-	files = append(files, p.AddMigrations()...)
+	files = append(files, p.CreateMigrations()...)
 
 	return p.g.GenerateFiles(files)
 }
@@ -42,7 +42,7 @@ func (p *StorageGenerator) CreateStorageProvider(path string) generators.FileCon
 	}
 }
 
-func (p *StorageGenerator) AddMigrations() []generators.FileConfig {
+func (p *StorageGenerator) CreateMigrations() []generators.FileConfig {
 	up := p.getSQLMigration()
 
 	return p.db.CreateMigration(gendb.CreateMigrationParams{
