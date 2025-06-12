@@ -32,10 +32,10 @@ func (p *WebGenerator) Generate() error {
 		}
 		// overwrite with example repository implementation
 		if err := p.g.GenerateFile(FileConfig{
-			Path:      "internal/repository/repository_note.go",
-			Template:  templates.InternalRepositoryExampleGo,
-			Category:  CategoryWeb,
-			Condition: true,
+			Path:     "internal/repository/repository_note.go",
+			Template: templates.InternalRepositoryExampleGo,
+			Category: CategoryWeb,
+			Skip:     true,
 			Gen: func(g *genhelper.GenHelper) {
 				g.WithImport(filepath.Join(p.g.GoModuleName, "internal/types"), "types")
 			},
@@ -47,10 +47,10 @@ func (p *WebGenerator) Generate() error {
 		}
 		// overwrite with example service implementation
 		if err := p.g.GenerateFile(FileConfig{
-			Path:      "internal/service/service_note.go",
-			Template:  templates.InternalServiceExampleGo,
-			Category:  CategoryWeb,
-			Condition: true,
+			Path:     "internal/service/service_note.go",
+			Template: templates.InternalServiceExampleGo,
+			Category: CategoryWeb,
+			Skip:     true,
 			Gen: func(g *genhelper.GenHelper) {
 				g.WithImport(filepath.Join(p.g.GoModuleName, "internal/types"), "types")
 			},
@@ -76,8 +76,8 @@ func (p *WebGenerator) createHTTPProvider(path string) FileConfig {
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithImport(filepath.Join(p.g.GoModuleName, "config"), "config")
 		},
-		Category:  CategoryWeb,
-		Condition: p.g.WebFiles,
+		Category: CategoryWeb,
+		Skip:     p.g.WebFiles,
 	}
 }
 
@@ -88,18 +88,18 @@ func (p *WebGenerator) createRouter(path string) FileConfig {
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithVar("example", p.g.ExampleWebFiles)
 		},
-		Category:  CategoryWeb,
-		Condition: p.g.WebFiles,
+		Category: CategoryWeb,
+		Skip:     p.g.WebFiles,
 	}
 }
 
 // createExampleTypes creates the FileConfig for the example types
 func (p *WebGenerator) createExampleTypes(path string) FileConfig {
 	return FileConfig{
-		Path:      path,
-		Template:  templates.InternalTypesExampleGo,
-		Category:  CategoryWeb,
-		Condition: p.g.ExampleWebFiles,
+		Path:     path,
+		Template: templates.InternalTypesExampleGo,
+		Category: CategoryWeb,
+		Skip:     p.g.ExampleWebFiles,
 	}
 }
 
@@ -110,7 +110,7 @@ func (p *WebGenerator) createExampleV1handler(path string) FileConfig {
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithImport(filepath.Join(p.g.GoModuleName, "internal/types"), "types")
 		},
-		Category:  CategoryWeb,
-		Condition: p.g.ExampleWebFiles,
+		Category: CategoryWeb,
+		Skip:     p.g.ExampleWebFiles,
 	}
 }

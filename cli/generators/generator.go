@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
+	"github.com/alexisvisco/goframe/cli/generators/genstorage"
 	"github.com/alexisvisco/goframe/core/configuration"
 )
 
@@ -41,8 +42,8 @@ func (g *Generator) Docker() *DockerGenerator {
 	return &DockerGenerator{g: g}
 }
 
-func (g *Generator) Storage() *StorageGenerator {
-	return &StorageGenerator{g: g, db: g.Databases()}
+func (g *Generator) Storage() *genstorage.StorageGenerator {
+	return &genstorage.StorageGenerator{g: g, db: g.Databases()}
 }
 
 // I18n returns an i18n file generator
@@ -80,8 +81,7 @@ func (g *Generator) Task() *TaskGenerator {
 }
 
 // CreateDirectory creates a directory if it doesn't exist
-func (g *Generator) CreateDirectory(path string, category FileCategory) error {
-
+func (g *Generator) CreateDirectory(path string) error {
 	err := os.MkdirAll(path, 0755)
 	if err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", path, err)
@@ -90,7 +90,7 @@ func (g *Generator) CreateDirectory(path string, category FileCategory) error {
 	return nil
 }
 
-type FileCreator interface {
+type FilesGenerator interface {
 	Generate() error // Generate the file or directory
 }
 
@@ -98,17 +98,25 @@ type FileConfig struct {
 	Path       string
 	Template   []byte
 	Gen        func(g *genhelper.GenHelper)
-	Condition  bool
-	Category   FileCategory
+	Skip       bool
 	Executable bool // If true, the file will be executable
 }
 
+func (g *Generator) GenerateFiles(files []FileConfig) error {
+	for _, f := range files {
+		if err := g.GenerateFile(f); err != nil {
+			return fmt.Errorf("failed to generate file %s: %w", f.Path, err)
+		}
+	}
+	return nil
+}
+
 func (g *Generator) GenerateFile(f FileConfig) error {
-	if !f.Condition {
+	if f.Skip {
 		return nil
 	}
 
-	if err := g.CreateDirectory(filepath.Dir(f.Path), f.Category); err != nil {
+	if err := g.CreateDirectory(filepath.Dir(f.Path)); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 

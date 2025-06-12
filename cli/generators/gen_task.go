@@ -16,10 +16,10 @@ type TaskGenerator struct {
 func (t *TaskGenerator) createTaskFile(name, description string) error {
 	path := filepath.Join("internal/task", fmt.Sprintf("task_%s.go", str.ToSnakeCase(name)))
 	return t.g.GenerateFile(FileConfig{
-		Path:      path,
-		Template:  templates.InternalTaskNewTaskGo,
-		Category:  CategoryTasks,
-		Condition: true,
+		Path:     path,
+		Template: templates.InternalTaskNewTaskGo,
+		Category: CategoryTasks,
+		Skip:     true,
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithVar("name_kebab_case", str.ToKebabCase(name)).
 				WithVar("name_pascal_case", str.ToPascalCase(name)).

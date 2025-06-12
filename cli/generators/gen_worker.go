@@ -69,8 +69,8 @@ func (w *WorkerGenerator) createWorkerProvider(path string) FileConfig {
 				WithImport(filepath.Join(w.g.GoModuleName, "config"), "config").
 				WithImport(filepath.Join(w.g.GoModuleName, "internal/workflow"), "workflow")
 		},
-		Category:  CategoryWorker,
-		Condition: true,
+		Category: CategoryWorker,
+		Skip:     true,
 	}
 }
 
@@ -173,10 +173,10 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []temporlWorkerRe
 func (w *WorkerGenerator) createWorkflowFile(name string, activities []string) error {
 	path := fmt.Sprintf("internal/workflow/workflow_%s.go", str.ToSnakeCase(name))
 	return w.g.GenerateFile(FileConfig{
-		Path:      path,
-		Template:  templates.InternalWorkflowNewWorkflowGo,
-		Condition: true,
-		Category:  CategoryWorker,
+		Path:     path,
+		Template: templates.InternalWorkflowNewWorkflowGo,
+		Skip:     true,
+		Category: CategoryWorker,
 		Gen: func(g *genhelper.GenHelper) {
 			pascalName := str.ToPascalCase(name)
 			g.WithVar("name_pascal_case", pascalName)
@@ -203,10 +203,10 @@ func (w *WorkerGenerator) createWorkflowFile(name string, activities []string) e
 func (w *WorkerGenerator) createActivityFile(name string) error {
 	path := fmt.Sprintf("internal/workflow/activity/activity_%s.go", str.ToSnakeCase(name))
 	return w.g.GenerateFile(FileConfig{
-		Path:      path,
-		Template:  templates.InternalWorkflowActivityNewActivityGo,
-		Condition: true,
-		Category:  CategoryWorker,
+		Path:     path,
+		Template: templates.InternalWorkflowActivityNewActivityGo,
+		Skip:     true,
+		Category: CategoryWorker,
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithVar("name_pascal_case", str.ToPascalCase(name))
 		},
@@ -215,10 +215,10 @@ func (w *WorkerGenerator) createActivityFile(name string) error {
 
 func (w *WorkerGenerator) createSendEmailWorkflow(path string) FileConfig {
 	return FileConfig{
-		Path:      path,
-		Template:  templates.InternalWorkflowSendEmailGo,
-		Condition: true,
-		Category:  CategoryWorker,
+		Path:     path,
+		Template: templates.InternalWorkflowSendEmailGo,
+		Skip:     true,
+		Category: CategoryWorker,
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithImport("go.temporal.io/sdk/workflow", "workflow")
 		},

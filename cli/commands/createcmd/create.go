@@ -69,7 +69,7 @@ func NewInitCmd() *cobra.Command {
 				WorkerType:      i.worker,
 			}
 
-			generators := []generators.FileCreator{
+			generators := []generators.FilesGenerator{
 				g.Core(),
 				g.Config(),
 				g.Databases(),

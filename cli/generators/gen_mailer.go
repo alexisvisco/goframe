@@ -67,10 +67,10 @@ func (m *MailerGenerator) ensureMailerFile(name string) error {
 	path := filepath.Join("internal/mailer", fmt.Sprintf("mailer_%s.go", str.ToSnakeCase(name)))
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return m.g.GenerateFile(FileConfig{
-			Path:      path,
-			Template:  templates.InternalMailerNewGo,
-			Category:  CategoryMailer,
-			Condition: true,
+			Path:     path,
+			Template: templates.InternalMailerNewGo,
+			Category: CategoryMailer,
+			Skip:     true,
 			Gen: func(g *genhelper.GenHelper) {
 				g.WithVar("mailer_pascal", str.ToPascalCase(name)).
 					WithImport("context", "context").
@@ -123,10 +123,10 @@ func (m *MailerGenerator) createViews(name, action string) error {
 	txtPath := filepath.Join("views/mails", fmt.Sprintf("%s_%s.txt.tmpl", str.ToSnakeCase(name), str.ToSnakeCase(action)))
 	htmlPath := filepath.Join("views/mails", fmt.Sprintf("%s_%s.mjml.tmpl", str.ToSnakeCase(name), str.ToSnakeCase(action)))
 
-	if err := m.g.GenerateFile(FileConfig{Path: txtPath, Template: templates.ViewMailTxt, Category: CategoryMailer, Condition: true}); err != nil {
+	if err := m.g.GenerateFile(FileConfig{Path: txtPath, Template: templates.ViewMailTxt, Category: CategoryMailer, Skip: true}); err != nil {
 		return err
 	}
-	return m.g.GenerateFile(FileConfig{Path: htmlPath, Template: templates.ViewMailMJML, Category: CategoryMailer, Condition: true})
+	return m.g.GenerateFile(FileConfig{Path: htmlPath, Template: templates.ViewMailMJML, Category: CategoryMailer, Skip: true})
 }
 
 func (m *MailerGenerator) Create(name, action string) error {

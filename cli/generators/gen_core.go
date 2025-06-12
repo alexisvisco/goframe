@@ -124,7 +124,7 @@ func (g *CoreGenerator) createBinGoFrame(path string) FileConfig {
 		Path:       path,
 		Template:   templates.InternalBinGoframe,
 		Category:   CategoryCore,
-		Condition:  true,
+		Skip:       true,
 		Executable: true,
 	}
 }
@@ -134,17 +134,17 @@ func (g *CoreGenerator) createBinMJML(path string) FileConfig {
 		Path:       path,
 		Template:   templates.BinMJML,
 		Category:   CategoryCore,
-		Condition:  true,
+		Skip:       true,
 		Executable: true,
 	}
 }
 
 func (g *CoreGenerator) createInternalAppModule(path string) FileConfig {
 	return FileConfig{
-		Path:      path,
-		Template:  templates.InternalAppModuleGo,
-		Condition: true,
-		Category:  CategoryCore,
+		Path:     path,
+		Template: templates.InternalAppModuleGo,
+		Skip:     true,
+		Category: CategoryCore,
 		Gen: func(genh *genhelper.GenHelper) {
 			providers := []string{
 				"providers.DB(true)",
@@ -191,8 +191,8 @@ func (g *CoreGenerator) createAppMain(path string) FileConfig {
 				WithImport(filepath.Join(g.g.GoModuleName, "config"), "config").
 				WithVar("invokes", invokes)
 		},
-		Category:  CategoryCore,
-		Condition: true,
+		Category: CategoryCore,
+		Skip:     true,
 	}
 }
 
@@ -207,7 +207,7 @@ func (g *CoreGenerator) createCliMain(path string) FileConfig {
 				WithImport(filepath.Join(g.g.GoModuleName, "internal/providers"), "providers").
 				WithImport(filepath.Join(g.g.GoModuleName, "db"), "db")
 		},
-		Category:  CategoryCore,
-		Condition: true,
+		Category: CategoryCore,
+		Skip:     true,
 	}
 }

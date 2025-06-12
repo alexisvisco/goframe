@@ -37,17 +37,17 @@ func (c *ConfigGenerator) CreateConfigYaml(path string) FileConfig {
 				WithVar("db__filepath", "db/storage.db").
 				WithVar("worker", c.g.WorkerType)
 		},
-		Category:  CategoryConfig,
-		Condition: true,
+		Category: CategoryConfig,
+		Skip:     true,
 	}
 }
 
 // CreateConfigGo generates the config.go file
 func (c *ConfigGenerator) CreateConfigGo(path string) FileConfig {
 	return FileConfig{
-		Path:      path,
-		Template:  templates.ConfigConfigGo,
-		Condition: true,
-		Category:  CategoryConfig,
+		Path:     path,
+		Template: templates.ConfigConfigGo,
+		Skip:     true,
+		Category: CategoryConfig,
 	}
 }

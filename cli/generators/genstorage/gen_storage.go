@@ -1,55 +1,56 @@
-package generators
+package genstorage
 
 import (
+	"embed"
 	"fmt"
 	"path/filepath"
 	"time"
 
+	"github.com/alexisvisco/goframe/cli/generators"
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
-	"github.com/alexisvisco/goframe/cli/generators/templates"
 	"github.com/alexisvisco/goframe/core/configuration"
+	"github.com/alexisvisco/goframe/core/helpers/typeutil"
 )
 
 type StorageGenerator struct {
-	g  *Generator
-	db *DatabaseGenerator
+	g  *generators.Generator
+	db *generators.DatabaseGenerator
 }
 
+//go:embed templates
+var fs embed.FS
+
 func (p *StorageGenerator) Generate() error {
-	files := []FileConfig{
-		p.createStorageProvider("internal/providers/storage.go"),
+	files := []generators.FileConfig{
+		p.CreateStorageProvider("internal/provide/provide_storage.go"),
 	}
 
-	for _, file := range files {
-		if err := p.g.GenerateFile(file); err != nil {
-			return fmt.Errorf("failed to create storage file %s: %w", file.Path, err)
-		}
+	if err := p.g.GenerateFiles(files); err != nil {
+		return err
 	}
 
-	if err := p.GenerateStorageMigration(); err != nil {
+	if err := p.AddMigrations(); err != nil {
 		return fmt.Errorf("failed to generate storage migration: %w", err)
 	}
 
 	return nil
 }
 
-// createStorageProvider creates the FileConfig for the storage provider
-func (p *StorageGenerator) createStorageProvider(path string) FileConfig {
-	return FileConfig{
+// CreateStorageProvider creates the FileConfig for the storage provider
+func (p *StorageGenerator) CreateStorageProvider(path string) generators.FileConfig {
+	return generators.FileConfig{
 		Path:     path,
-		Template: templates.ProvidersProvideStorageGo,
+		Template: typeutil.Must(fs.ReadFile("templates/provide_storage.go.tmpl")),
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithImport(filepath.Join(p.g.GoModuleName, "config"), "config")
 		},
-		Category:  CategoryStorage,
-		Condition: true,
 	}
 }
 
-func (p *StorageGenerator) GenerateStorageMigration() error {
-	up := p.getStorageMigrationSQL()
+func (p *StorageGenerator) AddMigrations() error {
+	up := p.getSQLMigration()
 
-	return p.db.CreateMigration(CreateMigrationParams{
+	return p.db.CreateMigration(generators.CreateMigrationParams{
 		Sql:  true,
 		Name: "storage",
 		At:   time.Now(),
@@ -58,8 +59,8 @@ func (p *StorageGenerator) GenerateStorageMigration() error {
 	})
 }
 
-// getStorageMigrationSQL returns the SQL for creating the attachments table based on database type
-func (p *StorageGenerator) getStorageMigrationSQL() string {
+// getSQLMigration returns the SQL for creating the attachments table based on database type
+func (p *StorageGenerator) getSQLMigration() string {
 	switch p.g.DatabaseType {
 	case configuration.DatabaseTypeSQLite:
 		return `

@@ -63,10 +63,10 @@ func (d *I18nGenerator) NewFile(name, path string, cfg configuration.I18n) ([]Fi
 		}
 
 		files = append(files, FileConfig{
-			Path:      filePath,
-			Template:  content,
-			Category:  CategoryI18n,
-			Condition: true,
+			Path:     filePath,
+			Template: content,
+			Category: CategoryI18n,
+			Skip:     true,
 		})
 	}
 
@@ -103,8 +103,8 @@ func (g *I18nGenerator) CreateOrUpdateGoFile(name, path string, cfg configuratio
 				WithVar("embeds_files_variables_code", embedsFilesVariablesCode).
 				WithVar("files", files)
 		},
-		Condition: true,
-		Category:  CategoryI18n,
+		Skip:     true,
+		Category: CategoryI18n,
 	}, nil
 }
 
@@ -160,10 +160,10 @@ func (g *I18nGenerator) SyncTranslationFiles(name string, locale string, cfg con
 		}
 
 		files = append(files, FileConfig{
-			Path:      localeFile,
-			Template:  content,
-			Condition: true,
-			Category:  CategoryI18n,
+			Path:     localeFile,
+			Template: content,
+			Skip:     true,
+			Category: CategoryI18n,
 		})
 	}
 

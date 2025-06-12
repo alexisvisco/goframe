@@ -20,10 +20,10 @@ func (r *RepositoryGenerator) ensureTypes(name string) error {
 	path := filepath.Join("internal/types", fmt.Sprintf("%s.go", str.ToSnakeCase(name)))
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return r.g.GenerateFile(FileConfig{
-			Path:      path,
-			Template:  templates.InternalTypesNewGo,
-			Category:  CategoryWeb,
-			Condition: true,
+			Path:     path,
+			Template: templates.InternalTypesNewGo,
+			Category: CategoryWeb,
+			Skip:     true,
 			Gen: func(g *genhelper.GenHelper) {
 				g.WithVar("name_pascal", str.ToPascalCase(name)).WithVar("name_snake", str.ToSnakeCase(name))
 			},
@@ -59,10 +59,10 @@ func (r *RepositoryGenerator) ensureTypes(name string) error {
 func (r *RepositoryGenerator) createRepositoryFile(name string) error {
 	path := filepath.Join("internal/repository", fmt.Sprintf("repository_%s.go", str.ToSnakeCase(name)))
 	return r.g.GenerateFile(FileConfig{
-		Path:      path,
-		Template:  templates.InternalRepositoryNewGo,
-		Category:  CategoryWeb,
-		Condition: true,
+		Path:     path,
+		Template: templates.InternalRepositoryNewGo,
+		Category: CategoryWeb,
+		Skip:     true,
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithVar("name_pascal", str.ToPascalCase(name))
 		},

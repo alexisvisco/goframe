@@ -22,10 +22,10 @@ func (h *HandlerGenerator) createHandlerFile(name string, services []string) err
 		fileMustNotExist = false
 	}
 	return h.g.GenerateFile(FileConfig{
-		Path:      path,
-		Template:  templates.InternalV1HandlerNewGo,
-		Category:  CategoryWeb,
-		Condition: fileMustNotExist,
+		Path:     path,
+		Template: templates.InternalV1HandlerNewGo,
+		Category: CategoryWeb,
+		Skip:     fileMustNotExist,
 		Gen: func(g *genhelper.GenHelper) {
 			pascal := str.ToPascalCase(name)
 			g.WithVar("name_pascal", pascal)

@@ -20,10 +20,10 @@ func (s *ServiceGenerator) ensureTypes(name string) error {
 	path := filepath.Join("internal/types", fmt.Sprintf("%s.go", str.ToSnakeCase(name)))
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return s.g.GenerateFile(FileConfig{
-			Path:      path,
-			Template:  templates.InternalTypesNewGo,
-			Category:  CategoryWeb,
-			Condition: true,
+			Path:     path,
+			Template: templates.InternalTypesNewGo,
+			Category: CategoryWeb,
+			Skip:     true,
 			Gen: func(g *genhelper.GenHelper) {
 				g.WithVar("name_pascal", str.ToPascalCase(name)).WithVar("name_snake", str.ToSnakeCase(name))
 			},
@@ -59,10 +59,10 @@ func (s *ServiceGenerator) ensureTypes(name string) error {
 func (s *ServiceGenerator) createServiceFile(name string, withRepo bool) error {
 	path := filepath.Join("internal/service", fmt.Sprintf("service_%s.go", str.ToSnakeCase(name)))
 	return s.g.GenerateFile(FileConfig{
-		Path:      path,
-		Template:  templates.InternalServiceNewGo,
-		Category:  CategoryWeb,
-		Condition: true,
+		Path:     path,
+		Template: templates.InternalServiceNewGo,
+		Category: CategoryWeb,
+		Skip:     true,
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithVar("name_pascal", str.ToPascalCase(name)).
 				WithVar("with_repo", withRepo)

@@ -32,10 +32,10 @@ func (d *DockerGenerator) Generate() error {
 // createDockerfile creates the FileConfig for the Dockerfile
 func (d *DockerGenerator) createDockerfile(path string) FileConfig {
 	return FileConfig{
-		Path:      path,
-		Template:  templates.Dockerfile,
-		Category:  CategoryDocker,
-		Condition: d.g.DockerFiles,
+		Path:     path,
+		Template: templates.Dockerfile,
+		Category: CategoryDocker,
+		Skip:     d.g.DockerFiles,
 	}
 }
 
@@ -48,18 +48,18 @@ func (d *DockerGenerator) createDockerCompose(path string) FileConfig {
 			g.WithVar("db", d.g.DatabaseType).
 				WithVar("worker", d.g.WorkerType)
 		},
-		Category:  CategoryDocker,
-		Condition: d.g.DockerFiles,
+		Category: CategoryDocker,
+		Skip:     d.g.DockerFiles,
 	}
 }
 
 // createDockerIgnore creates the FileConfig for the .dockerignore file
 func (d *DockerGenerator) createDockerIgnore(path string) FileConfig {
 	return FileConfig{
-		Path:      path,
-		Template:  d.getDockerIgnoreTemplate(),
-		Category:  CategoryDocker,
-		Condition: d.g.DockerFiles,
+		Path:     path,
+		Template: d.getDockerIgnoreTemplate(),
+		Category: CategoryDocker,
+		Skip:     d.g.DockerFiles,
 	}
 }
 
