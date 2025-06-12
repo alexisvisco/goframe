@@ -1,4 +1,4 @@
-package generatecmd
+package genhelper
 
 import (
 	"crypto/sha256"
@@ -62,7 +62,7 @@ func diffSnapshots(before, after fileSnapshot) (added, changed, deleted []string
 	return
 }
 
-func withFileDiff(run func(cmd *cobra.Command, args []string) error) func(cmd *cobra.Command, args []string) error {
+func WithFileDiff(run func(cmd *cobra.Command, args []string) error) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		before, _ := snapshotDir(".")
 		if err := run(cmd, args); err != nil {
@@ -74,7 +74,6 @@ func withFileDiff(run func(cmd *cobra.Command, args []string) error) func(cmd *c
 			fmt.Println("No file changes detected.")
 			return nil
 		}
-		fmt.Println("Files summary:")
 		for _, f := range added {
 			fmt.Println("A", f)
 		}

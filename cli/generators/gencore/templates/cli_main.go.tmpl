@@ -30,7 +30,7 @@ func run() int {
   }
 
 	connector := func() (*sql.DB, error) {
-    _, sqlDB, err := providers.DB(false)(cfg)
+    _, sqlDB, err := provide.DB(false)(cfg)
     if err != nil {
       return nil, err
     }

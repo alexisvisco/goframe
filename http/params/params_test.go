@@ -52,12 +52,12 @@ type Pagination struct {
 }
 
 func TestBindJSON(t *testing.T) {
-	// Create test data
+	// GenerateHandler test data
 	jsonData := `{"name":"John Doe","age":25,"is_active":true,"created_at":"2023-01-15","tags":["tag1","tag2","tag3"]}`
 	req := httptest.NewRequest("POST", "/", strings.NewReader(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
-	// Create target struct
+	// GenerateHandler target struct
 	user := &TestUser{}
 
 	// Bind data
@@ -85,7 +85,7 @@ func TestBindJSON(t *testing.T) {
 }
 
 func TestBindXML(t *testing.T) {
-	// Create test data
+	// GenerateHandler test data
 	xmlData := `
 <TestUser>
   <name>Jane Doe</name>
@@ -98,7 +98,7 @@ func TestBindXML(t *testing.T) {
 	req := httptest.NewRequest("POST", "/", strings.NewReader(xmlData))
 	req.Header.Set("Content-Type", "application/xml")
 
-	// Create target struct
+	// GenerateHandler target struct
 	user := &TestUser{}
 
 	// Bind data
@@ -123,7 +123,7 @@ func TestBindXML(t *testing.T) {
 }
 
 func TestBindForm(t *testing.T) {
-	// Create form data
+	// GenerateHandler form data
 	form := url.Values{}
 	form.Add("name", "Alice Smith")
 	form.Add("age", "35")
@@ -136,7 +136,7 @@ func TestBindForm(t *testing.T) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Form = form
 
-	// Create target struct
+	// GenerateHandler target struct
 	user := &TestUser{}
 
 	// Bind data
@@ -164,10 +164,10 @@ func TestBindForm(t *testing.T) {
 }
 
 func TestBindQuery(t *testing.T) {
-	// Create query parameters
+	// GenerateHandler query parameters
 	req := httptest.NewRequest("GET", "/user?name=Bob+Johnson&age=40&is_active=true&created_at=2023-04-15&tags[]=tag1&tags[]=tag2&tags[]=tag3", nil)
 
-	// Create target struct
+	// GenerateHandler target struct
 	user := &TestUser{}
 
 	// Bind data
@@ -195,7 +195,7 @@ func TestBindQuery(t *testing.T) {
 }
 
 func TestBindHeaders(t *testing.T) {
-	// Create headers
+	// GenerateHandler headers
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("X-User-Name", "Charlie Brown")
 	req.Header.Set("X-User-Age", "45")
@@ -204,7 +204,7 @@ func TestBindHeaders(t *testing.T) {
 	req.Header.Add("X-User-Tags", "tag2")
 	req.Header.Add("X-User-Tags", "tag3")
 
-	// Create target struct
+	// GenerateHandler target struct
 	user := &TestUser{}
 
 	// Bind data
@@ -229,12 +229,12 @@ func TestBindHeaders(t *testing.T) {
 }
 
 func TestBindCookies(t *testing.T) {
-	// Create cookies
+	// GenerateHandler cookies
 	req := httptest.NewRequest("GET", "/", nil)
 	req.AddCookie(&http.Cookie{Name: "user_name", Value: "David Miller"})
 	req.AddCookie(&http.Cookie{Name: "user_age", Value: "50"})
 
-	// Create target struct
+	// GenerateHandler target struct
 	user := &TestUser{}
 
 	// Bind data
@@ -253,11 +253,11 @@ func TestBindCookies(t *testing.T) {
 }
 
 func TestBindContext(t *testing.T) {
-	// Create context with values
+	// GenerateHandler context with values
 	ctx := context.WithValue(context.Background(), "userID", "12345")
 	req := httptest.NewRequest("GET", "/", nil).WithContext(ctx)
 
-	// Create target struct
+	// GenerateHandler target struct
 	user := &TestUser{}
 
 	// Bind data
@@ -276,7 +276,7 @@ func TestBindDefault(t *testing.T) {
 	// Empty request
 	req := httptest.NewRequest("GET", "/", nil)
 
-	// Create target struct
+	// GenerateHandler target struct
 	user := &TestUser{}
 
 	// Bind data
@@ -304,7 +304,7 @@ func TestBindDefault(t *testing.T) {
 }
 
 func TestBindFile(t *testing.T) {
-	// Create a multipart form with a file
+	// GenerateHandler a multipart form with a file
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 
@@ -341,11 +341,11 @@ func TestBindFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Create the request
+	// GenerateHandler the request
 	req := httptest.NewRequest("POST", "/", &b)
 	req.Header.Set("Content-Type", w.FormDataContentType())
 
-	// Create target struct
+	// GenerateHandler target struct
 	user := &UserWithFile{}
 
 	// Bind data
@@ -370,10 +370,10 @@ func TestBindFile(t *testing.T) {
 }
 
 func TestBindCustomUnmarshaler(t *testing.T) {
-	// Create query string with custom formatted value
+	// GenerateHandler query string with custom formatted value
 	req := httptest.NewRequest("GET", "/pagination?page=2&limit=20&orderBy=name:ASC&orderBy=date:DESC", nil)
 
-	// Create target struct
+	// GenerateHandler target struct
 	pagination := &Pagination{}
 
 	// Bind data
@@ -410,7 +410,7 @@ func TestBindWithOptions(t *testing.T) {
 	req := httptest.NewRequest("POST", "/", strings.NewReader(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
-	// Create target struct
+	// GenerateHandler target struct
 	user := &TestUser{}
 
 	// Bind data with strict mode
@@ -464,7 +464,7 @@ func TestBindingErrors(t *testing.T) {
 }
 
 func TestCombinedDataSources(t *testing.T) {
-	// Create data from multiple sources
+	// GenerateHandler data from multiple sources
 	jsonData := `{"name":"JSON User"}`
 	req := httptest.NewRequest("POST", "/?age=55&is_active=true", strings.NewReader(jsonData))
 	req.Header.Set("Content-Type", "application/json")
@@ -477,7 +477,7 @@ func TestCombinedDataSources(t *testing.T) {
 	// Cookies
 	req.AddCookie(&http.Cookie{Name: "user_age", Value: "99"}) // This should not override query param
 
-	// Create target struct
+	// GenerateHandler target struct
 	user := &TestUser{}
 
 	// Bind data

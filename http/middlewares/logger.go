@@ -24,7 +24,7 @@ func LoggerMiddleware(_ *MiddlewareOptions) func(http.Handler) http.Handler {
 				Add("path", r.URL.Path).
 				Add("remote_addr", r.RemoteAddr)
 
-			// Create response writer wrapper to capture status
+			// GenerateHandler response writer wrapper to capture status
 			rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
 			// Execute the next handler

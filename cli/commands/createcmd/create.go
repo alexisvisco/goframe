@@ -8,6 +8,16 @@ import (
 	"text/tabwriter"
 
 	"github.com/alexisvisco/goframe/cli/generators"
+	"github.com/alexisvisco/goframe/cli/generators/genconfig"
+	"github.com/alexisvisco/goframe/cli/generators/gencore"
+	"github.com/alexisvisco/goframe/cli/generators/gendb"
+	"github.com/alexisvisco/goframe/cli/generators/gendocker"
+	"github.com/alexisvisco/goframe/cli/generators/genhttp"
+	"github.com/alexisvisco/goframe/cli/generators/genmailer"
+	"github.com/alexisvisco/goframe/cli/generators/genrepository"
+	"github.com/alexisvisco/goframe/cli/generators/genservice"
+	"github.com/alexisvisco/goframe/cli/generators/genstorage"
+	"github.com/alexisvisco/goframe/cli/generators/genworker"
 	"github.com/alexisvisco/goframe/cli/termcolor"
 	"github.com/alexisvisco/goframe/core/configuration"
 	"github.com/spf13/cobra"
@@ -59,27 +69,45 @@ func NewInitCmd() *cobra.Command {
 			}
 
 			g := &generators.Generator{
-				GoModuleName:    i.goModName,
-				DatabaseType:    configuration.DatabaseType(i.databaseName),
-				ORMType:         i.orm,
-				Maintainer:      i.maintainer,
-				WebFiles:        i.web,
-				ExampleWebFiles: i.webExamples,
-				DockerFiles:     i.docker,
-				WorkerType:      i.worker,
+				GoModuleName: i.goModName,
+				DatabaseType: configuration.DatabaseType(i.databaseName),
+				ORMType:      i.orm,
+				Maintainer:   i.maintainer,
+				HTTPServer:   i.http,
+				WorkerType:   i.worker,
 			}
 
-			generators := []generators.FilesGenerator{
-				g.Core(),
-				g.Config(),
-				g.Databases(),
-				g.Docker(),
-				g.Storage(),
-				g.Web(),
-				g.Worker(),
+			cfgGen := &genconfig.ConfigGenerator{Gen: g}
+			coreGen := &gencore.CoreGenerator{Gen: g}
+			repoGen := &genrepository.RepositoryGenerator{Gen: g}
+			svcGen := &genservice.ServiceGenerator{Gen: g}
+			dbGen := &gendb.DatabaseGenerator{Gen: g}
+			storageGen := &genstorage.StorageGenerator{Gen: g, DBGen: dbGen}
+			dockerGen := &gendocker.DockerGenerator{Gen: g}
+			httpGen := &genhttp.HTTPGenerator{Gen: g}
+			workerGen := &genworker.WorkerGenerator{Gen: g}
+			mailerGen := &genmailer.MailerGenerator{Gen: g, Wf: workerGen}
+			//exampleHttpGen := &genhttpexample.NoteExampleGenerator{
+			//	Gen:     g,
+			//	GenHTTP: httpGen,
+			//	GenSvc:  svcGen,
+			//	GenRepo: repoGen,
+			//}
+
+			filesGenerators := []generators.FilesGenerator{
+				cfgGen,
+				coreGen,
+				repoGen,
+				svcGen,
+				dbGen,
+				storageGen,
+				dockerGen,
+				workerGen,
+				httpGen,
+				mailerGen,
 			}
 
-			for _, gen := range generators {
+			for _, gen := range filesGenerators {
 				err := gen.Generate()
 				if err != nil {
 					return fmt.Errorf("failed to generate files: %v", err)
@@ -112,7 +140,7 @@ func NewInitCmd() *cobra.Command {
 				keyvalues = append(keyvalues, kv{"Worker", fmt.Sprintf("Temporal (%s, UI at %s)", termcolor.WrapBlue("localhost:7233"), termcolor.WrapBlue("http://localhost:8233"))})
 			}
 
-			if i.web {
+			if i.http {
 				keyvalues = append(keyvalues, kv{"HTTP Server", termcolor.WrapBlue("http://localhost:8080")})
 			}
 
@@ -132,12 +160,10 @@ func NewInitCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&i.databaseName, "databaseName", "d", "postgres", "Database type: postgres, sqlite")
-	cmd.Flags().BoolVarP(&i.docker, "docker", "D", true, "Initialize with DockerFiles support (docker-compose & Dockerfile)")
+	cmd.Flags().StringVarP(&i.databaseName, "db-name", "d", "postgres", "Database type: postgres, sqlite")
 	cmd.Flags().StringVarP(&i.folder, "folder", "f", ".", "Project folder name")
-	cmd.Flags().BoolVarP(&i.web, "web", "w", true, "Initialize a web application")
-	cmd.Flags().BoolVarP(&i.webExamples, "web-examples", "W", true, "Initialize a web application with examples")
-	cmd.Flags().StringVarP(&i.goModName, "gomod", "g", "", "Create a go.mod file with go module name if set")
+	cmd.Flags().BoolVarP(&i.http, "http-server", "w", true, "Initialize a http application")
+	cmd.Flags().StringVarP(&i.goModName, "gomod", "g", "", "GenerateHandler a go.mod file with go module name if set")
 	cmd.Flags().BoolVarP(&i.maintainer, "maintainer", "m", false, "Add specific maintainer thing to test the framework")
 	cmd.Flags().StringVarP(&i.orm, "orm", "o", "gorm", "ORM to use (only gorm is supported for now)")
 	cmd.Flags().StringVar(&i.worker, "worker", "temporal", "Worker type to use (only temporal is supported for now)")
@@ -155,8 +181,8 @@ type initializer struct {
 	databaseName string
 	orm          string
 	maintainer   bool
-	web          bool
-	webExamples  bool
+	http         bool
+	httpExample  bool
 	docker       bool
 	worker       string
 }

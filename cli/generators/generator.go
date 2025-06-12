@@ -6,88 +6,17 @@ import (
 	"path/filepath"
 
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
-	"github.com/alexisvisco/goframe/cli/generators/genstorage"
 	"github.com/alexisvisco/goframe/core/configuration"
 )
 
 type Generator struct {
-	GoModuleName string
-	DatabaseType configuration.DatabaseType
-	ORMType      string
-	Maintainer   bool
-
-	WebFiles        bool
-	ExampleWebFiles bool
-	DockerFiles     bool
-	WorkerType      string
-}
-
-// Databases returns a database file generator
-func (g *Generator) Databases() *DatabaseGenerator {
-	return &DatabaseGenerator{g: g}
-}
-
-// Core returns a core file generator
-func (g *Generator) Core() *CoreGenerator {
-	return &CoreGenerator{g: g}
-}
-
-// Config returns a config file generator
-func (g *Generator) Config() *ConfigGenerator {
-	return &ConfigGenerator{g: g}
-}
-
-// DockerFiles returns a docker file generator
-func (g *Generator) Docker() *DockerGenerator {
-	return &DockerGenerator{g: g}
-}
-
-func (g *Generator) Storage() *genstorage.StorageGenerator {
-	return &genstorage.StorageGenerator{g: g, db: g.Databases()}
-}
-
-// I18n returns an i18n file generator
-func (g *Generator) I18n() *I18nGenerator {
-	return &I18nGenerator{g: g}
-}
-
-// Web returns a web file generator
-func (g *Generator) Web() *WebGenerator {
-	return &WebGenerator{g: g}
-}
-
-func (g *Generator) Worker() *WorkerGenerator {
-	return &WorkerGenerator{g: g}
-}
-
-func (g *Generator) Repository() *RepositoryGenerator {
-	return &RepositoryGenerator{g: g}
-}
-
-func (g *Generator) Service() *ServiceGenerator {
-	return &ServiceGenerator{g: g}
-}
-
-func (g *Generator) Mailer() *MailerGenerator {
-	return &MailerGenerator{g: g}
-}
-
-func (g *Generator) Handler() *HandlerGenerator {
-	return &HandlerGenerator{g: g}
-}
-
-func (g *Generator) Task() *TaskGenerator {
-	return &TaskGenerator{g: g}
-}
-
-// CreateDirectory creates a directory if it doesn't exist
-func (g *Generator) CreateDirectory(path string) error {
-	err := os.MkdirAll(path, 0755)
-	if err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", path, err)
-	}
-
-	return nil
+	GoModuleName     string
+	DatabaseType     configuration.DatabaseType
+	ORMType          string
+	Maintainer       bool
+	HTTPServer       bool
+	ExampleHTTPFiles bool
+	WorkerType       string
 }
 
 type FilesGenerator interface {
@@ -146,5 +75,21 @@ func (g *Generator) GenerateFile(f FileConfig) error {
 	}
 
 	return nil
+}
 
+// CreateDirectory creates a directory if it doesn't exist
+func (g *Generator) CreateDirectory(path string) error {
+	err := os.MkdirAll(path, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", path, err)
+	}
+
+	return nil
+}
+
+func (g *Generator) SkipDirectoryIfExists(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false // Directory does not exist, so we can create it
+	}
+	return true // Directory exists, so we skip creating it
 }

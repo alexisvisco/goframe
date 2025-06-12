@@ -69,6 +69,48 @@ func (g *GoFile) HasImport(path string) bool {
 	return astutil.UsesImport(g.File, path)
 }
 
+// HasStruct checks if the file contains a struct with the given name.
+func (g *GoFile) HasStruct(structName string) bool {
+	found := false
+	ast.Inspect(g.File, func(n ast.Node) bool {
+		typeSpec, ok := n.(*ast.TypeSpec)
+		if !ok {
+			return true
+		}
+
+		if typeSpec.Name.Name == structName {
+			_, isStruct := typeSpec.Type.(*ast.StructType)
+			if isStruct {
+				found = true
+				return false
+			}
+		}
+		return true
+	})
+	return found
+}
+
+// HasInterface checks if the file contains an interface with the given name.
+func (g *GoFile) HasInterface(interfaceName string) bool {
+	found := false
+	ast.Inspect(g.File, func(n ast.Node) bool {
+		typeSpec, ok := n.(*ast.TypeSpec)
+		if !ok {
+			return true
+		}
+
+		if typeSpec.Name.Name == interfaceName {
+			_, isInterface := typeSpec.Type.(*ast.InterfaceType)
+			if isInterface {
+				found = true
+				return false
+			}
+		}
+		return true
+	})
+	return found
+}
+
 // AddNamedImport adds an import with an optional alias and syncs lines.
 func (g *GoFile) AddNamedImport(name, path string) {
 	if g.HasImport(path) {

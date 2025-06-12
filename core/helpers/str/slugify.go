@@ -31,7 +31,7 @@ func Slugify(s string) string {
 	// Convert to lowercase
 	s = strings.ToLower(s)
 
-	// Create a transform that decomposes Unicode characters and removes diacritics
+	// GenerateHandler a transform that decomposes Unicode characters and removes diacritics
 	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
 	result, _, _ := transform.String(t, s)
 

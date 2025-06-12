@@ -16,7 +16,7 @@ import (
 
 type (
 	DatabaseGenerator struct {
-		g *generators.Generator
+		Gen *generators.Generator
 	}
 
 	CreateMigrationParams struct {
@@ -36,34 +36,34 @@ type (
 var fs embed.FS
 
 func (g *DatabaseGenerator) Generate() error {
-	if err := g.g.CreateDirectory("db/migrations"); err != nil {
+	if err := g.Gen.CreateDirectory("db/migrations"); err != nil {
 		return fmt.Errorf("failed to create migrations directory: %w", err)
 	}
 
 	files := []generators.FileConfig{
-		g.CreateDBProvider("internal/provider/provide_db.go"),
-		g.UpdateOrCreateMigrations("db/migrations.go"),
+		g.createDBProvider("internal/provide/provide_db.go"),
+		g.updateOrCreateMigrations("db/migrations.go"),
 	}
 
-	if err := g.g.GenerateFiles(files); err != nil {
+	if err := g.Gen.GenerateFiles(files); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// CreateDBProvider creates the FileConfig for the database provider
-func (g *DatabaseGenerator) CreateDBProvider(path string) generators.FileConfig {
+// createDBProvider creates the FileConfig for the database provider
+func (g *DatabaseGenerator) createDBProvider(path string) generators.FileConfig {
 	return generators.FileConfig{
 		Path:     path,
 		Template: typeutil.Must(fs.ReadFile("templates/provide_db.go.tmpl")),
 		Gen: func(gen *genhelper.GenHelper) {
-			gen.WithImport(filepath.Join(g.g.GoModuleName, "config"), "config").
-				WithImport(filepath.Join(g.g.GoModuleName, "db"), "db").
+			gen.WithImport(filepath.Join(g.Gen.GoModuleName, "config"), "config").
+				WithImport(filepath.Join(g.Gen.GoModuleName, "db"), "db").
 				WithImport("gorm.io/gorm", "gorm").
-				WithVar("db", g.g.DatabaseType)
+				WithVar("db", g.Gen.DatabaseType)
 
-			switch g.g.DatabaseType {
+			switch g.Gen.DatabaseType {
 			case "postgres":
 				gen.WithImport("gorm.io/driver/postgres", "postgres")
 			case "sqlite":
@@ -71,6 +71,24 @@ func (g *DatabaseGenerator) CreateDBProvider(path string) generators.FileConfig 
 			}
 		},
 	}
+}
+
+func (g *DatabaseGenerator) GenerateMigration(params CreateMigrationParams) error {
+	if len(params.Name) == 0 {
+		return fmt.Errorf("migration name is required")
+	}
+
+	if params.At.IsZero() {
+		params.At = time.Now()
+	}
+
+	files := g.CreateMigration(params)
+
+	if err := g.Gen.GenerateFiles(files); err != nil {
+		return fmt.Errorf("failed to generate migration files: %w", err)
+	}
+
+	return nil
 }
 
 func (g *DatabaseGenerator) CreateMigration(params CreateMigrationParams) []generators.FileConfig {
@@ -82,10 +100,10 @@ func (g *DatabaseGenerator) CreateMigration(params CreateMigrationParams) []gene
 		migrationFile = g.createGoMigrationFile(params)
 	}
 
-	return []generators.FileConfig{migrationFile, g.UpdateOrCreateMigrations("db/migrations.go")}
+	return []generators.FileConfig{migrationFile, g.updateOrCreateMigrations("db/migrations.go")}
 }
 
-func (g *DatabaseGenerator) UpdateOrCreateMigrations(path string) generators.FileConfig {
+func (g *DatabaseGenerator) updateOrCreateMigrations(path string) generators.FileConfig {
 	hasSQLMigrations, hasGoMigrations, list := g.buildMigrationList()
 
 	return generators.FileConfig{
@@ -98,7 +116,7 @@ func (g *DatabaseGenerator) UpdateOrCreateMigrations(path string) generators.Fil
 			}
 
 			if hasGoMigrations {
-				gh.WithImport(filepath.Join(g.g.GoModuleName, "db/migrations"), "migrations")
+				gh.WithImport(filepath.Join(g.Gen.GoModuleName, "db/migrations"), "migrations")
 			}
 
 			gh.WithVar("migrations", list)

@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/alexisvisco/goframe/cli/generators"
+	"github.com/alexisvisco/goframe/cli/generators/gendb"
+	"github.com/alexisvisco/goframe/cli/generators/genhelper"
 	"github.com/spf13/cobra"
 )
 
@@ -12,9 +14,9 @@ func migrationCmd() *cobra.Command {
 	var flagSql bool
 	cmd := &cobra.Command{
 		Use:   "migration <name>",
-		Short: "Create a new migration file",
-		Long:  "Create a new migration file with a timestamp and the specified name.",
-		RunE: withFileDiff(func(cmd *cobra.Command, args []string) error {
+		Short: "GenerateHandler a new migration file",
+		Long:  "GenerateHandler a new migration file with a timestamp and the specified name.",
+		RunE: genhelper.WithFileDiff(func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return fmt.Errorf("migration name is required")
 			}
@@ -26,7 +28,9 @@ func migrationCmd() *cobra.Command {
 				ORMType:      "gorm",
 			}
 
-			return g.Databases().CreateMigration(generators.CreateMigrationParams{
+			genDB := &gendb.DatabaseGenerator{Gen: &g}
+
+			return genDB.GenerateMigration(gendb.CreateMigrationParams{
 				Sql:  flagSql,
 				Name: name,
 				At:   time.Now(),

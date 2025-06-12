@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/alexisvisco/goframe/cli/generators"
+	"github.com/alexisvisco/goframe/cli/generators/geni18n"
 	"github.com/alexisvisco/goframe/core/configuration"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +26,7 @@ func NewCmdI18n() *cobra.Command {
 func newCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "new <name>",
-		Short: "Create a new i18n translation file",
+		Short: "GenerateHandler a new i18n translation file",
 		Long: `WriteTo i18n files from a yaml file.
 Example:
 	$ goframe i18n new translations
@@ -39,10 +40,11 @@ Will generate N * translations.{lang}.yaml files, based on the config of availab
 			g := generators.Generator{
 				GoModuleName: cmd.Context().Value("module").(string),
 			}
+			genI18n := geni18n.I18nGenerator{Gen: &g}
 
 			cfg := cmd.Context().Value("config.i18n").(configuration.I18n)
 
-			files, err := g.I18n().NewFile(args[0], "config/i18n", cfg)
+			files, err := genI18n.NewFile(args[0], "config/i18n", cfg)
 			if err != nil {
 				return fmt.Errorf("error creating new i18n file: %w", err)
 			}
@@ -54,7 +56,7 @@ Will generate N * translations.{lang}.yaml files, based on the config of availab
 				}
 			}
 
-			file, err := g.I18n().CreateOrUpdateGoFile(args[0], "config/i18n", cfg)
+			file, err := genI18n.CreateOrUpdateGoFile(args[0], "config/i18n", cfg)
 			if err != nil {
 				return fmt.Errorf("error creating or updating Go file for i18n: %w", err)
 			}
@@ -106,10 +108,10 @@ default language in configuration.`,
 			g := generators.Generator{
 				GoModuleName: cmd.Context().Value("module").(string),
 			}
-
+			genI18n := geni18n.I18nGenerator{Gen: &g}
 			cfg := cmd.Context().Value("config.i18n").(configuration.I18n)
 
-			file, err := g.I18n().CreateOrUpdateGoFile(args[0], "config/i18n", cfg)
+			file, err := genI18n.CreateOrUpdateGoFile(args[0], "config/i18n", cfg)
 			if err != nil {
 				return fmt.Errorf("error creating or updating Go file for i18n: %w", err)
 			}
@@ -145,10 +147,11 @@ files.`,
 			g := generators.Generator{
 				GoModuleName: cmd.Context().Value("module").(string),
 			}
+			genI18n := geni18n.I18nGenerator{Gen: &g}
 
 			cfg := cmd.Context().Value("config.i18n").(configuration.I18n)
 
-			files, err := g.I18n().SyncTranslationFiles(args[0], "", cfg)
+			files, err := genI18n.SyncTranslationFiles(args[0], "", cfg)
 			if err != nil {
 				return fmt.Errorf("error synchronizing i18n translations: %w", err)
 			}

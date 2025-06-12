@@ -315,7 +315,7 @@ func processSliceValues(value reflect.Value, values []string, field reflect.Stru
 		return nil
 	}
 
-	// Create a new slice to hold the values
+	// GenerateHandler a new slice to hold the values
 	slice := reflect.MakeSlice(value.Type(), 0, len(values))
 	elemType := value.Type().Elem()
 
@@ -677,7 +677,7 @@ func bindFiles(tag string, field reflect.StructField, value reflect.Value, req *
 		}
 	}
 
-	// Create a new slice to hold the file headers
+	// GenerateHandler a new slice to hold the file headers
 	slice := reflect.MakeSlice(value.Type(), 0, len(headers))
 	for _, header := range headers {
 		slice = reflect.Append(slice, reflect.ValueOf(header))
@@ -698,7 +698,7 @@ func bindDefault(tag string, field reflect.StructField, value reflect.Value, opt
 	if value.Kind() == reflect.Slice {
 		defaultValues := strings.Split(tag, ",")
 
-		// Create a slice to hold the default values
+		// GenerateHandler a slice to hold the default values
 		slice := reflect.MakeSlice(value.Type(), 0, len(defaultValues))
 		elemType := value.Type().Elem()
 
@@ -831,7 +831,7 @@ func setValueFromString(value reflect.Value, input string, field reflect.StructF
 		value.SetFloat(f)
 
 	case reflect.Ptr:
-		// Create a new value of the element type
+		// GenerateHandler a new value of the element type
 		elemType := value.Type().Elem()
 		newVal := reflect.New(elemType)
 

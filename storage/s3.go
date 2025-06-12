@@ -61,7 +61,7 @@ func (s *S3Storage) UploadAttachment(ctx context.Context, opts coretypes.UploadA
 		id = *opts.CurrentAttachmentID
 	}
 
-	// Create temporary file
+	// GenerateHandler temporary file
 	tmpFile, err := os.CreateTemp("", "upload-*")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)

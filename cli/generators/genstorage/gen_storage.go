@@ -2,7 +2,6 @@ package genstorage
 
 import (
 	"embed"
-	"fmt"
 	"path/filepath"
 	"time"
 
@@ -14,8 +13,8 @@ import (
 )
 
 type StorageGenerator struct {
-	g  *generators.Generator
-	db *gendb.DatabaseGenerator
+	Gen   *generators.Generator
+	DBGen *gendb.DatabaseGenerator
 }
 
 //go:embed templates
@@ -28,7 +27,7 @@ func (p *StorageGenerator) Generate() error {
 
 	files = append(files, p.CreateMigrations()...)
 
-	return p.g.GenerateFiles(files)
+	return p.Gen.GenerateFiles(files)
 }
 
 // CreateStorageProvider creates the FileConfig for the storage provider
@@ -37,7 +36,7 @@ func (p *StorageGenerator) CreateStorageProvider(path string) generators.FileCon
 		Path:     path,
 		Template: typeutil.Must(fs.ReadFile("templates/provide_storage.go.tmpl")),
 		Gen: func(g *genhelper.GenHelper) {
-			g.WithImport(filepath.Join(p.g.GoModuleName, "config"), "config")
+			g.WithImport(filepath.Join(p.Gen.GoModuleName, "config"), "config")
 		},
 	}
 }
@@ -45,7 +44,7 @@ func (p *StorageGenerator) CreateStorageProvider(path string) generators.FileCon
 func (p *StorageGenerator) CreateMigrations() []generators.FileConfig {
 	up := p.getSQLMigration()
 
-	return p.db.CreateMigration(gendb.CreateMigrationParams{
+	return p.DBGen.CreateMigration(gendb.CreateMigrationParams{
 		Sql:  true,
 		Name: "storage",
 		At:   time.Now(),
@@ -56,7 +55,7 @@ func (p *StorageGenerator) CreateMigrations() []generators.FileConfig {
 
 // getSQLMigration returns the SQL for creating the attachments table based on database type
 func (p *StorageGenerator) getSQLMigration() string {
-	switch p.g.DatabaseType {
+	switch p.Gen.DatabaseType {
 	case configuration.DatabaseTypeSQLite:
 		return `
 CREATE TABLE IF NOT EXISTS attachments (
