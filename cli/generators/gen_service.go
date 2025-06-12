@@ -126,43 +126,16 @@ func (s *ServiceGenerator) updateRegistry() error {
 
 func (s *ServiceGenerator) updateAppModule() error {
 	path := "internal/app/module.go"
-	data, err := os.ReadFile(path)
+	gf, err := genhelper.LoadGoFile(path)
 	if err != nil {
 		return nil
 	}
-	lines := strings.Split(string(data), "\n")
-	hasImport := false
-	for _, l := range lines {
-		if strings.Contains(l, "/internal/service") {
-			hasImport = true
-			break
-		}
+
+	gf.AddNamedImport("", filepath.Join(s.g.GoModuleName, "internal/service"))
+	if err := gf.AddReturnCompositeElement("Module", "fx.Provide(service.Dependencies...)"); err != nil {
+		return err
 	}
-	if !hasImport {
-		for i, l := range lines {
-			if strings.TrimSpace(l) == "import (" {
-				importLine := fmt.Sprintf("\t\"%s\"", filepath.Join(s.g.GoModuleName, "internal/service"))
-				lines = append(lines[:i+1], append([]string{importLine}, lines[i+1:]...)...)
-				break
-			}
-		}
-	}
-	hasProvide := false
-	for _, l := range lines {
-		if strings.Contains(l, "service.Dependencies") {
-			hasProvide = true
-			break
-		}
-	}
-	if !hasProvide {
-		for i, l := range lines {
-			if strings.Contains(l, "fx.Provide(") {
-				lines = append(lines[:i], append([]string{"    fx.Provide(service.Dependencies...),"}, lines[i:]...)...)
-				break
-			}
-		}
-	}
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0644)
+	return gf.Save()
 }
 
 func (s *ServiceGenerator) Create(name string, withRepo bool) error {

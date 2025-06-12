@@ -149,41 +149,14 @@ func (m *MailerGenerator) Create(name, action string) error {
 
 func (m *MailerGenerator) updateAppModule() error {
 	path := "internal/app/module.go"
-	data, err := os.ReadFile(path)
+	gf, err := genhelper.LoadGoFile(path)
 	if err != nil {
 		return nil
 	}
-	lines := strings.Split(string(data), "\n")
-	hasImport := false
-	for _, l := range lines {
-		if strings.Contains(l, "/internal/mailer") {
-			hasImport = true
-			break
-		}
+
+	gf.AddNamedImport("", filepath.Join(m.g.GoModuleName, "internal/mailer"))
+	if err := gf.AddReturnCompositeElement("Module", "fx.Provide(mailer.Dependencies...)"); err != nil {
+		return err
 	}
-	if !hasImport {
-		for i, l := range lines {
-			if strings.TrimSpace(l) == "import (" {
-				importLine := fmt.Sprintf("\t\"%s\"", filepath.Join(m.g.GoModuleName, "internal/mailer"))
-				lines = append(lines[:i+1], append([]string{importLine}, lines[i+1:]...)...)
-				break
-			}
-		}
-	}
-	hasProvide := false
-	for _, l := range lines {
-		if strings.Contains(l, "mailer.Dependencies") {
-			hasProvide = true
-			break
-		}
-	}
-	if !hasProvide {
-		for i, l := range lines {
-			if strings.Contains(l, "fx.Provide(") {
-				lines = append(lines[:i], append([]string{"    fx.Provide(mailer.Dependencies...),"}, lines[i:]...)...)
-				break
-			}
-		}
-	}
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0644)
+	return gf.Save()
 }

@@ -122,43 +122,16 @@ func (r *RepositoryGenerator) updateRegistry() error {
 
 func (r *RepositoryGenerator) updateAppModule() error {
 	path := "internal/app/module.go"
-	data, err := os.ReadFile(path)
+	gf, err := genhelper.LoadGoFile(path)
 	if err != nil {
 		return nil
 	}
-	lines := strings.Split(string(data), "\n")
-	hasImport := false
-	for _, l := range lines {
-		if strings.Contains(l, "/internal/repository") {
-			hasImport = true
-			break
-		}
+
+	gf.AddNamedImport("", filepath.Join(r.g.GoModuleName, "internal/repository"))
+	if err := gf.AddReturnCompositeElement("Module", "fx.Provide(repository.Dependencies...)"); err != nil {
+		return err
 	}
-	if !hasImport {
-		for i, l := range lines {
-			if strings.TrimSpace(l) == "import (" {
-				importLine := fmt.Sprintf("\t\"%s\"", filepath.Join(r.g.GoModuleName, "internal/repository"))
-				lines = append(lines[:i+1], append([]string{importLine}, lines[i+1:]...)...)
-				break
-			}
-		}
-	}
-	hasProvide := false
-	for _, l := range lines {
-		if strings.Contains(l, "repository.Dependencies") {
-			hasProvide = true
-			break
-		}
-	}
-	if !hasProvide {
-		for i, l := range lines {
-			if strings.Contains(l, "fx.Provide(") {
-				lines = append(lines[:i], append([]string{"    fx.Provide(repository.Dependencies...),"}, lines[i:]...)...)
-				break
-			}
-		}
-	}
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0644)
+	return gf.Save()
 }
 
 func (r *RepositoryGenerator) Create(name string) error {
