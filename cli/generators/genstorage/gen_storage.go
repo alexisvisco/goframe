@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alexisvisco/goframe/cli/generators"
+	"github.com/alexisvisco/goframe/cli/generators/gendb"
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
 	"github.com/alexisvisco/goframe/core/configuration"
 	"github.com/alexisvisco/goframe/core/helpers/typeutil"
@@ -14,7 +15,7 @@ import (
 
 type StorageGenerator struct {
 	g  *generators.Generator
-	db *generators.DatabaseGenerator
+	db *gendb.DatabaseGenerator
 }
 
 //go:embed templates
@@ -25,15 +26,9 @@ func (p *StorageGenerator) Generate() error {
 		p.CreateStorageProvider("internal/provide/provide_storage.go"),
 	}
 
-	if err := p.g.GenerateFiles(files); err != nil {
-		return err
-	}
+	files = append(files, p.AddMigrations()...)
 
-	if err := p.AddMigrations(); err != nil {
-		return fmt.Errorf("failed to generate storage migration: %w", err)
-	}
-
-	return nil
+	return p.g.GenerateFiles(files)
 }
 
 // CreateStorageProvider creates the FileConfig for the storage provider
@@ -47,10 +42,10 @@ func (p *StorageGenerator) CreateStorageProvider(path string) generators.FileCon
 	}
 }
 
-func (p *StorageGenerator) AddMigrations() error {
+func (p *StorageGenerator) AddMigrations() []generators.FileConfig {
 	up := p.getSQLMigration()
 
-	return p.db.CreateMigration(generators.CreateMigrationParams{
+	return p.db.CreateMigration(gendb.CreateMigrationParams{
 		Sql:  true,
 		Name: "storage",
 		At:   time.Now(),

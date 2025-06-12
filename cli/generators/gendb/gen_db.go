@@ -1,4 +1,4 @@
-package generators
+package gendb
 
 import (
 	"embed"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/alexisvisco/goframe/cli/generators"
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
-	"github.com/alexisvisco/goframe/cli/generators/templates"
 	"github.com/alexisvisco/goframe/core/helpers/str"
 	"github.com/alexisvisco/goframe/core/helpers/typeutil"
 )
