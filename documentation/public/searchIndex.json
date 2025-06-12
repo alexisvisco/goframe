@@ -1,0 +1,15 @@
+[
+  {"title":"Welcome to Goframe","slug":"/","text":"Goframe is a modular Golang framework that helps you bootstrap web and background applications quickly."},
+  {"title":"Init Command","slug":"/init","text":"goframe comes with a generator that creates a full project skeleton."},
+  {"title":"Project Architecture","slug":"/architecture","text":"A generated project follows a clean separation of concerns."},
+  {"title":"Configuration","slug":"/config","text":"Application settings live in config/config.yml and support environment variable expansion."},
+  {"title":"Providers","slug":"/providers","text":"Providers build infrastructure pieces such as the database connection."},
+  {"title":"Repository","slug":"/repository","text":"Repositories encapsulate data persistence."},
+  {"title":"Service","slug":"/service","text":"Services implement business logic and coordinate repositories."},
+  {"title":"Handler","slug":"/handler","text":"Handlers expose HTTP endpoints and translate requests into service calls."},
+  {"title":"Tasks","slug":"/tasks","text":"Tasks are long-running or administrative commands executed from the CLI."},
+  {"title":"Worker","slug":"/worker","text":"Goframe relies on Temporal for background processing."},
+  {"title":"CLI","slug":"/cli","text":"The command line interface is your entry point for generators and tasks."},
+  {"title":"Validation","slug":"/validation","text":"The framework uses ValidationError to represent invalid input."},
+  {"title":"HTTP Struct Binding","slug":"/binding","text":"The params package binds request data into Go structs."}
+]
