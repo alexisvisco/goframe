@@ -26,7 +26,7 @@ func newCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "new <name>",
 		Short: "Create a new i18n translation file",
-		Long: `Generate i18n files from a yaml file.
+		Long: `WriteTo i18n files from a yaml file.
 Example:
 	$ goframe i18n new translations
 	
@@ -73,7 +73,7 @@ func generateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "generate <name>",
 		Short: "Regenerate the go file for i18n translations",
-		Long: `Generate go code based on yaml i18n file.
+		Long: `WriteTo go code based on yaml i18n file.
 Example:
 	$ goframe i18n gen translations
 

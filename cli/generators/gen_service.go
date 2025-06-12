@@ -121,48 +121,19 @@ func (s *ServiceGenerator) updateRegistry() error {
 	gh.WithImport(filepath.Join(s.g.GoModuleName, "internal/types"), "types").
 		WithImport("github.com/alexisvisco/goframe/core/helpers/fxutil", "fxutil")
 	s.g.TrackFile(path, false, CategoryWeb)
-	return gh.WithVar("services", svcs).Generate(file)
+	return gh.WithVar("services", svcs).WriteTo(file)
 }
 
 func (s *ServiceGenerator) updateAppModule() error {
 	path := "internal/app/module.go"
-	data, err := os.ReadFile(path)
+	gf, err := genhelper.LoadGoFile(path)
 	if err != nil {
 		return nil
 	}
-	lines := strings.Split(string(data), "\n")
-	hasImport := false
-	for _, l := range lines {
-		if strings.Contains(l, "/internal/service") {
-			hasImport = true
-			break
-		}
-	}
-	if !hasImport {
-		for i, l := range lines {
-			if strings.TrimSpace(l) == "import (" {
-				importLine := fmt.Sprintf("\t\"%s\"", filepath.Join(s.g.GoModuleName, "internal/service"))
-				lines = append(lines[:i+1], append([]string{importLine}, lines[i+1:]...)...)
-				break
-			}
-		}
-	}
-	hasProvide := false
-	for _, l := range lines {
-		if strings.Contains(l, "service.Dependencies") {
-			hasProvide = true
-			break
-		}
-	}
-	if !hasProvide {
-		for i, l := range lines {
-			if strings.Contains(l, "fx.Provide(") {
-				lines = append(lines[:i], append([]string{"    fx.Provide(service.Dependencies...),"}, lines[i:]...)...)
-				break
-			}
-		}
-	}
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0644)
+
+	gf.AddNamedImport("", filepath.Join(s.g.GoModuleName, "internal/service"))
+	gf.AddLineAfterString("return []fx.Option{", "\tfx.Provide(service.Dependencies...),")
+	return gf.Save()
 }
 
 func (s *ServiceGenerator) Create(name string, withRepo bool) error {

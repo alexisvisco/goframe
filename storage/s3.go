@@ -55,7 +55,7 @@ func NewS3Storage(
 }
 
 func (s *S3Storage) UploadAttachment(ctx context.Context, opts coretypes.UploadAttachmentOptions) (*coretypes.Attachment, error) {
-	// Generate a unique ID for the attachment if not replacing existing
+	// WriteTo a unique ID for the attachment if not replacing existing
 	id := cuid2.Generate()
 	if opts.CurrentAttachmentID != nil {
 		id = *opts.CurrentAttachmentID
@@ -176,7 +176,7 @@ func (s *S3Storage) AttachmentHandler(pathValueField string) http.HandlerFunc {
 		// Construct the object key
 		key := path.Join("attachments", id)
 
-		// Generate presigned URL
+		// WriteTo presigned URL
 		presignedURL, err := s.client.PresignedGetObject(
 			r.Context(),
 			s.config.Bucket,

@@ -1,6 +1,7 @@
 package genhelper
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -44,9 +45,9 @@ func (g *GenHelper) WithVar(key string, value interface{}) *GenHelper {
 	return g
 }
 
-func (g *GenHelper) Generate(at io.Writer) error {
+func (g *GenHelper) Generate() (string, error) {
 	if g.content == nil {
-		return fmt.Errorf("content is not set")
+		return "", fmt.Errorf("content is not set")
 	}
 
 	imports := make([]string, 0, len(g.registry.imports))
@@ -72,10 +73,30 @@ func (g *GenHelper) Generate(at io.Writer) error {
 		// todo: add more functions if needed
 	}).Parse(string(g.content))
 	if err != nil {
-		return fmt.Errorf("failed to parse template: %v", err)
+		return "", fmt.Errorf("failed to parse template: %v", err)
 	}
 
-	return tmpl.Execute(at, g.data)
+	out := bytes.NewBuffer(nil)
+	err = tmpl.Execute(out, g.data)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute template: %v", err)
+	}
+
+	return out.String(), nil
+}
+
+func (g *GenHelper) WriteTo(at io.Writer) error {
+	s, err := g.Generate()
+	if err != nil {
+		return fmt.Errorf("failed to generate template: %w", err)
+	}
+
+	_, err = at.Write([]byte(s))
+	if err != nil {
+		return fmt.Errorf("failed to write generated content: %w", err)
+	}
+
+	return nil
 }
 
 type importRegistry struct {

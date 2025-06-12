@@ -190,7 +190,7 @@ func (g *I18nGenerator) needsStringsPackage(node *I18nTranslationNode) bool {
 func (g *I18nGenerator) generateStructCode(node *I18nTranslationNode, baseStruct, currentStruct, prefix string) string {
 	var sb strings.Builder
 
-	// Generate struct
+	// WriteTo struct
 	sb.WriteString(fmt.Sprintf("type %s struct {\n", currentStruct))
 	sb.WriteString("\ttranslations *i18n.Translations\n")
 
@@ -206,7 +206,7 @@ func (g *I18nGenerator) generateStructCode(node *I18nTranslationNode, baseStruct
 	}
 	sb.WriteString("}\n\n")
 
-	// Generate initialization method if struct has children
+	// WriteTo initialization method if struct has children
 	if hasChildren {
 		sb.WriteString(fmt.Sprintf("func (t *%s) initializeStructs() {\n", currentStruct))
 		for key, child := range node.Children {
@@ -222,7 +222,7 @@ func (g *I18nGenerator) generateStructCode(node *I18nTranslationNode, baseStruct
 		sb.WriteString("}\n\n")
 	}
 
-	// Generate nested structs
+	// WriteTo nested structs
 	for key, child := range node.Children {
 		if len(child.Children) > 0 {
 			fieldName := formatStructName(key)
@@ -231,13 +231,13 @@ func (g *I18nGenerator) generateStructCode(node *I18nTranslationNode, baseStruct
 		}
 	}
 
-	// Generate methods
+	// WriteTo methods
 	for key, child := range node.Children {
 		if child.Value != "" {
 			methodName := formatStructName(key)
 			fullKey := joinPrefix(prefix, key)
 
-			// Generate method signature
+			// WriteTo method signature
 			sb.WriteString(fmt.Sprintf("func (t *%s) %s(ctx context.Context, ", currentStruct, methodName))
 			for i, param := range child.Parameters {
 				if i > 0 {
@@ -247,7 +247,7 @@ func (g *I18nGenerator) generateStructCode(node *I18nTranslationNode, baseStruct
 			}
 			sb.WriteString(") string {\n")
 
-			// Generate return statement
+			// WriteTo return statement
 			if len(child.Parameters) > 0 {
 				// Create format string with proper format specifiers
 				args := make([]string, len(child.Parameters))
@@ -286,7 +286,7 @@ func (g *I18nGenerator) generateEmbedsFilesVariablesCode(file string, locales []
 	var sb strings.Builder
 	files := make(map[string]string)
 
-	// Generate //go:embed directive for all locale files
+	// WriteTo //go:embed directive for all locale files
 	sb.WriteString("//go:embed")
 	for _, locale := range locales {
 		sb.WriteString(fmt.Sprintf(" %s.%s.yml", file, locale))
@@ -297,7 +297,7 @@ func (g *I18nGenerator) generateEmbedsFilesVariablesCode(file string, locales []
 	embedVarName := fmt.Sprintf("%sTranslations", file)
 	sb.WriteString(fmt.Sprintf("var %s embed.FS\n\n", embedVarName))
 
-	// Generate variables for each locale's content
+	// WriteTo variables for each locale's content
 	for _, locale := range locales {
 		varName := str.ToCamelCase(fmt.Sprintf("%s_%s_Translations", file, formatStructName(locale)))
 		filePath := fmt.Sprintf("%s.%s.yml", file, locale)
@@ -305,7 +305,7 @@ func (g *I18nGenerator) generateEmbedsFilesVariablesCode(file string, locales []
 		// Add entry to files map
 		files[locale] = varName
 
-		// Generate variable declaration
+		// WriteTo variable declaration
 		sb.WriteString(fmt.Sprintf("var %s = func() []byte {\n", varName))
 		sb.WriteString(fmt.Sprintf("\tcontent, err := %s.ReadFile(\"%s\")\n", embedVarName, filePath))
 		sb.WriteString("\tif err != nil {\n")

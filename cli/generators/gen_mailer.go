@@ -61,7 +61,7 @@ func (m *MailerGenerator) updateRegistry() error {
 
 	gh := genhelper.New("mailer", templates.InternalMailerRegistryGo)
 	m.g.TrackFile(path, false, CategoryMailer)
-	return gh.WithVar("mailers", mailers).Generate(file)
+	return gh.WithVar("mailers", mailers).WriteTo(file)
 }
 
 func (m *MailerGenerator) ensureMailerFile(name string) error {
@@ -87,35 +87,38 @@ func (m *MailerGenerator) ensureMailerFile(name string) error {
 
 func (m *MailerGenerator) ensureAction(name, action string) error {
 	path := filepath.Join("internal/mailer", fmt.Sprintf("mailer_%s.go", str.ToSnakeCase(name)))
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
 
-	// todo imports if not exists :
-	// "go.temporal.io/sdk/temporal"
-	// "github.com/alexisvisco/goframe/mail"
+	gofile, err := genhelper.LoadGoFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to load mailer file %s: %w", path, err)
+	}
 
 	pascalMailer := str.ToPascalCase(name)
 	pascalAction := str.ToPascalCase(action)
-	signature := fmt.Sprintf("func (m *%sMailer) %s", pascalMailer, pascalAction)
-	if strings.Contains(string(data), signature) {
-		return nil
+	if gofile.HasMethod(pascalMailer+"Mailer", pascalAction) {
+		return fmt.Errorf("action %s already exists in mailer %s", action, name)
 	}
 
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	f.WriteString("\n")
 	gh := genhelper.New("mailer", templates.InternalMailerActionGo)
 	gh.WithVar("mailer_pascal", pascalMailer).
 		WithVar("mailer_snake", str.ToSnakeCase(name)).
 		WithVar("action_pascal", pascalAction).
 		WithVar("action_snake", str.ToSnakeCase(action))
 	m.g.TrackFile(path, false, CategoryMailer)
-	return gh.Generate(f)
+	action, err = gh.Generate()
+	if err != nil {
+		return fmt.Errorf("failed to generate action %s for mailer %s: %w", action, name, err)
+	}
+
+	gofile.AddNamedImport("", "github.com/alexisvisco/goframe/mail")
+	gofile.AddNamedImport("", "go.temporal.io/sdk/temporal")
+	gofile.AddContent(action)
+
+	if err := gofile.Save(); err != nil {
+		return fmt.Errorf("failed to save mailer file %s: %w", path, err)
+	}
+
+	return nil
 }
 
 func (m *MailerGenerator) createViews(name, action string) error {
@@ -149,41 +152,12 @@ func (m *MailerGenerator) Create(name, action string) error {
 
 func (m *MailerGenerator) updateAppModule() error {
 	path := "internal/app/module.go"
-	data, err := os.ReadFile(path)
+	gf, err := genhelper.LoadGoFile(path)
 	if err != nil {
 		return nil
 	}
-	lines := strings.Split(string(data), "\n")
-	hasImport := false
-	for _, l := range lines {
-		if strings.Contains(l, "/internal/mailer") {
-			hasImport = true
-			break
-		}
-	}
-	if !hasImport {
-		for i, l := range lines {
-			if strings.TrimSpace(l) == "import (" {
-				importLine := fmt.Sprintf("\t\"%s\"", filepath.Join(m.g.GoModuleName, "internal/mailer"))
-				lines = append(lines[:i+1], append([]string{importLine}, lines[i+1:]...)...)
-				break
-			}
-		}
-	}
-	hasProvide := false
-	for _, l := range lines {
-		if strings.Contains(l, "mailer.Dependencies") {
-			hasProvide = true
-			break
-		}
-	}
-	if !hasProvide {
-		for i, l := range lines {
-			if strings.Contains(l, "fx.Provide(") {
-				lines = append(lines[:i], append([]string{"    fx.Provide(mailer.Dependencies...),"}, lines[i:]...)...)
-				break
-			}
-		}
-	}
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0644)
+
+	gf.AddNamedImport("", filepath.Join(m.g.GoModuleName, "internal/mailer"))
+	gf.AddLineAfterString("return []fx.Option{", "\t\tfx.Provide(mailer.Dependencies...),")
+	return gf.Save()
 }

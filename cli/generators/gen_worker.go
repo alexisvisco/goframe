@@ -17,49 +17,15 @@ type WorkerGenerator struct {
 
 func (w *WorkerGenerator) updateAppModule() error {
 	path := "internal/app/module.go"
-	data, err := os.ReadFile(path)
+	gf, err := genhelper.LoadGoFile(path)
 	if err != nil {
-		// app module may not exist yet
 		return nil
 	}
 
-	lines := strings.Split(string(data), "\n")
-	hasImport := false
-	for _, l := range lines {
-		if strings.Contains(l, "/internal/workflow") {
-			hasImport = true
-			break
-		}
-	}
+	gf.AddNamedImport("", filepath.Join(w.g.GoModuleName, "internal/workflow"))
+	gf.AddLineAfterString("return []fx.Option{", "\tfx.Provide(workflow.Dependencies...),")
 
-	if !hasImport {
-		for i, l := range lines {
-			if strings.TrimSpace(l) == "import (" {
-				importLine := fmt.Sprintf("\t\"%s\"", filepath.Join(w.g.GoModuleName, "internal/workflow"))
-				lines = append(lines[:i+1], append([]string{importLine}, lines[i+1:]...)...)
-				break
-			}
-		}
-	}
-
-	hasProvide := false
-	for _, l := range lines {
-		if strings.Contains(l, "workflow.Dependencies") {
-			hasProvide = true
-			break
-		}
-	}
-
-	if !hasProvide {
-		for i, l := range lines {
-			if strings.Contains(l, "fx.Provide(") {
-				lines = append(lines[:i], append([]string{"    fx.Provide(workflow.Dependencies...),"}, lines[i:]...)...)
-				break
-			}
-		}
-	}
-
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0644)
+	return gf.Save()
 }
 
 func (w *WorkerGenerator) Generate() error {
@@ -139,7 +105,7 @@ func (w *WorkerGenerator) UpdateOrCreateRegistrations() error {
 
 	if err := gh.WithVar("activities", activities).
 		WithVar("workflows", workflows).
-		Generate(file); err != nil {
+		WriteTo(file); err != nil {
 		return err
 	}
 
@@ -256,8 +222,7 @@ func (w *WorkerGenerator) createSendEmailWorkflow(path string) FileConfig {
 		Condition: true,
 		Category:  CategoryWorker,
 		Gen: func(g *genhelper.GenHelper) {
-			g.WithImport("context", "context").
-				WithImport("go.temporal.io/sdk/workflow", "workflow")
+			g.WithImport("go.temporal.io/sdk/workflow", "workflow")
 		},
 	}
 }
