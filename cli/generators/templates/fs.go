@@ -3,120 +3,120 @@ package templates
 import _ "embed"
 
 var (
-	//go:embed cmd__app__main.go.tmpl
+	//go:embed ../core/templates/app_main.go.tmpl
 	CmdAppMainGo []byte
 
-	//go:embed config__config.yml.tmpl
+	//go:embed ../config/templates/config.yml.tmpl
 	ConfigConfigYml []byte
 
-	//go:embed config__config.go.tmpl
+	//go:embed ../config/templates/config.go.tmpl
 	ConfigConfigGo []byte
 
-	//go:embed db__migrations.go.tmpl
+	//go:embed ../db/templates/migrations.go.tmpl
 	DBMigrationsGo []byte
 
-	//go:embed providers__provide_db.go.tmpl
+	//go:embed ../db/templates/provide_db.go.tmpl
 	ProvidersProvideDBGo []byte
 
-	//go:embed providers__provide_storage.go.tmpl
+	//go:embed ../storage/templates/provide_storage.go.tmpl
 	ProvidersProvideStorageGo []byte
 
-	//go:embed db__migrations__file.go.tmpl
+	//go:embed ../db/templates/migrations_file.go.tmpl
 	DBMigrationsFileGo []byte
 
-	//go:embed db__migrations__file.sql.tmpl
+	//go:embed ../db/templates/migrations_file.sql.tmpl
 	DBMigrationsFileSQL []byte
 
-	//go:embed cmd__cli__main.go.tmpl
+	//go:embed ../core/templates/cli_main.go.tmpl
 	CmdCLIMainGo []byte
 
-	//go:embed Dockerfile.tmpl
+	//go:embed ../docker/templates/Dockerfile.tmpl
 	Dockerfile []byte
 
-	//go:embed docker-compose.yml.tmpl
+	//go:embed ../docker/templates/docker-compose.yml.tmpl
 	DockerComposeYml []byte
 
-	//go:embed providers__provide_http.go.tmpl
+	//go:embed ../web/templates/provide_http.go.tmpl
 	ProvidersProvideHTTPServerGo []byte
 
-	//go:embed internal__repository__repository_example.go.tmpl
+	//go:embed ../repository/templates/repository_example.go.tmpl
 	InternalRepositoryExampleGo []byte
 
-	//go:embed internal__service__service_example.go.tmpl
+	//go:embed ../service/templates/service_example.go.tmpl
 	InternalServiceExampleGo []byte
 
-	//go:embed internal__v1handler__example.go.tmpl
+	//go:embed ../handler/templates/example.go.tmpl
 	InternalV1HandlerExampleGo []byte
 
-	//go:embed internal__types__example.go.tmpl
+	//go:embed ../types/templates/example.go.tmpl
 	InternalTypesExampleGo []byte
 
-	//go:embed internal__v1handler__router.go.tmpl
+	//go:embed ../handler/templates/router.go.tmpl
 	InternalV1HandlerRouterGo []byte
 
-	//go:embed internal__v1handler__registry.go.tmpl
+	//go:embed ../handler/templates/registry.go.tmpl
 	InternalV1HandlerRegistryGo []byte
 
-	//go:embed internal__v1handler__new.go.tmpl
+	//go:embed ../handler/templates/new.go.tmpl
 	InternalV1HandlerNewGo []byte
 
-	//go:embed bin__goframe.tmpl
+	//go:embed ../core/templates/goframe.tmpl
 	InternalBinGoframe []byte
 
-	//go:embed bin__mjml.tmpl
+	//go:embed ../core/templates/mjml.tmpl
 	BinMJML []byte
 
-	//go:embed internal__app__module.go.tmpl
+	//go:embed ../core/templates/module.go.tmpl
 	InternalAppModuleGo []byte
 
-	//go:embed internal__task__newtask.go.tmpl
+	//go:embed ../task/templates/newtask.go.tmpl
 	InternalTaskNewTaskGo []byte
 
-	//go:embed internal__workflow__registry.go.tmpl
+	//go:embed ../worker/templates/registry.go.tmpl
 	InternalWorkflowRegistryGo []byte
 
-	//go:embed internal__workflow__newworkflow.go.tmpl
+	//go:embed ../worker/templates/newworkflow.go.tmpl
 	InternalWorkflowNewWorkflowGo []byte
 
-	//go:embed internal__workflow__activity__newactivity.go.tmpl
+	//go:embed ../worker/templates/activity/newactivity.go.tmpl
 	InternalWorkflowActivityNewActivityGo []byte
 
-	//go:embed providers__provide_worker.go.tmpl
+	//go:embed ../worker/templates/provide_worker.go.tmpl
 	ProvidersProvideWorkerGo []byte
 
-	//go:embed config__i18n__translation.go.tmpl
+	//go:embed ../i18n/templates/translation.go.tmpl
 	ConfigI18nTranslationGo []byte
 
-	//go:embed internal__repository__new.go.tmpl
+	//go:embed ../repository/templates/new.go.tmpl
 	InternalRepositoryNewGo []byte
 
-	//go:embed internal__service__new.go.tmpl
+	//go:embed ../service/templates/new.go.tmpl
 	InternalServiceNewGo []byte
 
-	//go:embed internal__repository__registry.go.tmpl
+	//go:embed ../repository/templates/registry.go.tmpl
 	InternalRepositoryRegistryGo []byte
 
-	//go:embed internal__service__registry.go.tmpl
+	//go:embed ../service/templates/registry.go.tmpl
 	InternalServiceRegistryGo []byte
 
-	//go:embed internal__types__new.go.tmpl
+	//go:embed ../types/templates/new.go.tmpl
 	InternalTypesNewGo []byte
 
-	//go:embed internal__mailer__newmailer.go.tmpl
+	//go:embed ../mailer/templates/newmailer.go.tmpl
 	InternalMailerNewGo []byte
 
-	//go:embed internal__mailer__newmailer_action.go.tmpl
+	//go:embed ../mailer/templates/newmailer_action.go.tmpl
 	InternalMailerActionGo []byte
 
-	//go:embed internal__mailer__registry.go.tmpl
+	//go:embed ../mailer/templates/registry.go.tmpl
 	InternalMailerRegistryGo []byte
 
-	//go:embed views__mails__mail.txt.tmpl
+	//go:embed ../mailer/templates/mail.txt.tmpl
 	ViewMailTxt []byte
 
-	//go:embed views__mails__mail.mjml.tmpl
+	//go:embed ../mailer/templates/mail.mjml.tmpl
 	ViewMailMJML []byte
 
-	//go:embed internal__workflow__send_email.go.tmpl
+	//go:embed ../worker/templates/send_email.go.tmpl
 	InternalWorkflowSendEmailGo []byte
 )
