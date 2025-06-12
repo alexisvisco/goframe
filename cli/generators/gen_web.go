@@ -59,6 +59,12 @@ func (p *WebGenerator) Generate() error {
 		}
 	}
 
+	if p.g.WebFiles {
+		if err := p.g.Handler().Update(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

@@ -1,0 +1,26 @@
+package v1handler
+
+import (
+  {{ .imports }}
+)
+
+type {{ .name_pascal }}Handler struct {
+  {{- range .services }}
+  {{ .VarName }} types.{{ .ServiceName }}
+  {{- end }}
+}
+
+type {{ .name_pascal }}Params struct {
+  fx.In
+  {{- range .services }}
+  {{ .ServiceName }} types.{{ .ServiceName }}
+  {{- end }}
+}
+
+func New{{ .name_pascal }}Handler(p {{ .name_pascal }}Params) *{{ .name_pascal }}Handler {
+  return &{{ .name_pascal }}Handler{
+    {{- range .services }}
+    {{ .VarName }}: p.{{ .ServiceName }},
+    {{- end }}
+  }
+}

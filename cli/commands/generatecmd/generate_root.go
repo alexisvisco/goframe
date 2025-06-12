@@ -14,6 +14,7 @@ func NewCmdRootGenerate(subCommands ...*cobra.Command) *cobra.Command {
 	cmd.AddCommand(workerCmd())
 	cmd.AddCommand(repositoryCmd())
 	cmd.AddCommand(serviceCmd())
+	cmd.AddCommand(handlerCmd())
 	cmd.AddCommand(mailerCmd())
 	for _, subCmd := range subCommands {
 		cmd.AddCommand(subCmd)
