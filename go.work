@@ -1,9 +1,10 @@
 go 1.24.3
 
 use (
-	./cli
-	./core
-	./db
-	./http
-	./storage
+        ./cli
+        ./core
+        ./db
+        ./http
+        ./storage
+        ./mail
 )

@@ -2,24 +2,26 @@
 package workflow
 
 import (
+  "go.uber.org/fx"
   {{ .imports }}
 )
 
 type Registry struct {
+  fx.In
   {{- range .workflows }}
-  {{ . }} *{{ . }}
+  {{ .StructName }} *{{ .StructName }}
   {{- end }}
   {{- range .activities }}
-  {{ . }} *activity.{{ . }}
+  {{ .StructName }} *activity.{{ .StructName }}
   {{- end }}
 }
 
 var Dependencies = []any{
   {{- range .activities }}
-  activity.New{{ . }},
+  activity.New{{ .StructName }},
   {{- end }}
   {{- range .workflows }}
-  New{{ . }},
+  New{{ .StructName }},
   {{- end }}
   {{- if and (eq (len .workflows) 0) (eq (len .activities) 0) }}
   // TODO: add workflows and activities constructors
@@ -28,13 +30,9 @@ var Dependencies = []any{
 
 func Register(w worker.Worker, deps Registry) {
   {{- range .activities }}
-  w.RegisterActivity(deps.{{ . }}.Execute)
+  w.RegisterActivity(deps.{{ .StructName }}.{{ .MethodName}})
   {{- end }}
   {{- range .workflows }}
-  w.RegisterWorkflow(deps.{{ . }}.Execute)
-  {{- end }}
-  {{- if and (eq (len .workflows) 0) (eq (len .activities) 0) }}
-  // w.RegisterActivities(deps.ExampleWorkflow.Execute)
-  // w.RegisterActivities(deps.ExampleActivity.Execute)
+  w.RegisterWorkflow(deps.{{ .StructName }}.{{ .MethodName}})
   {{- end }}
 }

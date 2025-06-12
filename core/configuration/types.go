@@ -43,6 +43,17 @@ type (
 		TemporalTaskQueue string     `yaml:"temporal_task_queue"`
 	}
 
+	Mail struct {
+		Host      string        `yaml:"host"`
+		Port      int           `yaml:"port"`
+		Username  string        `yaml:"username"`
+		Password  string        `yaml:"password"`
+		AuthType  MailAuthType  `yaml:"auth_type"`  // Note: Fixed typo from AuthTYpe to AuthType
+		TLSPolicy MailTLSPolicy `yaml:"tls_policy"` // TLS policy for SMTP connection
+
+		DefaultFrom string `yaml:"default_from"`
+	}
+
 	I18n struct {
 		DefaultLocale    string   `yaml:"default_locale"`
 		SupportedLocales []string `yaml:"supported_locales"`
@@ -53,8 +64,10 @@ type (
 
 	StorageType string
 
-	DatabaseType string
-	WorkerType   string
+	DatabaseType  string
+	WorkerType    string
+	MailAuthType  string
+	MailTLSPolicy string
 )
 
 const (
@@ -69,4 +82,18 @@ const (
 
 const (
 	WorkerTypeTemporal WorkerType = "temporal"
+)
+
+const (
+	MailAuthTypeNone    MailAuthType = "none"
+	MailAuthTypePlain   MailAuthType = "plain"
+	MailAuthTypeLogin   MailAuthType = "login"
+	MailAuthTypeCRAMMD5 MailAuthType = "crammd5"
+)
+
+// TLS policy for SMTP connections
+const (
+	TLSPolicyNone          MailTLSPolicy = "none"          // No TLS (insecure, use only for testing)
+	TLSPolicyOpportunistic MailTLSPolicy = "opportunistic" // Use STARTTLS if available (default)
+	TLSPolicyMandatory     MailTLSPolicy = "mandatory"     // Require TLS via STARTTLS
 )

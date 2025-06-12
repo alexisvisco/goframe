@@ -11,6 +11,6 @@ func New{{ .name_pascal_case }}Activity() *{{ .name_pascal_case }}Activity {
 }
 
 // Execute runs the activity logic.
-func (a *{{ .name_pascal_case }}Activity) Execute(ctx context.Context) error {
+func (a *{{ .name_pascal_case }}Activity) {{ .name_pascal_case }}(ctx context.Context) error {
   return nil
 }

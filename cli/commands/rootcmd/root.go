@@ -10,6 +10,7 @@ import (
 	"github.com/alexisvisco/goframe/cli/commands/dbcmd"
 	"github.com/alexisvisco/goframe/cli/commands/generatecmd"
 	"github.com/alexisvisco/goframe/cli/commands/i18ncmd"
+	"github.com/alexisvisco/goframe/cli/commands/mailcmd"
 	"github.com/alexisvisco/goframe/cli/commands/routescmd"
 	"github.com/alexisvisco/goframe/cli/commands/taskcmd"
 	"github.com/alexisvisco/goframe/core/configuration"
@@ -120,6 +121,7 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 	cmd.AddCommand(taskCommand)
 	cmd.AddCommand(generateCommand)
 	cmd.AddCommand(routescmd.NewCmdRoutes())
+	cmd.AddCommand(mailcmd.NewCmdMail())
 	cmd.AddCommand(i18ncmd.NewCmdI18n())
 
 	return cmd
@@ -153,6 +155,14 @@ func applyConfigs(ctx context.Context, config any) context.Context {
 	wCfg, ok := config.(workerConfig)
 	if ok {
 		ctx = context.WithValue(ctx, "config.worker", wCfg.GetWorker())
+	}
+
+	type mailConfig interface {
+		GetMail() configuration.Mail
+	}
+	mCfg, ok := config.(mailConfig)
+	if ok {
+		ctx = context.WithValue(ctx, "config.mail", mCfg.GetMail())
 	}
 
 	return ctx

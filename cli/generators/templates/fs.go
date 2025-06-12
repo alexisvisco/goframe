@@ -57,6 +57,9 @@ var (
 	//go:embed bin__goframe.tmpl
 	InternalBinGoframe []byte
 
+	//go:embed bin__mjml.tmpl
+	BinMJML []byte
+
 	//go:embed internal__app__module.go.tmpl
 	InternalAppModuleGo []byte
 
@@ -92,4 +95,22 @@ var (
 
 	//go:embed internal__types__new.go.tmpl
 	InternalTypesNewGo []byte
+
+	//go:embed internal__mailer__newmailer.go.tmpl
+	InternalMailerNewGo []byte
+
+	//go:embed internal__mailer__newmailer_action.go.tmpl
+	InternalMailerActionGo []byte
+
+	//go:embed internal__mailer__registry.go.tmpl
+	InternalMailerRegistryGo []byte
+
+	//go:embed views__mails__mail.txt.tmpl
+	ViewMailTxt []byte
+
+	//go:embed views__mails__mail.mjml.tmpl
+	ViewMailMJML []byte
+
+	//go:embed internal__workflow__send_email.go.tmpl
+	InternalWorkflowSendEmailGo []byte
 )

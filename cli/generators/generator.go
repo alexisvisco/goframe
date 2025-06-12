@@ -147,7 +147,11 @@ func (g *Generator) Repository() *RepositoryGenerator {
 }
 
 func (g *Generator) Service() *ServiceGenerator {
-	return &ServiceGenerator{g: g}
+        return &ServiceGenerator{g: g}
+}
+
+func (g *Generator) Mailer() *MailerGenerator {
+        return &MailerGenerator{g: g}
 }
 
 // CreateDirectory creates a directory if it doesn't exist

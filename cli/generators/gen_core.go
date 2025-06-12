@@ -26,6 +26,7 @@ func (g *CoreGenerator) Generate() error {
 		g.createAppMain("cmd/app/main.go"),
 		g.createCliMain("cmd/cli/main.go"),
 		g.createBinGoFrame("bin/goframe"),
+		g.createBinMJML("bin/mjml"),
 		g.createInternalAppModule("internal/app/module.go"),
 	}
 
@@ -63,6 +64,7 @@ func (g *CoreGenerator) GenerateGoMod() error {
 		"github.com/alexisvisco/goframe/db",
 		"github.com/alexisvisco/goframe/cli",
 		"github.com/alexisvisco/goframe/storage",
+		"github.com/alexisvisco/goframe/mail",
 	}
 
 	dependencies := goframeDeps
@@ -102,7 +104,7 @@ func (g *CoreGenerator) GenerateGoMod() error {
 	g.g.TrackFile("go.mod", false, CategoryGo)
 
 	// Run go mod tidy
-	return g.RunGoModTidy()
+	return nil
 }
 
 // RunGoModTidy runs go mod tidy to update dependencies
@@ -123,6 +125,16 @@ func (g *CoreGenerator) createBinGoFrame(path string) FileConfig {
 	return FileConfig{
 		Path:       path,
 		Template:   templates.InternalBinGoframe,
+		Category:   CategoryCore,
+		Condition:  true,
+		Executable: true,
+	}
+}
+
+func (g *CoreGenerator) createBinMJML(path string) FileConfig {
+	return FileConfig{
+		Path:       path,
+		Template:   templates.BinMJML,
 		Category:   CategoryCore,
 		Condition:  true,
 		Executable: true,

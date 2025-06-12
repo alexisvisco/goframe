@@ -68,7 +68,7 @@ func taskCmd() *cobra.Command {
 }
 
 func tryAddTaskToCliMain(name, modname string) error {
-	lineToFind := `	cmdRoot := rootcmd.NewCmdRoot(`
+	lineToFind := `cmdRoot := rootcmd.NewCmdRoot(`
 
 	file, err := os.ReadFile("cmd/cli/main.go")
 	if err != nil {

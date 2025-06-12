@@ -77,6 +77,7 @@ func (w *WorkerGenerator) Generate() error {
 
 	files := []FileConfig{
 		w.createWorkerProvider("internal/providers/worker.go"),
+		w.createSendEmailWorkflow("internal/workflow/workflow_send_email.go"),
 	}
 
 	for _, file := range files {
@@ -145,15 +146,20 @@ func (w *WorkerGenerator) UpdateOrCreateRegistrations() error {
 	return w.updateAppModule()
 }
 
-func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []string) {
+type temporlWorkerRegistration struct {
+	StructName string
+	MethodName string
+}
+
+func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []temporlWorkerRegistration, []temporlWorkerRegistration) {
 	actDir := "internal/workflow/activity"
 	wfDir := "internal/workflow"
 
 	actEntries, _ := os.ReadDir(actDir)
 	wfEntries, _ := os.ReadDir(wfDir)
 
-	var acts []string
-	var wfs []string
+	var acts []temporlWorkerRegistration
+	var wfs []temporlWorkerRegistration
 	hasActivities := false
 	hasWorkflows := false
 
@@ -170,7 +176,10 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []strin
 		if !strings.HasSuffix(structName, "Activity") {
 			structName += "Activity"
 		}
-		acts = append(acts, structName)
+		acts = append(acts, temporlWorkerRegistration{
+			StructName: structName,
+			MethodName: str.ToPascalCase(name),
+		})
 		hasActivities = true
 	}
 
@@ -187,7 +196,10 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []strin
 		if !strings.HasSuffix(structName, "Workflow") {
 			structName += "Workflow"
 		}
-		wfs = append(wfs, structName)
+		wfs = append(wfs, temporlWorkerRegistration{
+			StructName: structName,
+			MethodName: str.ToPascalCase(name),
+		})
 		hasWorkflows = true
 	}
 
@@ -235,6 +247,19 @@ func (w *WorkerGenerator) createActivityFile(name string) error {
 			g.WithVar("name_pascal_case", str.ToPascalCase(name))
 		},
 	})
+}
+
+func (w *WorkerGenerator) createSendEmailWorkflow(path string) FileConfig {
+	return FileConfig{
+		Path:      path,
+		Template:  templates.InternalWorkflowSendEmailGo,
+		Condition: true,
+		Category:  CategoryWorker,
+		Gen: func(g *genhelper.GenHelper) {
+			g.WithImport("context", "context").
+				WithImport("go.temporal.io/sdk/workflow", "workflow")
+		},
+	}
 }
 
 func (w *WorkerGenerator) CreateWorkflow(name string, activities []string) error {

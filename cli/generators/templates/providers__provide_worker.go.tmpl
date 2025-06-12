@@ -12,14 +12,14 @@ type ParamsWorker struct {
   Lc     fx.Lifecycle
 }
 
-func Worker(p ParamsWorker) (worker.Worker, error) {
+func Worker(p ParamsWorker) (client.Client, worker.Worker, error) {
   c, err := client.Dial(client.Options{
     HostPort:  p.Config.GetWorker().TemporalAddress,
     Namespace: p.Config.GetWorker().TemporalNamespace,
     Logger:    temporalutil.NewLoggerWithSlog(slog.Default()),
   })
   if err != nil {
-    return nil, err
+    return nil, nil, err
   }
 
   w := worker.New(c, p.Config.GetWorker().TemporalTaskQueue, worker.Options{})
@@ -40,5 +40,5 @@ func Worker(p ParamsWorker) (worker.Worker, error) {
     },
   })
 
-  return w, nil
+  return c, w, nil
 }
