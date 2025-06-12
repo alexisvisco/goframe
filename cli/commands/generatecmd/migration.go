@@ -34,7 +34,7 @@ func migrationCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVarP(&flagSql, "sql", "s", false, "Generate SQL migration file instead of Go code")
+	cmd.Flags().BoolVarP(&flagSql, "sql", "s", false, "WriteTo SQL migration file instead of Go code")
 
 	return cmd
 }

@@ -170,7 +170,7 @@ func (g *DatabaseGenerator) UpdateOrCreateMigrations() error {
 
 	return gh.
 		WithVar("migrations", list).
-		Generate(file)
+		WriteTo(file)
 }
 
 func (g *DatabaseGenerator) buildMigrationList() (bool, bool, []string) {

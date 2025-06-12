@@ -121,7 +121,7 @@ func (s *ServiceGenerator) updateRegistry() error {
 	gh.WithImport(filepath.Join(s.g.GoModuleName, "internal/types"), "types").
 		WithImport("github.com/alexisvisco/goframe/core/helpers/fxutil", "fxutil")
 	s.g.TrackFile(path, false, CategoryWeb)
-	return gh.WithVar("services", svcs).Generate(file)
+	return gh.WithVar("services", svcs).WriteTo(file)
 }
 
 func (s *ServiceGenerator) updateAppModule() error {
@@ -132,9 +132,7 @@ func (s *ServiceGenerator) updateAppModule() error {
 	}
 
 	gf.AddNamedImport("", filepath.Join(s.g.GoModuleName, "internal/service"))
-	if err := gf.AddLineBeforeRegex("^\\s*\\}$", "\tfx.Provide(service.Dependencies...),"); err != nil {
-		return err
-	}
+	gf.AddLineAfterString("return []fx.Option{", "\tfx.Provide(service.Dependencies...),")
 	return gf.Save()
 }
 

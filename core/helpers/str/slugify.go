@@ -18,14 +18,14 @@ import (
 // - Leading/trailing spaces and dashes
 // - Multiple consecutive dashes
 // Examples of usage:
-// 	fmt.Println(Slugify("Hello, World!"))                    // Output: hello-world
-// 	fmt.Println(Slugify("  Spécial  Charācters--"))         // Output: special-characters
-// 	fmt.Println(Slugify("This & That"))                     // Output: this-and-that
-// 	fmt.Println(Slugify("Multiple   Spaces"))               // Output: multiple-spaces
-// 	fmt.Println(Slugify("Hello世界"))                         // Output: hello
-// 	fmt.Println(Slugify("!@#$%^&*()"))                      // Output: ""
-// 	fmt.Println(Slugify("Coast-to-Coast"))                  // Output: coast-to-coast
-// 	fmt.Println(Slugify("über café"))                       // Output: uber-cafe
+// 	fmt.Println(Slugify("Hello, World!"))                    // Generate: hello-world
+// 	fmt.Println(Slugify("  Spécial  Charācters--"))         // Generate: special-characters
+// 	fmt.Println(Slugify("This & That"))                     // Generate: this-and-that
+// 	fmt.Println(Slugify("Multiple   Spaces"))               // Generate: multiple-spaces
+// 	fmt.Println(Slugify("Hello世界"))                         // Generate: hello
+// 	fmt.Println(Slugify("!@#$%^&*()"))                      // Generate: ""
+// 	fmt.Println(Slugify("Coast-to-Coast"))                  // Generate: coast-to-coast
+// 	fmt.Println(Slugify("über café"))                       // Generate: uber-cafe
 
 func Slugify(s string) string {
 	// Convert to lowercase

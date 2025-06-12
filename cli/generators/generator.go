@@ -212,7 +212,7 @@ func (g *Generator) GenerateFile(f FileConfig) error {
 		f.Gen(gen)
 	}
 
-	err = gen.Generate(file)
+	err = gen.WriteTo(file)
 	if err != nil {
 		return fmt.Errorf("failed to generate file: %w", err)
 	}

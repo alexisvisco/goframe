@@ -6,15 +6,15 @@ func NewCmdRootGenerate(subCommands ...*cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "generate <subcommand> [flags]",
 		Aliases: []string{"gen", "g"},
-		Short:   "Generate code",
+		Short:   "WriteTo code",
 	}
 
 	cmd.AddCommand(migrationCmd())
 	cmd.AddCommand(taskCmd())
-       cmd.AddCommand(workerCmd())
-       cmd.AddCommand(repositoryCmd())
-       cmd.AddCommand(serviceCmd())
-       cmd.AddCommand(mailerCmd())
+	cmd.AddCommand(workerCmd())
+	cmd.AddCommand(repositoryCmd())
+	cmd.AddCommand(serviceCmd())
+	cmd.AddCommand(mailerCmd())
 	for _, subCmd := range subCommands {
 		cmd.AddCommand(subCmd)
 	}

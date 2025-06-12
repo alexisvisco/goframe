@@ -117,7 +117,7 @@ func (r *RepositoryGenerator) updateRegistry() error {
 	gh.WithImport(filepath.Join(r.g.GoModuleName, "internal/types"), "types").
 		WithImport("github.com/alexisvisco/goframe/core/helpers/fxutil", "fxutil")
 	r.g.TrackFile(path, false, CategoryWeb)
-	return gh.WithVar("repositories", repos).Generate(file)
+	return gh.WithVar("repositories", repos).WriteTo(file)
 }
 
 func (r *RepositoryGenerator) updateAppModule() error {
@@ -128,9 +128,7 @@ func (r *RepositoryGenerator) updateAppModule() error {
 	}
 
 	gf.AddNamedImport("", filepath.Join(r.g.GoModuleName, "internal/repository"))
-	if err := gf.AddLineBeforeRegex("^\\s*\\}$", "\tfx.Provide(repository.Dependencies...),"); err != nil {
-		return err
-	}
+	gf.AddLineAfterString("return []fx.Option{", "\tfx.Provide(repository.Dependencies...),")
 	return gf.Save()
 }
 

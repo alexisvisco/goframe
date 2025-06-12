@@ -36,11 +36,9 @@ func (t *TaskGenerator) updateCliMain(name string) error {
 		return err
 	}
 
+	line := fmt.Sprintf("\t\trootcmd.WithCommand(\"task\", task.New%sTask(app.Module(cfg))),", str.ToPascalCase(name))
 	gf.AddNamedImport("", filepath.Join(t.g.GoModuleName, "internal/task"))
-	line := fmt.Sprintf("    rootcmd.WithCommand(\"task\", task.New%sTask(app.Module(cfg))),", str.ToPascalCase(name))
-	if err := gf.AddLineAfterString("rootcmd.WithFxOptions(app.Module(cfg)...),", line); err != nil {
-		return err
-	}
+	gf.AddLineAfterString("cmdRoot := rootcmd.NewCmdRoot(", line)
 	return gf.Save()
 }
 

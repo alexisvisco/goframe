@@ -23,9 +23,7 @@ func (w *WorkerGenerator) updateAppModule() error {
 	}
 
 	gf.AddNamedImport("", filepath.Join(w.g.GoModuleName, "internal/workflow"))
-	if err := gf.AddLineBeforeRegex("^\\s*\\}$", "\tfx.Provide(workflow.Dependencies...),"); err != nil {
-		return err
-	}
+	gf.AddLineAfterString("return []fx.Option{", "\tfx.Provide(workflow.Dependencies...),")
 
 	return gf.Save()
 }
@@ -107,7 +105,7 @@ func (w *WorkerGenerator) UpdateOrCreateRegistrations() error {
 
 	if err := gh.WithVar("activities", activities).
 		WithVar("workflows", workflows).
-		Generate(file); err != nil {
+		WriteTo(file); err != nil {
 		return err
 	}
 
@@ -224,8 +222,7 @@ func (w *WorkerGenerator) createSendEmailWorkflow(path string) FileConfig {
 		Condition: true,
 		Category:  CategoryWorker,
 		Gen: func(g *genhelper.GenHelper) {
-			g.WithImport("context", "context").
-				WithImport("go.temporal.io/sdk/workflow", "workflow")
+			g.WithImport("go.temporal.io/sdk/workflow", "workflow")
 		},
 	}
 }

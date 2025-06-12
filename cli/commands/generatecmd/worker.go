@@ -11,7 +11,7 @@ import (
 func workerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "worker <subcommand> [flags]",
-		Short: "Generate worker related files",
+		Short: "WriteTo worker related files",
 	}
 
 	cmd.AddCommand(workerWorkflowCmd())
