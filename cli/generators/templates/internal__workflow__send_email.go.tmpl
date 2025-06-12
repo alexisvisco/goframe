@@ -22,6 +22,6 @@ func NewSendEmailWorkflow(p SendEmailWorkflowParams) *SendEmailWorkflow {
   return &SendEmailWorkflow{sender: p.Sender}
 }
 
-func (w *SendEmailWorkflow) Execute(_ workflow.Context, p mail.Message) error {
+func (w *SendEmailWorkflow) SendEmail(_ workflow.Context, p mail.Message) error {
   return w.sender.Send(context.Background(), p)
 }

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	txtTemplate "text/template"
+	"time"
 
 	mail "github.com/wneessen/go-mail"
 
@@ -31,7 +32,7 @@ type Message struct {
 	To        []string
 	Bcc       []string
 	Cc        []string
-	From      string // Optional, if not set, will use cfg.From
+	From      string // Optional, if not set, will use cfg.DefaultMailFrom
 	ReplyTo   string // Optional, if not set, will use cfg.ReplyTo
 	Subject   string
 	View      string
@@ -79,6 +80,32 @@ func (s *Sender) render(view string) (*template.Template, *txtTemplate.Template,
 	return htmlT, txtT, nil
 }
 
+// getSMTPAuthType returns the appropriate SMTPAuthType based on the configuration.
+func (s *Sender) getSMTPAuthType() mail.SMTPAuthType {
+	switch s.cfg.AuthType {
+	case configuration.MailAuthTypePlain:
+		return mail.SMTPAuthPlain
+	case configuration.MailAuthTypeLogin:
+		return mail.SMTPAuthLogin
+	case configuration.MailAuthTypeCRAMMD5:
+		return mail.SMTPAuthCramMD5
+	default:
+		return ""
+	}
+}
+
+// getTLSPolicy returns the appropriate TLSPolicy based on the configuration.
+func (s *Sender) getTLSPolicy() mail.TLSPolicy {
+	switch s.cfg.TLSPolicy {
+	case configuration.TLSPolicyNone:
+		return mail.NoTLS
+	case configuration.TLSPolicyMandatory:
+		return mail.TLSMandatory
+	default:
+		return mail.TLSOpportunistic
+	}
+}
+
 // Send sends the message using the configured SMTP server.
 func (s *Sender) Send(ctx context.Context, m Message) error {
 	htmlTemplate, textTemplate, err := s.render(m.View)
@@ -86,22 +113,43 @@ func (s *Sender) Send(ctx context.Context, m Message) error {
 		return err
 	}
 
-	client, err := mail.NewClient(
-		s.cfg.Host,
+	clientOptions := []mail.Option{
 		mail.WithPort(s.cfg.Port),
-		mail.WithSMTPAuth(mail.SMTPAuthLogin),
-		mail.WithPassword(s.cfg.Password),
-		mail.WithUsername(s.cfg.Username),
-	)
+		mail.WithTimeout(10 * time.Second),
+	}
 
-	from := s.cfg.From
+	// Set TLS policy based on configuration
+	tlsPolicy := s.getTLSPolicy()
+
+	// Override TLS policy for development/testing environments (like Mailpit)
+	if (s.cfg.Host == "localhost" || s.cfg.Host == "127.0.0.1" || s.cfg.Port == 1025) && s.cfg.TLSPolicy == "" {
+		// Only override if not explicitly set
+		tlsPolicy = mail.NoTLS
+	}
+
+	clientOptions = append(clientOptions, mail.WithTLSPolicy(tlsPolicy))
+
+	// Only add authentication if username and password are provided
+	// and auth type is not none
+	if s.cfg.Username != "" && s.cfg.Password != "" && s.cfg.AuthType != configuration.MailAuthTypeNone {
+		authType := s.getSMTPAuthType()
+		clientOptions = append(clientOptions,
+			mail.WithSMTPAuth(authType),
+			mail.WithUsername(s.cfg.Username),
+			mail.WithPassword(s.cfg.Password),
+		)
+	}
+
+	client, err := mail.NewClient(s.cfg.Host, clientOptions...)
+	if err != nil {
+		return fmt.Errorf("create mail client: %w", err)
+	}
+
+	from := s.cfg.DefaultFrom
 	if m.From != "" {
 		from = m.From
 	}
 
-	if err != nil {
-		return fmt.Errorf("create mail client: %w", err)
-	}
 	msg := mail.NewMsg()
 	if err := msg.From(from); err != nil {
 		return fmt.Errorf("invalid from address: %w", err)
@@ -116,8 +164,10 @@ func (s *Sender) Send(ctx context.Context, m Message) error {
 		return fmt.Errorf("invalid cc address: %w", err)
 	}
 
-	if err := msg.ReplyTo(m.ReplyTo); err != nil {
-		return fmt.Errorf("invalid reply-to address: %w", err)
+	if m.ReplyTo != "" {
+		if err := msg.ReplyTo(m.ReplyTo); err != nil {
+			return fmt.Errorf("invalid reply-to address: %w", err)
+		}
 	}
 
 	if len(m.Attachments) > 0 {

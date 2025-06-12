@@ -27,7 +27,6 @@ func New{{ .name_pascal_case }}Workflow(p {{ .name_pascal_case }}WorkflowParams)
   }
 }
 
-// Execute runs the workflow logic.
-func (w *{{ .name_pascal_case }}Workflow) Execute(ctx workflow.Context) error {
+func (w *{{ .name_pascal_case }}Workflow) {{.name_pascal_case}}(ctx workflow.Context) error {
   return nil
 }

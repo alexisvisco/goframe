@@ -92,6 +92,10 @@ func (m *MailerGenerator) ensureAction(name, action string) error {
 		return err
 	}
 
+	// todo imports if not exists :
+	// "go.temporal.io/sdk/temporal"
+	// "github.com/alexisvisco/goframe/mail"
+
 	pascalMailer := str.ToPascalCase(name)
 	pascalAction := str.ToPascalCase(action)
 	signature := fmt.Sprintf("func (m *%sMailer) %s", pascalMailer, pascalAction)

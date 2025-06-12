@@ -1,2 +1,17 @@
 #!/usr/bin/env bash
-docker run --rm -i -v "$PWD":/workspace -w /workspace mjmlio/mjml mjml "$@"
+set -euo pipefail
+
+IMAGE="goframe-mjml"
+
+# Build image locally if it doesn't exist
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  docker build -t "$IMAGE" - <<'EOF'
+FROM node:lts-alpine
+RUN npm install -g mjml
+WORKDIR /app
+ENTRYPOINT ["mjml"]
+EOF
+fi
+
+# Run MJML container binding only the views directory
+docker run --rm -v "$PWD/views":/app/views -w /app "$IMAGE" "$@"

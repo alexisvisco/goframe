@@ -146,15 +146,20 @@ func (w *WorkerGenerator) UpdateOrCreateRegistrations() error {
 	return w.updateAppModule()
 }
 
-func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []string) {
+type temporlWorkerRegistration struct {
+	StructName string
+	MethodName string
+}
+
+func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []temporlWorkerRegistration, []temporlWorkerRegistration) {
 	actDir := "internal/workflow/activity"
 	wfDir := "internal/workflow"
 
 	actEntries, _ := os.ReadDir(actDir)
 	wfEntries, _ := os.ReadDir(wfDir)
 
-	var acts []string
-	var wfs []string
+	var acts []temporlWorkerRegistration
+	var wfs []temporlWorkerRegistration
 	hasActivities := false
 	hasWorkflows := false
 
@@ -171,7 +176,10 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []strin
 		if !strings.HasSuffix(structName, "Activity") {
 			structName += "Activity"
 		}
-		acts = append(acts, structName)
+		acts = append(acts, temporlWorkerRegistration{
+			StructName: structName,
+			MethodName: str.ToPascalCase(name),
+		})
 		hasActivities = true
 	}
 
@@ -188,7 +196,10 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []string, []strin
 		if !strings.HasSuffix(structName, "Workflow") {
 			structName += "Workflow"
 		}
-		wfs = append(wfs, structName)
+		wfs = append(wfs, temporlWorkerRegistration{
+			StructName: structName,
+			MethodName: str.ToPascalCase(name),
+		})
 		hasWorkflows = true
 	}
 

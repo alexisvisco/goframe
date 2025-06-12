@@ -26,7 +26,9 @@ production:
     port: ${MAIL_PORT:1025}
     username: "${MAIL_USERNAME}"
     password: "${MAIL_PASSWORD}"
-    from: "${MAIL_FROM}"
+    auth_type: "${MAIL_AUTH_TYPE:login}"
+    tls_policy: "${MAIL_TLS_POLICY:opportunistic}"
+    default_from: "${MAIL_FROM}"
   storage:
     type: s3
     bucket: "${STORAGE_BUCKET}"
@@ -70,10 +72,10 @@ development: &dev
     temporal_task_queue: "${WORKER_TEMPORAL_TASK_QUEUE:default}"
   mail:
     host: "${MAIL_HOST:localhost}"
-    port: ${MAIL_PORT:1025}
-    username: "${MAIL_USERNAME}"
-    password: "${MAIL_PASSWORD}"
-    from: "${MAIL_FROM:no-reply@example.com}"
+    port: ${MAIL_PORT:2525}
+    auth_type: "${MAIL_AUTH_TYPE:none}"
+    tls_policy: "${MAIL_TLS_POLICY:none}"
+    default_from: "${MAIL_DEFAULT_FROM:no-reply@example.com}"
   storage:
     type: disk
     directory: "${STORAGE_PATH:./tmp_storage}"

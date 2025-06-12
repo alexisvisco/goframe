@@ -5,8 +5,12 @@ type {{ .action_pascal }}Params struct {
 func (m *{{ .mailer_pascal }}Mailer) {{ .action_pascal }}(ctx context.Context, vars {{ .action_pascal }}Params) error {
   var wf workflow.SendEmailWorkflow
   _, err := m.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
-    ID: "{{ .mailer_snake }}_{{ .action_snake }}_" + cuid2.Generate(),
-  }, wf.Execute, mail.Message{
+    ID: "mailer_" + cuid2.Generate(),
+    TaskQueue: "default",
+    RetryPolicy: &temporal.RetryPolicy{
+      MaximumAttempts: 3,
+    },
+  }, wf.SendEmail, mail.Message{
     To: vars.To,
     Subject: "{{ .action_pascal }}",
     View: "{{ .mailer_snake }}_{{ .action_snake }}",

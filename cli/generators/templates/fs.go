@@ -96,10 +96,10 @@ var (
 	//go:embed internal__types__new.go.tmpl
 	InternalTypesNewGo []byte
 
-	//go:embed internal__mailer__new.go.tmpl
+	//go:embed internal__mailer__newmailer.go.tmpl
 	InternalMailerNewGo []byte
 
-	//go:embed internal__mailer__action.go.tmpl
+	//go:embed internal__mailer__newmailer_action.go.tmpl
 	InternalMailerActionGo []byte
 
 	//go:embed internal__mailer__registry.go.tmpl
