@@ -93,7 +93,11 @@ func NewInitCmd() *cobra.Command {
 				}
 			}
 
-			g.PrintCreatedFiles(i.folder)
+			fmt.Println("Project initialized!")
+			fmt.Println("Postgres port: 7894 (if enabled)")
+			fmt.Println("Temporal UI port: 8233 (if enabled)")
+			fmt.Println("Mailpit UI port: 8888")
+			fmt.Println("Run 'docker compose up -d' then 'go run cmd/app/main.go' to start the app")
 
 			return nil
 		},

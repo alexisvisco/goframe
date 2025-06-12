@@ -116,7 +116,6 @@ func (r *RepositoryGenerator) updateRegistry() error {
 	gh := genhelper.New("repository", templates.InternalRepositoryRegistryGo)
 	gh.WithImport(filepath.Join(r.g.GoModuleName, "internal/types"), "types").
 		WithImport("github.com/alexisvisco/goframe/core/helpers/fxutil", "fxutil")
-	r.g.TrackFile(path, false, CategoryWeb)
 	return gh.WithVar("repositories", repos).WriteTo(file)
 }
 

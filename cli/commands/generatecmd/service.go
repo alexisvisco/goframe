@@ -12,7 +12,7 @@ func serviceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "service <name>",
 		Short: "Create a new service",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: withFileDiff(func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return fmt.Errorf("service name is required")
 			}
@@ -22,7 +22,7 @@ func serviceCmd() *cobra.Command {
 				return fmt.Errorf("failed to create service: %w", err)
 			}
 			return nil
-		},
+		}),
 	}
 	cmd.Flags().BoolVar(&withRepo, "with-repository", false, "inject repository dependency")
 	return cmd

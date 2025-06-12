@@ -12,7 +12,7 @@ func repositoryCmd() *cobra.Command {
 		Use:     "repository <name>",
 		Aliases: []string{"repo"},
 		Short:   "Create a new repository",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: withFileDiff(func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return fmt.Errorf("repository name is required")
 			}
@@ -22,6 +22,6 @@ func repositoryCmd() *cobra.Command {
 				return fmt.Errorf("failed to create repository: %w", err)
 			}
 			return nil
-		},
+		}),
 	}
 }

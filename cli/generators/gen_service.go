@@ -120,7 +120,6 @@ func (s *ServiceGenerator) updateRegistry() error {
 	gh := genhelper.New("service", templates.InternalServiceRegistryGo)
 	gh.WithImport(filepath.Join(s.g.GoModuleName, "internal/types"), "types").
 		WithImport("github.com/alexisvisco/goframe/core/helpers/fxutil", "fxutil")
-	s.g.TrackFile(path, false, CategoryWeb)
 	return gh.WithVar("services", svcs).WriteTo(file)
 }
 

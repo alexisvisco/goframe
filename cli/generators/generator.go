@@ -4,28 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
 	"github.com/alexisvisco/goframe/core/configuration"
 )
-
-// FileInfo represents information about a generated file
-type FileInfo struct {
-	Path     string       // File Path
-	IsDir    bool         // Whether it's a directory
-	Category FileCategory // Category of the file
-}
-
-// NewFileInfo creates a new FileInfo
-func NewFileInfo(path string, isDir bool, category FileCategory) FileInfo {
-	return FileInfo{
-		Path:     path,
-		IsDir:    isDir,
-		Category: category,
-	}
-}
 
 type Generator struct {
 	GoModuleName string
@@ -37,71 +19,6 @@ type Generator struct {
 	ExampleWebFiles bool
 	DockerFiles     bool
 	WorkerType      string
-
-	filesCreated []FileInfo
-}
-
-// TrackFile adds a file to the list of created files
-func (g *Generator) TrackFile(path string, isDir bool, category FileCategory) {
-	g.filesCreated = append(g.filesCreated, NewFileInfo(path, isDir, category))
-}
-
-func (g *Generator) PrintCreatedFiles(rootFolder string) {
-	filesByCategory := make(map[FileCategory][]FileInfo)
-	seenFiles := make(map[string]bool)
-
-	for _, file := range g.filesCreated {
-		uniqueKey := fmt.Sprintf("%s-%s", file.Category, file.Path)
-		if !seenFiles[uniqueKey] {
-			filesByCategory[file.Category] = append(filesByCategory[file.Category], file)
-			seenFiles[uniqueKey] = true
-		}
-	}
-
-	// Sort categories alphabetically for consistent output
-	var categories []FileCategory
-	for category := range filesByCategory {
-		categories = append(categories, category)
-	}
-	sort.Slice(categories, func(i, j int) bool {
-		return categories[i] < categories[j]
-	})
-
-	fmt.Println(strings.Repeat("=", 70))
-	fmt.Printf("%-12s %-8s %s\n", "Type", "Kind", "File Path")
-	fmt.Println(strings.Repeat("=", 70))
-
-	// Print each Category and its files
-	for _, category := range categories {
-		fmt.Printf("\n%s\n\n", category)
-		files := filesByCategory[category]
-
-		// Sort files within each Category by Path
-		sort.Slice(files, func(i, j int) bool {
-			return files[i].Path < files[j].Path
-		})
-
-		firstLine := true
-		// Print files within each Category
-		for _, file := range files {
-			action := "File"
-			if file.IsDir {
-				action = "Directory"
-			}
-
-			kind := ""
-			if firstLine {
-				kind = string(category)
-				firstLine = false
-			}
-
-			// Clean up paths for display
-			displayPath := filepath.Clean(filepath.Join(rootFolder, file.Path))
-			fmt.Printf("%-12s %-8s %s\n", action, kind, displayPath)
-		}
-		fmt.Println(strings.Repeat("-", 70))
-	}
-	fmt.Println()
 }
 
 // Databases returns a database file generator
@@ -166,7 +83,6 @@ func (g *Generator) CreateDirectory(path string, category FileCategory) error {
 		return fmt.Errorf("failed to create directory %s: %w", path, err)
 	}
 
-	g.TrackFile(path, true, category)
 	return nil
 }
 
@@ -217,7 +133,6 @@ func (g *Generator) GenerateFile(f FileConfig) error {
 		return fmt.Errorf("failed to generate file: %w", err)
 	}
 
-	g.TrackFile(f.Path, false, f.Category)
 	return nil
 
 }

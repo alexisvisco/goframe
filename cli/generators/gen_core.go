@@ -101,8 +101,6 @@ func (g *CoreGenerator) GenerateGoMod() error {
 		}
 	}
 
-	g.g.TrackFile("go.mod", false, CategoryGo)
-
 	// Run go mod tidy
 	return nil
 }

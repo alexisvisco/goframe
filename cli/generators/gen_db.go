@@ -166,8 +166,6 @@ func (g *DatabaseGenerator) UpdateOrCreateMigrations() error {
 		gh.WithImport(filepath.Join(g.g.GoModuleName, "db/migrations"), "migrations")
 	}
 
-	g.g.TrackFile("db/migrations.go", false, CategoryDatabase)
-
 	return gh.
 		WithVar("migrations", list).
 		WriteTo(file)
