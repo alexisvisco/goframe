@@ -1,0 +1,11 @@
+# Configuration
+
+Configuration files are written in YAML. Environment variables can be referenced using the `${VAR}` syntax.
+
+```yaml
+http:
+  port: 8080
+  host: ${HOST:0.0.0.0}
+```
+
+Values inside `${...}` are expanded from your shell environment when the application starts.
