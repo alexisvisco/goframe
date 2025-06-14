@@ -1,4 +1,9 @@
+import { Callout } from 'nextra/components'
+
 # Installation
+
+<Callout type={"info"}>GoFrame requires you to have at least **Docker** working and **Golang** installed</Callout>
+
 
 Install the CLI to generate a new project and run common tasks.
 
@@ -6,10 +11,55 @@ Install the CLI to generate a new project and run common tasks.
 go install github.com/alexisvisco/goframe/cli/goframe@latest
 ```
 
+
+
 Create a project in a new directory:
 
 ```bash
-goframe init myapp
+goframe init <go module name> [flags]
 ```
 
-This command scaffolds the folder structure, downloads dependencies and prepares a working `main.go` entry point.
+There are several options you can pass:
+
+| flag          | description                                  | default  |
+|---------------|----------------------------------------------|----------|
+| --http-server | Initialize a http application                | true     |
+| --folder      | Project folder name                          | `.`      |
+| --db-name     | Set the database (postgres, sqlite           | postgres |
+| --orm         | Set the ORM to use (only gorm supported)     | gorm     |
+| --worker      | Worker type to use (only temporal supported) | temporal |
+
+This command scaffolds the folder structure, downloads dependencies and prepares a working `cmd/app/main.go` entry point.
+
+## Setup external services
+
+After the installation successful, you can setup the docker-compose file:
+
+```bash
+docker compose up -d
+```
+
+Will setup the following services:
+- postgres (if you selected `postgres` as database)
+- mailpit: a simple SMTP server to test emails
+- temporal: a workflow engine to run background jobs
+- temporal-ui: a web interface to monitor and manage workflows
+
+## Run the application
+
+You can run the application using the following command:
+
+```bash
+go run cmd/app/main.go
+```
+
+## Run the CLI
+
+GoFrame generte a CLI for you which is collocated in the directory of your application at `cmd/cli/main.go` folder. You can run it using the following command:
+
+```bash
+bin/goframe --help
+```
+
+This is with this command that you can run generators, migrations, add tasks ...
+You can totally extend the CLI with your own commands, you will see how to do it in the [CLI documentation](/docs/cli).

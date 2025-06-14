@@ -1,0 +1,49 @@
+import { Callout } from 'nextra/components'
+
+# Logger
+
+### Standard Library Logging with slog
+GoFrame utilise the stdlib slog package for logging, which is a simple and efficient logging library that is part of the Go standard library. It provides a structured logging interface that allows you to log messages with different levels of severity.
+
+You can have more information about the slog package in the blog post [Structured Logging with slog](https://go.dev/blog/slog).
+
+In addition to that we added a canonical logger.
+
+### What is a Canonical Log?
+
+A canonical log is a single, comprehensive log entry that captures all the important context and events for a particular operation or request. Instead of scattered log entries throughout your application, a canonical log line accumulates relevant information during the execution of an operation and emits one complete, structured log entry at the end.
+This approach, popularized by companies like Stripe, provides several benefits:
+
+- Complete Context: All relevant information for an operation is contained in a single log entry
+- Easier Debugging: No need to correlate multiple log entries across different parts of your application
+- Better Analytics: Structured data makes it easier to query and analyze logs
+- Reduced Log Volume: One comprehensive entry instead of many partial ones
+
+You can read more about this concept in Stripe's blog post: [Canonical Log Lines](https://stripe.com/blog/canonical-log-lines)
+
+### The clog Package
+
+The clog package implements canonical logging by providing a Line type that accumulates attributes throughout the lifecycle of an operation through the context.
+
+A little example of how to use it:
+
+```go filename="example.go"
+func HandleRequest(resp http.ResponseWriter, req *http.Request) {
+	// Get or create a canonical log line from context
+	_, line := clog.FromContext(req.Context())
+
+	line.Add("user_id", "12345")
+	line.Add("operation", "create_order")
+}
+```
+
+This will gives us
+
+```
+2025/06/14 08:52:56 INFO http request method=POST path=/v1/notes remote_addr=127.0.0.1:51104 status_code=200 duration_ms=0 user_id=12345 operation=create_order
+```
+
+<Callout type={"info"}>
+Note that we ignored the context, because it serves to add the logger to the context.
+In our case the logger is already added to the context by the HTTP logger middleware, so we can use it directly.
+</Callout>
