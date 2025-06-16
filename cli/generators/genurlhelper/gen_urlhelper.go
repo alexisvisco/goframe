@@ -111,18 +111,19 @@ func parseHandlers(dir string) (map[string]handlerInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	handlers := make(map[string]handlerInfo)
+
+	// first pass: collect all struct definitions across the directory
+	allStructs := make(map[string]*ast.StructType)
 	for _, f := range files {
-		if f.IsDir() || !strings.HasPrefix(f.Name(), "handler_") || !strings.HasSuffix(f.Name(), ".go") {
+		if f.IsDir() || !strings.HasSuffix(f.Name(), ".go") {
 			continue
 		}
 		path := filepath.Join(dir, f.Name())
-		fileSet := token.NewFileSet()
-		node, err := parser.ParseFile(fileSet, path, nil, parser.ParseComments)
+		fs := token.NewFileSet()
+		node, err := parser.ParseFile(fs, path, nil, parser.ParseComments)
 		if err != nil {
 			return nil, err
 		}
-		structs := map[string]*ast.StructType{}
 		for _, d := range node.Decls {
 			gd, ok := d.(*ast.GenDecl)
 			if !ok || gd.Tok != token.TYPE {
@@ -134,9 +135,23 @@ func parseHandlers(dir string) (map[string]handlerInfo, error) {
 					continue
 				}
 				if st, ok := ts.Type.(*ast.StructType); ok {
-					structs[ts.Name.Name] = st
+					allStructs[ts.Name.Name] = st
 				}
 			}
+		}
+	}
+
+	// second pass: parse handler methods and associate request structs
+	handlers := make(map[string]handlerInfo)
+	for _, f := range files {
+		if f.IsDir() || !strings.HasPrefix(f.Name(), "handler_") || !strings.HasSuffix(f.Name(), ".go") {
+			continue
+		}
+		path := filepath.Join(dir, f.Name())
+		fileSet := token.NewFileSet()
+		node, err := parser.ParseFile(fileSet, path, nil, parser.ParseComments)
+		if err != nil {
+			return nil, err
 		}
 		for _, d := range node.Decls {
 			fd, ok := d.(*ast.FuncDecl)
@@ -157,7 +172,7 @@ func parseHandlers(dir string) (map[string]handlerInfo, error) {
 				helperName = v
 			}
 			pathOverride := tags["path"]
-			st := structs[reqName]
+			st := allStructs[reqName]
 			var pathParams, queryParams []Param
 			if st != nil {
 				pathParams, queryParams = extractParams(st)
@@ -171,6 +186,7 @@ func parseHandlers(dir string) (map[string]handlerInfo, error) {
 			}
 		}
 	}
+
 	return handlers, nil
 }
 
