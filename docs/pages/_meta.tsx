@@ -7,6 +7,7 @@ export default {
   worker: "Worker",
   mails: "Mails",
   tasks: "Tasks",
+  i18n: "I18n",
   cli: "CLI",
   logger: "Logger",
   contact: {

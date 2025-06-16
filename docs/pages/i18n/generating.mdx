@@ -1,0 +1,21 @@
+# Generating
+
+Manage translation files with the `i18n` subcommands.
+
+- `new <name>` – create YAML files for each configured locale and the Go helper.
+- `generate <name>` – regenerate the helper after editing the YAML.
+- `sync <name>` – copy missing keys from the default locale into other files.
+
+Example:
+
+```bash
+bin/goframe i18n new translations
+bin/goframe i18n generate translations
+bin/goframe i18n sync translations
+```
+
+Translation files live under `config/i18n` and are named `<name>.<locale>.yaml`.
+
+Placeholders inside the YAML values become parameters in the generated methods.
+Specify the type after a colon such as `{id:int}` or `{tags:[]string}`. When no
+type is provided the parameter defaults to `string`.

@@ -1,0 +1,12 @@
+# Templates
+
+Each mail action has two template files under `views/mails`:
+
+```
+views/mails/<mailer>_<action>.mjml.tmpl
+views/mails/<mailer>_<action>.txt.tmpl
+```
+
+The MJML file renders the HTML body while the text template is used for the plain text part. The `mail.Sender` loads both when building the `mail.Message`.
+
+You can customize these templates with Go's `html/template` and `text/template` syntax.

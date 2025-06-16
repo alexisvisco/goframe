@@ -1,0 +1,24 @@
+import { Callout} from 'nextra/components';
+
+# Validation with Zog
+
+We choose [Zog](https://github.com/Oudwins/zog), as our go-to library for validation of data structures.
+Services validate incoming structures and `coretypes.ValidationErrorFromZog` turns the result into a GoFrame error.
+
+```go filename="service_note.go"
+var schema = zog.Struct(zog.Shape{
+    "ID":      zog.String().Required(),
+    "Title":   zog.String().Required().Min(1).Max(100),
+    "Content": zog.String().Required().Min(1).Max(10_000),
+})
+
+func (s *NoteService) validateNote(n *types.Note) error {
+    return coretypes.ValidationErrorFromZog(schema.Validate(n))
+}
+```
+
+When a validation error occurs, `httpx.DefaultHTTPError` automatically maps it to a `400 Bad Request` with the list of failed fields.
+
+<Callout type={"info"}>
+A little particularity is that if you want to have the field name in the bad request don't forget to map it with the `zog` like you do with json
+</Callout>

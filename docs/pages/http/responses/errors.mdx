@@ -1,0 +1,13 @@
+# Error mapping
+
+`httpx.ErrorMapper` links application errors to HTTP status codes. If a handler returns an error present in the map, the corresponding status and JSON payload are sent.
+
+```go
+httpx.ErrorMapper[types.ErrNoteNotFound] = httpx.Error{
+    Message:    "note not found",
+    Code:       "NOTE_NOT_FOUND",
+    StatusCode: http.StatusNotFound,
+}
+```
+
+For any other error, `httpx.DefaultHTTPError` produces a `500 Internal Server Error` or a validation response when `coretypes.ValidationError` is returned.

@@ -91,6 +91,13 @@ This directory contains the configuration files for your application. The `confi
 
 Related : [Configuration documentation](/docs/configuration)
 
+#### `config/i18n/`
+
+YAML translations for every locale live here. The `bin/goframe i18n` commands
+generate a typed Go helper from these files.
+
+Related : [I18n documentation](/docs/i18n)
+
 #### `db/`
 
 This directory contains the database migrations, which are used to create and update the database schema. The `migrations.go` file is used to list them.
@@ -111,7 +118,7 @@ It uses the `github.com/wneessen/go-mail` package to send emails via SMTP.
 
 You can generate them via the CLI using the `bin/goframe generate mailer <mailer name> <mail name>`.
 
-Related : [Mailer documentation](/docs/mailer)
+Related : [Mailer documentation](/docs/mails)
 
 #### `internal/provide/`
 
@@ -145,7 +152,7 @@ We are using Temporal as a workflow engine, so you can define your workflows and
 
 You can generate workflows using the CLI with the command `bin/goframe generate workflow <wf name> <activity name>... `.
 
-Related : [Workflow documentation](/docs/workflow)
+Related : [Worker documentation](/docs/worker)
 
 #### `internal/tasks/`
 

@@ -1,0 +1,18 @@
+# Task Runner
+
+The CLI uses Cobra and a small helper called `cobradi.RunE` to execute tasks inside an `fx.App`. When you generate a task, the command wiring looks like this:
+
+```go filename="task_cleanup.go"
+cmd := &cobra.Command{
+    Use:   "cleanup",
+    Short: "remove unused data",
+    RunE:  cobradi.RunE(func(task *CleanupTask, cmd *cobra.Command, args []string) error {
+        cli := &cleanupTaskCli{task: task}
+        return cli.run(cmd.Context(), &opts)
+    }, fx.Provide(NewCleanupTaskOptions)),
+}
+```
+
+The helper resolves the task struct and its dependencies via `fx` before invoking `Run`. Any flags defined on the command can be passed through a custom options struct.
+
+Tasks are added to the CLI in `cmd/cli/main.go` using `rootcmd.WithCommand("task", ...)`. This keeps them organized under `bin/goframe task`.

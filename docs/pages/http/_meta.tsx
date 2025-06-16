@@ -1,5 +1,5 @@
 export default {
-	index: "Server",
+	index: "Overview",
 	routing: "Routing",
 	requests: "Requests",
 	responses: "Responses",

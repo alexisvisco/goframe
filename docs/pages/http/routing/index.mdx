@@ -1,0 +1,14 @@
+# Routing
+
+Routes are defined in `internal/v1handler/router.go`. The CLI generates a router that receives a `*http.ServeMux` through FX and registers handlers.
+
+```go filename="router.go"
+func Router(p RouterParams) {
+    p.Mux.HandleFunc("POST /v1/example", p.NoteHandler.CreateNote())
+    p.Mux.HandleFunc("PATCH /v1/example/{id}", p.NoteHandler.UpdateNote())
+    // ...
+}
+```
+
+Patterns follow the Go 1.22 syntax: HTTP method followed by the path. Path parameters are automatically extracted by `params.Bind` when tagged with `path:"id"`.
+

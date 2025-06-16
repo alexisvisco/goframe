@@ -1,0 +1,39 @@
+# Responses
+
+Handlers return an `httpx.Response`. Helpers exist for common response types.
+
+```go
+return httpx.NewJsonResponse(statuscode, data)
+return httpx.NewTextResponse(statuscode, data)
+return httpx.NewEmptyResponse(statuscode)
+
+// and there is also a helper for some common status codes
+/*
+	Ok
+	Created
+	Accepted
+	NoContent
+	BadRequest
+	Unauthorized
+	Forbidden
+	NotFound
+	Conflict
+	InternalServerError
+ */
+return httpx.JSON.Ok(data)
+return httpx.JSON.Accepted(data)
+return httpx.Text.Ok(data)
+return httpx.Empty.NoContent()
+```
+
+A response writes itself to the `http.ResponseWriter`. JSON responses can also add headers using `WithHeaders`.
+
+## Custom Response
+
+You can create a custom response by implementing the `httpx.Response` interface. This is useful if you need to return a specific format or additional metadata.
+
+```go
+type Response interface {
+	WriteTo(w http.ResponseWriter, r *http.Request) error
+}
+```

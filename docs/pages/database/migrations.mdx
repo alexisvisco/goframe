@@ -1,0 +1,37 @@
+# Migrations
+
+Migrations live under `db/migrations` and are listed in `db/migrations.go`. They can be written in Go or plain SQL.
+
+Create a new migration with the CLI:
+
+```bash
+bin/goframe generate migration create_users_table
+```
+Use `--sql` to generate a SQL migration instead of a Go one.
+
+Run pending migrations:
+
+```bash
+bin/goframe db migrate
+```
+
+Rollback the last migration:
+
+```bash
+bin/goframe db rollback
+```
+
+You can also drop all tables with:
+
+```bash
+bin/goframe db clean
+```
+
+The migrator works with any `*sql.DB` so it remains independent of the ORM you choose.
+
+## When to run migration ?
+
+Migration are ran when the application starts, this is by default added inside the db provider, but you can also run them manually.
+
+
+
