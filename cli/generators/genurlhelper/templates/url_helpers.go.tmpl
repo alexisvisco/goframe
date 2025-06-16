@@ -2,35 +2,47 @@
 package urlhelper
 
 import (
-    "fmt"
-    "net/url"
-    "strings"
+  "fmt"
+  "net/url"
+  "strings"
 )
+
+type URLHelper struct {
+  baseURL string
+}
+
+func NewURLHelper(baseURL string) *URLHelper {
+  return &URLHelper{baseURL: strings.TrimSuffix(baseURL, "/")}
+}
 
 {{- range .Helpers }}
 type {{ .Name }}Params struct {
 {{- if eq (len .Params) 0 }}
-    // no params
+  // no params
 {{- else }}
 {{- range .Params }}
-    {{ .FieldName }} {{ .Type }} // {{ .Comment }}
+  {{ .FieldName }} {{ .Type }} // {{ .Comment }}
 {{- end }}
 {{- end }}
+  ExtraQuery map[string]string // additional query values
 }
 
-func {{ .Name }}(p {{ .Name }}Params) string {
-    path := "{{ .Path }}"
+func (u *URLHelper) {{ .Name }}(p {{ .Name }}Params) string {
+  path := "{{ .Path }}"
 {{- range .PathParams }}
-    path = strings.ReplaceAll(path, {{"{"}}{{ .TagName }}{{"}"}}, fmt.Sprintf("%v", p.{{ .FieldName }}))
+  path = strings.ReplaceAll(path, {{printf "%q" (printf "{%s}" .TagName)}}, fmt.Sprintf("%v", p.{{ .FieldName }}))
 {{- end }}
-    q := url.Values{}
+  q := url.Values{}
 {{- range .QueryParams }}
-    q.Set("{{ .TagName }}", fmt.Sprintf("%v", p.{{ .FieldName }}))
+  q.Set("{{ .TagName }}", fmt.Sprintf("%v", p.{{ .FieldName }}))
 {{- end }}
-    if len(q) > 0 {
-        path += "?" + q.Encode()
-    }
-    return path
+  for k, v := range p.ExtraQuery {
+    q.Set(k, v)
+  }
+  if len(q) > 0 {
+    path += "?" + q.Encode()
+  }
+  return u.baseURL + path
 }
 
 {{ end }}
