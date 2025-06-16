@@ -233,9 +233,11 @@ func extractParams(st *ast.StructType) (pathParams, queryParams []Param) {
 		name := f.Names[0].Name
 		typ := exprString(f.Type)
 		if v, ok := tag.Lookup("path"); ok {
+			v = strings.Split(v, ",")[0]
 			pathParams = append(pathParams, Param{FieldName: name, TagName: v, Type: typ, Comment: "path parameter: " + v, Source: "path"})
 		}
 		if v, ok := tag.Lookup("query"); ok {
+			v = strings.Split(v, ",")[0]
 			queryParams = append(queryParams, Param{FieldName: name, TagName: v, Type: typ, Comment: "query parameter: " + v, Source: "query"})
 		}
 	}
