@@ -168,7 +168,7 @@ func (r RedirectResponse) WriteTo(w http.ResponseWriter, _ *http.Request) error 
 	return nil
 }
 
-func NewRedirectResponse(url string, statusCode int) RedirectResponse {
+func NewRedirectResponse(statusCode int, url string) RedirectResponse {
 	allowedStatusCodes := map[int]bool{
 		http.StatusMovedPermanently:  true,
 		http.StatusFound:             true,

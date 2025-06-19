@@ -189,7 +189,7 @@ func (s *S3Storage) AttachmentHandler(pathValueField string) http.HandlerFunc {
 		}
 
 		// Redirect to presigned URL
-		return httpx.NewRedirectResponse(presignedURL.String(), http.StatusTemporaryRedirect), nil
+		return httpx.NewRedirectResponse(http.StatusTemporaryRedirect, presignedURL.String()), nil
 	})
 }
 
