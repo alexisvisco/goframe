@@ -9,6 +9,7 @@ errors:
   not_found: "Resource {code:int} not found"
 ```
 
+
 Run `bin/goframe i18n new translations` to create the files and generate `translations.gen.go`.
 The generated struct exposes methods matching the keys:
 
@@ -33,4 +34,13 @@ be used. Common examples include:
 Slices are joined with a comma when substituted. Types implementing
 `fmt.Stringer` will use their `String()` representation.
 
-See [Generating](./generating.mdx) for the CLI commands.
+## Configuration
+
+```yaml filename="config/config.yaml"
+i18n: &i18n
+  default_locale: "en"			# Default locale used when no language is set in the context
+  supported_locales: ["en"]		# List of supported locales
+  fallback_locale: ["en"]		# Fallback locale used when the requested locale is not supported
+  folder: "config/i18n"			# Folder where translation files are stored
+  package: "i18n"				# Package name for the generated code
+```

@@ -13,7 +13,7 @@ export default {
   contact: {
     title: "Contact ↗",
     type: "page",
-    href: "https://twitter.com/shuding_",
+    href: "https://twitter.com/alexisvisco",
     newWindow: true,
   },
 }

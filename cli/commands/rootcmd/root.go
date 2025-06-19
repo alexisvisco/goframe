@@ -13,7 +13,6 @@ import (
 	"github.com/alexisvisco/goframe/cli/commands/mailcmd"
 	"github.com/alexisvisco/goframe/cli/commands/routescmd"
 	"github.com/alexisvisco/goframe/cli/commands/taskcmd"
-	"github.com/alexisvisco/goframe/cli/commands/urlhelpercmd"
 	"github.com/alexisvisco/goframe/core/configuration"
 	"github.com/alexisvisco/goframe/db/migrate"
 	"github.com/spf13/cobra"

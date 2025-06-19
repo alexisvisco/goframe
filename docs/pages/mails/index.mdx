@@ -1,8 +1,8 @@
 # Mail Overview
 
-Sending emails is handled asynchronously. The CLI creates a `SendEmailWorkflow` that calls the `mail.Sender` to actually deliver the message. When you invoke a mailer method it executes this workflow so the HTTP request can return immediately and retries are managed by Temporal.
+Sending emails is handled asynchronously. The CLI creates a `SendEmailWorkflow` that calls the `mail.Sender` to actually deliver the message.
 
-A **mailer** groups related email actions. Each mailer is a simple struct with a Temporal client and methods that start the workflow with the correct message parameters.
+A **mailer** is a set of related email actions. Each mailer is a simple struct with a Temporal client and methods that start the workflow with the correct message parameters.
 
 Generate a mailer and an action with:
 
@@ -12,4 +12,3 @@ bin/goframe generate mailer <mailer name> <action>
 
 This command creates the mailer file, the views for HTML and text formats, and updates the registry so the constructor is wired into `fx`.
 
-See [Sending](./sending.mdx) for an example call and [Templates](./templates.mdx) for the file layout.

@@ -32,8 +32,8 @@ if err != nil && !temporalutil.IsScheduleAlreadyExistError(err) {
 	return err
 }
 ```
-Note that is you try to create two schedules with the same ID, Temporal will return an error. You can handle this by checking for the `temporalutil.IsScheduleAlreadyExistError` error, which is a utility function to check if the error is due to an existing schedule.
+Note that if you try to create two schedules with the same ID, Temporal will return an error. You can handle this by checking for the `temporalutil.IsScheduleAlreadyExistError` error, which is a utility function to check if the error is due to an existing schedule.
 
-I agree with you that this is quite verbose but you can create helpers on your side to simplify a little bit the code.
+I agree with you that this is quite verbose but you can create helpers on your side to simplify the code a little bit.
 
 To fully understand how it works you can check the [Temporal documentation on scheduling](https://docs.temporal.io/develop/go/scheduling) and the [Go SDK documentation](https://docs.temporal.io/develop/go/schedules#create-schedule) for more details on the `ScheduleClient` and its options.

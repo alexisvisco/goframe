@@ -19,4 +19,4 @@ func (m *WelcomeMailer) SendWelcome(ctx context.Context, vars SendWelcomeParams)
 }
 ```
 
-Calling `SendWelcome` returns as soon as the workflow has been scheduled. The actual SMTP transaction happens inside the workflow activity which retries on failure.
+Calling `SendWelcome` returns as soon as the workflow has been scheduled. The actual SMTP transaction happens inside the workflow which retries on failure.

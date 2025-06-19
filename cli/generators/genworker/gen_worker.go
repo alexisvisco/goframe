@@ -147,9 +147,8 @@ func (w *WorkerGenerator) createActivityFile(name string) generators.FileConfig 
 }
 
 func (w *WorkerGenerator) createOrUpdateRegistry() generators.FileConfig {
-
 	return generators.FileConfig{
-		Path:     "internal/workflow/register.go",
+		Path:     "internal/workflow/registry.go",
 		Template: typeutil.Must(fs.ReadFile("templates/registry.go.tmpl")),
 		Gen: func(g *genhelper.GenHelper) {
 			hasActivities, _, activities, workflows := w.buildRegistrationList()

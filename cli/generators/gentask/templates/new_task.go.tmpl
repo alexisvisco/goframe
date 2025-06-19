@@ -13,7 +13,7 @@ type (
 		// any dependencies can be added here
   }
 
-  {{ .name_pascal_case}}Params struct {
+  {{ .name_pascal_case}}TaskParams struct {
     fx.In
     // any dependencies can be added here
   }
@@ -27,8 +27,8 @@ type (
   }
 )
 
-func New{{ .name_pascal_case }}TaskOptions(params {{ .name_pascal_case}}Params) *{{ .name_pascal_case}}TaskOptions {
-  return &{{ .name_pascal_case}}TaskOptions{}
+func New{{ .name_pascal_case }}Task(params {{ .name_pascal_case}}TaskParams) *{{ .name_pascal_case}}Task {
+  return &{{ .name_pascal_case}}Task{}
 }
 
 func (t {{ .name_pascal_case}}Task) Run(ctx context.Context, opts *{{ .name_pascal_case}}TaskOptions) error {
@@ -40,7 +40,7 @@ func (t {{ .name_camel_case}}TaskCli) run(ctx context.Context, opts *{{ .name_pa
   return t.task.Run(ctx, opts)
 }
 
-func New{{ .name_pascal_case }}Task(options []fx.Option) *cobra.Command {
+func New{{ .name_pascal_case }}TaskCommand(options []fx.Option) *cobra.Command {
   opts := {{ .name_pascal_case}}TaskOptions{}
   cmd := &cobra.Command{
     Use:   "{{ .name_kebab_case }}",
@@ -48,7 +48,7 @@ func New{{ .name_pascal_case }}Task(options []fx.Option) *cobra.Command {
     RunE:  cobradi.RunE(func(task *{{ .name_pascal_case}}Task, cmd *cobra.Command, args []string) error {
       cli := &{{ .name_camel_case}}TaskCli{task: task}
       return cli.run(cmd.Context(), &opts)
-    }, append(options, fx.Provide(New{{ .name_pascal_case }}TaskOptions))...),
+    }, append(options, fx.Provide(New{{ .name_pascal_case }}Task))...),
   }
 
   return cmd
