@@ -6,6 +6,7 @@ export default {
   database: "Database",
   worker: "Worker",
   mails: "Mails",
+  storage: "Storage",
   tasks: "Tasks",
   i18n: "I18n",
   cli: "CLI",

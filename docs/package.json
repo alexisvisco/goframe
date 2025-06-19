@@ -1,8 +1,8 @@
 {
-  "name": "nextra-docs-template",
+  "name": "goframe-docs",
   "type": "module",
   "version": "0.0.1",
-  "description": "Nextra docs template",
+  "description": "Goframe docs",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,14 +10,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shuding/nextra-docs-template.git"
+    "url": "git+https://github.com/alexisvisco/goframe.git"
   },
   "author": "Shu Ding <g@shud.in>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/shuding/nextra-docs-template/issues"
+    "url": "https://github.com/alexisvisco/goframe/issues"
   },
-  "homepage": "https://github.com/shuding/nextra-docs-template#readme",
+  "homepage": "https://github.com/alexisvisco/goframe#readme",
   "dependencies": {
     "next": "15.0.0",
     "nextra": "3.0.0",
