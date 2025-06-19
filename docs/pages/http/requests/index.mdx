@@ -21,6 +21,8 @@ func (h *NoteHandler) CreateNote() http.HandlerFunc {
 
 The binder supports many sources: body (JSON or XML), form values, query parameters, headers, cookies, context values and even uploaded files. The order of precedence follows the comments in `params.go`.
 
+
+
 ## Tag reference
 
 ### Body: `json` and `xml`
@@ -38,14 +40,24 @@ type UploadRequest struct {
 
 File uploads are mapped with the `file` or `files` tags on `*multipart.FileHeader` fields.
 
+
+Only available for the root level of the struct.
+
 ### Query parameters: `query`
 Bind values from the URL query string.
+
+
+Only available for the root level of the struct.
 
 ### Path parameters: `path`
 Extract variables from the route path.
 
+Only available for the root level of the struct.
+
 ### Headers: `headers`
 Assign values from request headers.
+
+Only available for the root level of the struct.
 
 ### Cookies: `cookie`
 ```go
@@ -55,9 +67,12 @@ type MyRequest struct {
 ```
 `params.Bind` will look for a cookie named `sid` and fill the `SessionID` field if present.
 
+Only available for the root level of the struct.
+
 ### Context: `ctx`
 Read values from the request context.
 
+Only available for the root level of the struct.
+
 ### Defaults and helpers
 Use the `default` tag to set a value when nothing was bound. Slices may use `exploder` to split a single string into multiple values.
-
