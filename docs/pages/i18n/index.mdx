@@ -1,0 +1,46 @@
+# I18n
+
+GoFrame supports internationalization by loading translation files from `config/i18n` and generating typed helpers.
+Translations are written in YAML per locale:
+
+```yaml filename="translations.en.yaml"
+welcome: "Welcome {user}"
+errors:
+  not_found: "Resource {code:int} not found"
+```
+
+
+Run `bin/goframe i18n new translations` to create the files and generate `translations.gen.go`.
+The generated struct exposes methods matching the keys:
+
+```go filename="handler.go"
+t, _ := i18n.MustNewTranslations()
+msg := t.Welcome(ctx, "Alice")
+```
+
+The lookup uses the `language` value from `context.Context` with the default locale from the configuration as a fallback.
+Placeholders become parameters to the generated methods.
+
+## Placeholder types
+
+The parameter type is optional and defaults to `string`. Any valid Go type can
+be used. Common examples include:
+
+- `int`
+- `float64`
+- `bool`
+- `[]string`
+
+Slices are joined with a comma when substituted. Types implementing
+`fmt.Stringer` will use their `String()` representation.
+
+## Configuration
+
+```yaml filename="config/config.yaml"
+i18n: &i18n
+  default_locale: "en"			# Default locale used when no language is set in the context
+  supported_locales: ["en"]		# List of supported locales
+  fallback_locale: ["en"]		# Fallback locale used when the requested locale is not supported
+  folder: "config/i18n"			# Folder where translation files are stored
+  package: "i18n"				# Package name for the generated code
+```

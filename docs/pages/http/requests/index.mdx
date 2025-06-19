@@ -1,0 +1,63 @@
+# Binding requests
+
+Use `params.Bind` to bind an incoming `http.Request` into a struct. Fields are annotated with tags such as `json`, `form`, `query`, or `path`.
+
+```go filename="handler_note.go"
+type CreateNoteRequest struct {
+    Title   string `json:"title"`
+    Content string `json:"content"`
+}
+
+func (h *NoteHandler) CreateNote() http.HandlerFunc {
+    return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+        var req CreateNoteRequest
+        if err := params.Bind(&req, r); err != nil {
+            return httpx.JSON.BadRequest("invalid request body"), err
+        }
+        // ...
+    })
+}
+```
+
+The binder supports many sources: body (JSON or XML), form values, query parameters, headers, cookies, context values and even uploaded files. The order of precedence follows the comments in `params.go`.
+
+## Tag reference
+
+### Body: `json` and `xml`
+Use these tags on struct fields to bind JSON or XML payloads.
+
+### Form values: `form`
+The `form` tag binds data sent with `application/x-www-form-urlencoded` or `multipart/form-data`.
+
+```go
+type UploadRequest struct {
+    Name string `form:"name"`
+    File *multipart.FileHeader `file:"upload"`
+}
+```
+
+File uploads are mapped with the `file` or `files` tags on `*multipart.FileHeader` fields.
+
+### Query parameters: `query`
+Bind values from the URL query string.
+
+### Path parameters: `path`
+Extract variables from the route path.
+
+### Headers: `headers`
+Assign values from request headers.
+
+### Cookies: `cookie`
+```go
+type MyRequest struct {
+    SessionID string `cookie:"sid"`
+}
+```
+`params.Bind` will look for a cookie named `sid` and fill the `SessionID` field if present.
+
+### Context: `ctx`
+Read values from the request context.
+
+### Defaults and helpers
+Use the `default` tag to set a value when nothing was bound. Slices may use `exploder` to split a single string into multiple values.
+

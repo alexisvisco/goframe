@@ -1,0 +1,39 @@
+# Scheduler
+
+Temporal can start workflows on a recurring schedule. Add the schedule setup inside your worker provider once the Temporal client is created.
+
+## Example of temporal schedule
+
+```go
+
+// client = go.temporal.io/sdk/client package
+_, err := temporalClient.ScheduleClient().Create(context.Background(), client.ScheduleOptions{
+	ID: "schedule_send_mail",
+	Spec: client.ScheduleSpec{
+		TimeZoneName: "Europe/Paris",
+		CronExpressions: []string{
+			"0 16 * * 1", // Every Monday at 16:00 Paris time
+		},
+	},
+	Action: &client.ScheduleWorkflowAction{
+		ID:        "schedule_send_mail_workflow",
+		Workflow:  registry.SendEmailWorkflow.SendEmail,
+		TaskQueue: "default",
+		Args: []any{
+			mail.Message{
+				To:      []string{"alexis@outlook.fr"},
+				Subject: "Test Schedule",
+				View:    "user_test_action",
+			},
+		},
+	},
+})
+if err != nil && !temporalutil.IsScheduleAlreadyExistError(err) {
+	return err
+}
+```
+Note that if you try to create two schedules with the same ID, Temporal will return an error. You can handle this by checking for the `temporalutil.IsScheduleAlreadyExistError` error, which is a utility function to check if the error is due to an existing schedule.
+
+I agree with you that this is quite verbose but you can create helpers on your side to simplify the code a little bit.
+
+To fully understand how it works you can check the [Temporal documentation on scheduling](https://docs.temporal.io/develop/go/scheduling) and the [Go SDK documentation](https://docs.temporal.io/develop/go/schedules#create-schedule) for more details on the `ScheduleClient` and its options.

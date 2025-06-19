@@ -12,7 +12,7 @@ import (
 func handlerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "handler <name> [services...]",
-		Short: "GenerateHandler a new HTTP handler",
+		Short: "Create a handler for handling http requests",
 		RunE: genhelper.WithFileDiff(func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return fmt.Errorf("handler name is required")

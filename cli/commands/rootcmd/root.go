@@ -89,7 +89,7 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 			// find the go mod file and find the module name to set it in the ctx
 			// if not found go .. until it finds it
 			// if not found, return an error
-			goModPath, err := findGoMod(".")
+			goModPath, workdir, err := findGoMod(".")
 			if err != nil {
 				return fmt.Errorf("failed to find go.mod: %w", err)
 			}
@@ -102,6 +102,7 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 			// Build a new context carrying needed values and propagate it to the root
 			ctx := cmd.Context()
 			ctx = context.WithValue(ctx, "module", moduleName)
+			ctx = context.WithValue(ctx, "workdir", workdir)
 			ctx = context.WithValue(ctx, "migrations", defaultOpts.Migrations)
 			ctx = context.WithValue(ctx, "db", defaultOpts.DB)
 			ctx = applyConfigs(ctx, defaultOpts.Config)
@@ -169,12 +170,12 @@ func applyConfigs(ctx context.Context, config any) context.Context {
 }
 
 // findGoMod searches for go.mod file starting from current directory and going up
-func findGoMod(startDir string) (string, error) {
+func findGoMod(startDir string) (string, string, error) {
 	dir := startDir
 	for {
 		goModPath := filepath.Join(dir, "go.mod")
 		if _, err := os.Stat(goModPath); err == nil {
-			return goModPath, nil
+			return goModPath, filepath.Dir(goModPath), nil
 		}
 
 		parent := filepath.Dir(dir)
@@ -184,7 +185,7 @@ func findGoMod(startDir string) (string, error) {
 		}
 		dir = parent
 	}
-	return "", fmt.Errorf("go.mod file not found")
+	return "", "", fmt.Errorf("go.mod file not found")
 }
 
 // parseModuleName extracts module name from go.mod file using the official parser
