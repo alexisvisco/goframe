@@ -47,6 +47,10 @@ func (n *NoteExampleGenerator) Generate() error {
 		return fmt.Errorf("failed to update repository files: %w", err)
 	}
 
+	if err := n.addRoutesIfNotExists(); err != nil {
+		return fmt.Errorf("failed to add routes: %w", err)
+	}
+
 	return nil
 }
 
@@ -85,4 +89,27 @@ func (n *NoteExampleGenerator) CreateTypes(path string) generators.FileConfig {
 		Path:     path,
 		Template: typeutil.Must(fs.ReadFile("templates/type_note.go.tmpl")),
 	}
+}
+
+func (n *NoteExampleGenerator) addRoutesIfNotExists() error {
+	routes := []string{
+		`p.Mux.HandleFunc("POST /v1/notes", p.NoteHandler.CreateNote())`,
+		`p.Mux.HandleFunc("GET /v1/notes", p.NoteHandler.ListNotes())`,
+		`p.Mux.HandleFunc("PUT /v1/notes/{id}", p.NoteHandler.UpdateNote())`,
+		`p.Mux.HandleFunc("DELETE /v1/notes/{id}", p.NoteHandler.DeleteNote())`,
+	}
+
+	gofile, err := genhelper.LoadGoFile("internal/v1handler/router.go")
+	if err != nil {
+		return fmt.Errorf("failed to load router.go: %w", err)
+	}
+	for _, route := range routes {
+		gofile.AddLineAfterString(`func Router(p RouterParams) {`, "\t"+route)
+	}
+
+	if err := gofile.Save(); err != nil {
+		return fmt.Errorf("failed to save router.go: %w", err)
+	}
+
+	return nil
 }
