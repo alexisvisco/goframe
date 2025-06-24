@@ -201,7 +201,7 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []temporlWorkerRe
 		if e.IsDir() || filepath.Ext(e.Name()) != ".go" {
 			continue
 		}
-		if e.Name() == "register.go" {
+		if e.Name() == "register.go" || e.Name() == "registry.go" {
 			continue
 		}
 
@@ -225,7 +225,7 @@ func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []temporlWorkerRe
 		if e.IsDir() || filepath.Ext(e.Name()) != ".go" {
 			continue
 		}
-		if e.Name() == "register.go" {
+		if e.Name() == "register.go" || e.Name() == "registry.go" {
 			continue
 		}
 

@@ -1,0 +1,21 @@
+package activity
+
+import (
+  "context"
+  {{ .imports }}
+)
+
+type SendEmailActivity struct{ sender *mail.Sender }
+
+type SendEmailActivityParams struct {
+  fx.In
+  Sender *mail.Sender
+}
+
+func NewSendEmailActivity(p SendEmailActivityParams) *SendEmailActivity {
+  return &SendEmailActivity{sender: p.Sender}
+}
+
+func (a *SendEmailActivity) SendEmail(ctx context.Context, m mail.Message) error {
+  return a.sender.Send(ctx, m)
+}

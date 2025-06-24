@@ -1,6 +1,6 @@
 # Mail Overview
 
-Sending emails is handled asynchronously. The CLI creates a `SendEmailWorkflow` that calls the `mail.Sender` to actually deliver the message.
+Sending emails is handled asynchronously. The CLI creates a `SendEmailWorkflow` that runs a `SendEmailActivity` using the `mail.Sender` to deliver messages.
 
 A **mailer** is a set of related email actions. Each mailer is a simple struct with a Temporal client and methods that start the workflow with the correct message parameters.
 

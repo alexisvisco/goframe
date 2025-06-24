@@ -27,6 +27,7 @@ var fs embed.FS
 func (m *MailerGenerator) Generate() error {
 	files := []generators.FileConfig{
 		m.createRegistry(),
+		m.createSendEmailActivity(),
 		m.createSendEmailWorkflow(),
 	}
 
@@ -56,7 +57,23 @@ func (m *MailerGenerator) createSendEmailWorkflow() generators.FileConfig {
 		Path:     "internal/workflow/workflow_send_email.go",
 		Template: typeutil.Must(fs.ReadFile("templates/workflow_send_email.go.tmpl")),
 		Gen: func(g *genhelper.GenHelper) {
-			g.WithImport("go.temporal.io/sdk/workflow", "workflow")
+			g.WithImport("time", "time").
+				WithImport("go.temporal.io/sdk/workflow", "workflow").
+				WithImport("go.temporal.io/sdk/temporal", "temporal").
+				WithImport("go.uber.org/fx", "fx").
+				WithImport(filepath.Join(m.Gen.GoModuleName, "internal/workflow/activity"), "activity").
+				WithImport("github.com/alexisvisco/goframe/mail", "mail")
+		},
+	}
+}
+
+func (m *MailerGenerator) createSendEmailActivity() generators.FileConfig {
+	return generators.FileConfig{
+		Path:     "internal/workflow/activity/activity_send_email.go",
+		Template: typeutil.Must(fs.ReadFile("templates/activity_send_email.go.tmpl")),
+		Gen: func(g *genhelper.GenHelper) {
+			g.WithImport("go.uber.org/fx", "fx").
+				WithImport("github.com/alexisvisco/goframe/mail", "mail")
 		},
 	}
 }
@@ -119,12 +136,11 @@ func (m *MailerGenerator) createMailView(name, action, format string) generators
 }
 
 func (m *MailerGenerator) createRegistry() generators.FileConfig {
-	mailers, _ := m.listMailers() // Ignoring error as empty slice is acceptable if dir doesn't exist
-
 	return generators.FileConfig{
 		Path:     "internal/mailer/registry.go",
 		Template: typeutil.Must(fs.ReadFile("templates/registry.go.tmpl")),
 		Gen: func(g *genhelper.GenHelper) {
+			mailers, _ := m.listMailers() // directory may not exist yet
 			g.WithVar("mailers", mailers)
 		},
 	}

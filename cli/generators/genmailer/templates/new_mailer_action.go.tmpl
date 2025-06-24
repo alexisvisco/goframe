@@ -7,9 +7,7 @@ func (m *{{ .mailer_pascal }}Mailer) {{ .action_pascal }}(ctx context.Context, v
   _, err := m.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
     ID: "mailer_" + cuid2.Generate(),
     TaskQueue: "default",
-    RetryPolicy: &temporal.RetryPolicy{
-      MaximumAttempts: 3,
-    },
+    RetryPolicy: &temporal.RetryPolicy{MaximumAttempts: 1},
   }, wf.SendEmail, mail.Message{
     To: vars.To,
     Subject: "{{ .action_pascal }}",

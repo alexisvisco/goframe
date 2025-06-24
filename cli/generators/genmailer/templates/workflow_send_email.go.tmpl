@@ -1,26 +1,27 @@
 package workflow
 
 import (
-  "context"
-  "github.com/alexisvisco/goframe/mail"
-  "go.uber.org/fx"
-
   {{ .imports }}
 )
 
 type SendEmailWorkflow struct {
-  sender *mail.Sender
+  Activity *activity.SendEmailActivity
 }
 
 type SendEmailWorkflowParams struct {
   fx.In
-  Sender *mail.Sender
+  Activity *activity.SendEmailActivity
 }
 
 func NewSendEmailWorkflow(p SendEmailWorkflowParams) *SendEmailWorkflow {
-  return &SendEmailWorkflow{sender: p.Sender}
+  return &SendEmailWorkflow{Activity: p.Activity}
 }
 
-func (w *SendEmailWorkflow) SendEmail(_ workflow.Context, p mail.Message) error {
-  return w.sender.Send(context.Background(), p)
+func (w *SendEmailWorkflow) SendEmail(ctx workflow.Context, p mail.Message) error {
+  opts := workflow.ActivityOptions{
+    StartToCloseTimeout: time.Minute,
+    RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 3},
+  }
+  ctx = workflow.WithActivityOptions(ctx, opts)
+  return workflow.ExecuteActivity(ctx, w.Activity.SendEmail, p).Get(ctx, nil)
 }

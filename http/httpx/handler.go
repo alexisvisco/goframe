@@ -7,6 +7,7 @@ import (
 
 	"github.com/alexisvisco/goframe/core/coretypes"
 	"github.com/alexisvisco/goframe/core/helpers/clog"
+	"github.com/alexisvisco/goframe/http/params"
 )
 
 // Response represents an HTTP response
@@ -163,8 +164,8 @@ type RedirectResponse struct {
 	statusCode int
 }
 
-func (r RedirectResponse) WriteTo(w http.ResponseWriter, _ *http.Request) error {
-	http.Redirect(w, nil, r.url, r.statusCode)
+func (r RedirectResponse) WriteTo(w http.ResponseWriter, req *http.Request) error {
+	http.Redirect(w, req, r.url, r.statusCode)
 	return nil
 }
 
@@ -407,8 +408,17 @@ var DefaultHTTPError = func(w http.ResponseWriter, r *http.Request, err error) {
 // onError handles errors that occur during request processing
 func onError(w http.ResponseWriter, r *http.Request, err error) {
 	if customError, ok := ErrorMapper[err]; ok {
-		//http.Error(w, customError.Message, customError.StatusCode)
 		resp := NewJSONResponse(customError.StatusCode, customError)
+		_ = resp.WriteTo(w, r)
+		return
+	}
+
+	var bindingError *params.BindingError
+	if errors.As(err, &bindingError) {
+		resp := NewJSONResponse(http.StatusBadRequest, Error{
+			Message: "binding error",
+			Code:    "BINDING_ERROR",
+		})
 		_ = resp.WriteTo(w, r)
 		return
 	}

@@ -8,7 +8,7 @@ func (m *WelcomeMailer) SendWelcome(ctx context.Context, vars SendWelcomeParams)
     _, err := m.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
         ID: "mailer_" + cuid2.Generate(),
         TaskQueue: "default",
-        RetryPolicy: &temporal.RetryPolicy{MaximumAttempts: 3},
+        RetryPolicy: &temporal.RetryPolicy{MaximumAttempts: 1},
     }, wf.SendEmail, mail.Message{
         To:       vars.To,
         Subject:  "SendWelcome",
@@ -20,3 +20,4 @@ func (m *WelcomeMailer) SendWelcome(ctx context.Context, vars SendWelcomeParams)
 ```
 
 Calling `SendWelcome` returns as soon as the workflow has been scheduled. The actual SMTP transaction happens inside the workflow which retries on failure.
+Inside the workflow, the `SendEmailActivity` is executed with a retry policy of three attempts.
