@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -104,12 +105,13 @@ func (g *DatabaseGenerator) CreateMigration(params CreateMigrationParams) []gene
 }
 
 func (g *DatabaseGenerator) updateOrCreateMigrations(path string) generators.FileConfig {
-	hasSQLMigrations, hasGoMigrations, list := g.buildMigrationList()
 
 	return generators.FileConfig{
 		Path:     path,
 		Template: typeutil.Must(fs.ReadFile("templates/migrations.go.tmpl")),
 		Gen: func(gh *genhelper.GenHelper) {
+			hasSQLMigrations, hasGoMigrations, list := g.buildMigrationList()
+
 			if hasSQLMigrations {
 				gh.WithImport("embed", "embed").
 					WithVar("has_sql_migrations", "true")
@@ -173,6 +175,10 @@ func (g *DatabaseGenerator) buildMigrationList() (bool, bool, []string) {
 	if err != nil {
 		return false, false, []string{}
 	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name() < entries[j].Name()
+	})
 
 	var migrations []string
 	hasSqlFiles := false
