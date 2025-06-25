@@ -1,9 +1,15 @@
 package repository
 
-
+{{- if .imports }}
+import (
+  {{ .imports }}
+)
+{{- end }}
 
 type {{ .name_pascal }}Repository struct {
 }
+
+var _ types.{{ .name_pascal }}Repository = (*{{ .name_pascal }}Repository)(nil)
 
 func New{{ .name_pascal }}Repository() *{{ .name_pascal }}Repository {
   return &{{ .name_pascal }}Repository{}

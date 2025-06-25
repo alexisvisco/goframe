@@ -70,11 +70,8 @@ func (s *ServiceGenerator) createServiceFile(name string, withRepo bool) generat
 		Template: typeutil.Must(fs.ReadFile("templates/new_service.go.tmpl")),
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithVar("name_pascal", str.ToPascalCase(name)).
-				WithVar("with_repo", withRepo)
-
-			if withRepo {
-				g.WithImport(filepath.Join(s.Gen.GoModuleName, "internal/types"), "types")
-			}
+				WithVar("with_repo", withRepo).
+				WithImport(filepath.Join(s.Gen.GoModuleName, "internal/types"), "types")
 		},
 	}
 }

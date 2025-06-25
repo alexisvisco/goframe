@@ -13,6 +13,8 @@ type NoteService struct {
   repo types.NoteRepository
 }
 
+var _ types.NoteService = (*NoteService)(nil)
+
 func NewNoteService(repo types.NoteRepository) *NoteService {
   return &NoteService{repo: repo}
 }

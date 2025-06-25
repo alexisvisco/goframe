@@ -7,8 +7,10 @@ import (
 )
 
 type NoteRepository struct {
-	fakeDatabase map[string]*types.Note
+        fakeDatabase map[string]*types.Note
 }
+
+var _ types.NoteRepository = (*NoteRepository)(nil)
 
 func NewNoteRepository() *NoteRepository {
   return &NoteRepository{

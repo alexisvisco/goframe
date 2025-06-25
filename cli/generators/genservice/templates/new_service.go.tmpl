@@ -12,6 +12,8 @@ type {{ .name_pascal }}Service struct {
   {{- end }}
 }
 
+var _ types.{{ .name_pascal }}Service = (*{{ .name_pascal }}Service)(nil)
+
 func New{{ .name_pascal }}Service({{ if .with_repo }}repo types.{{ .name_pascal }}Repository{{ end }}) *{{ .name_pascal }}Service {
   return &{{ .name_pascal }}Service{ {{- if .with_repo }}repo: repo{{- end }} }
 }

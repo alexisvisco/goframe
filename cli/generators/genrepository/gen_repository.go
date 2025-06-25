@@ -69,7 +69,8 @@ func (r *RepositoryGenerator) createRepositoryFile(name string) generators.FileC
 		Path:     path,
 		Template: typeutil.Must(fs.ReadFile("templates/new_repository.go.tmpl")),
 		Gen: func(g *genhelper.GenHelper) {
-			g.WithVar("name_pascal", str.ToPascalCase(name))
+			g.WithVar("name_pascal", str.ToPascalCase(name)).
+				WithImport(filepath.Join(r.Gen.GoModuleName, "internal/types"), "types")
 		},
 	}
 }

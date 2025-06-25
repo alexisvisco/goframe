@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/alexisvisco/goframe/core/configuration"
+	"github.com/alexisvisco/goframe/core/contracts"
 	"github.com/alexisvisco/goframe/core/coretypes"
 )
 
@@ -18,6 +19,8 @@ type (
 		driver configuration.DatabaseType
 	}
 )
+
+var _ contracts.StorageRepository = (*DefaultRepository)(nil)
 
 func NewRepository(cfg configuration.Database, db *sql.DB) *DefaultRepository {
 	repo := &DefaultRepository{
