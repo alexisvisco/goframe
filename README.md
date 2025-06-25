@@ -46,6 +46,8 @@ For more commands check the built‑in help:
 bin/goframe --help
 ```
 
+`bin/goframe` always tries to compile the CLI into `bin/goframe.bin`. When compilation fails it reuses the previous binary if available. If no binary exists, it attempts `go mod tidy` once before asking you to fix the build errors.
+
 ## Documentation
 
 Full documentation is available at [goframe.alexisvis.co](https://goframe.alexisvis.co).

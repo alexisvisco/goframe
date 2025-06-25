@@ -1,9 +1,13 @@
 # CLI Overview
 
+import { Callout } from 'nextra/components'
+
 A `goframe` executable is generated in `cmd/cli/main.go`. Running `bin/goframe` gives access to project utilities like migrations, workers and code generators.
 
 ```
 bin/goframe --help
 ```
+
+<Callout type="info">`bin/goframe` always tries to rebuild `bin/goframe.bin`. If the build fails it reuses the previous binary or runs `go mod tidy` before giving up.</Callout>
 
 Commands are implemented with [Cobra](https://github.com/spf13/cobra). The default root command already exposes subcommands for tasks, database migrations and generators.

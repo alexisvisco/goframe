@@ -1,1 +1,23 @@
-go run cmd/cli/main.go "$@"
+#!/usr/bin/env bash
+set -euo pipefail
+
+mkdir -p bin
+
+# Always try to build the CLI binary
+if go build -o bin/goframe.bin.new ./cmd/cli/main.go; then
+  mv bin/goframe.bin.new bin/goframe.bin
+  exec bin/goframe.bin "$@"
+fi
+
+# Build failed, reuse previous binary if available
+if [[ -x "bin/goframe.bin" ]]; then
+  echo "Build failed, using existing goframe binary" >&2
+  exec bin/goframe.bin "$@"
+fi
+
+if go mod tidy && go build -o bin/goframe.bin ./cmd/cli/main.go; then
+  exec bin/goframe.bin "$@"
+fi
+
+echo "goframe could not be built. Please fix the errors first." >&2
+exit 1
