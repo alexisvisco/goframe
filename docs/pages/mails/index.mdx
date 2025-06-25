@@ -2,7 +2,7 @@
 
 Sending emails is handled asynchronously. The CLI creates a `SendEmailWorkflow` that runs a `SendEmailActivity` using the `mail.Sender` to deliver messages.
 
-A **mailer** is a set of related email actions. Each mailer is a simple struct with a Temporal client and methods that start the workflow with the correct message parameters.
+A **mailer** is a set of related email actions. Each mailer is a struct implementing an interface in `internal/types/mailer.go` so it can be easily mocked. The methods start the workflow with the correct message parameters.
 
 Generate a mailer and an action with:
 

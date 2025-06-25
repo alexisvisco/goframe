@@ -113,8 +113,7 @@ Define the application dependencies, can be reused across various entrypoints (C
 
 #### `internal/mailer/`
 
-A mailer is used to send emails using the MJML and TXT templates. It's a struct containing multiple methods to send emails, such as `SendWelcomeEmail`, `SendPasswordResetEmail`, etc.
-It uses the `github.com/wneessen/go-mail` package to send emails via SMTP.
+A mailer sends emails using the MJML and TXT templates. Each mailer implements an interface declared in `internal/types/mailer.go` so mocks can be used in tests. The struct contains multiple methods such as `SendWelcomeEmail`, `SendPasswordResetEmail`, etc. It uses the `github.com/wneessen/go-mail` package to send emails via SMTP.
 
 You can generate them via the CLI using the `bin/goframe generate mailer <mailer name> <mail name>`.
 

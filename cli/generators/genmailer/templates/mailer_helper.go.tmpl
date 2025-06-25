@@ -1,0 +1,27 @@
+package mailer
+
+import (
+  {{ .imports }}
+)
+
+func triggerWorkflow[T any](
+  ctx context.Context,
+  cli client.Client,
+  vars T,
+  to []string,
+  subject string,
+  view string,
+) error {
+  var wf workflow.SendEmailWorkflow
+  _, err := cli.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
+    ID:          "mailer_" + cuid2.Generate(),
+    TaskQueue:   "default",
+    RetryPolicy: &temporal.RetryPolicy{MaximumAttempts: 1},
+  }, wf.SendEmail, mail.Message{
+    To:        to,
+    Subject:   subject,
+    View:      view,
+    Variables: vars,
+  })
+  return err
+}

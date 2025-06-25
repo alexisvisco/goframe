@@ -3,19 +3,8 @@
 Mailer methods start the `SendEmailWorkflow` in the background. The generated code resembles:
 
 ```go filename="mailer_welcome.go"
-func (m *WelcomeMailer) SendWelcome(ctx context.Context, vars SendWelcomeParams) error {
-    var wf workflow.SendEmailWorkflow
-    _, err := m.client.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
-        ID: "mailer_" + cuid2.Generate(),
-        TaskQueue: "default",
-        RetryPolicy: &temporal.RetryPolicy{MaximumAttempts: 1},
-    }, wf.SendEmail, mail.Message{
-        To:       vars.To,
-        Subject:  "SendWelcome",
-        View:     "welcome_send_welcome",
-        Variables: vars,
-    })
-    return err
+func (m *WelcomeMailer) SendWelcome(ctx context.Context, vars types.WelcomeMailerSendWelcomeParams) error {
+    return triggerWorkflow(ctx, m.client, vars, vars.To, "SendWelcome", "welcome_send_welcome")
 }
 ```
 

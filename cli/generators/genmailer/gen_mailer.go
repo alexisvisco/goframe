@@ -26,9 +26,10 @@ var fs embed.FS
 // Generate creates the initial mailer infrastructure files.
 func (m *MailerGenerator) Generate() error {
 	files := []generators.FileConfig{
-		m.createRegistry(),
+		m.createOrUpdateRegistry(),
 		m.createSendEmailActivity(),
 		m.createSendEmailWorkflow(),
+		m.createMailerHelperFile(),
 	}
 
 	if err := m.Gen.GenerateFiles(files); err != nil {
@@ -44,7 +45,7 @@ func (m *MailerGenerator) Generate() error {
 
 // Update refreshes the mailer registry with current mailers.
 func (m *MailerGenerator) Update() error {
-	err := m.Gen.GenerateFile(m.createRegistry())
+	err := m.Gen.GenerateFile(m.createOrUpdateRegistry())
 	if err != nil {
 		return fmt.Errorf("failed to generate registry: %w", err)
 	}
@@ -78,17 +79,36 @@ func (m *MailerGenerator) createSendEmailActivity() generators.FileConfig {
 	}
 }
 
+func (m *MailerGenerator) createMailerHelperFile() generators.FileConfig {
+	return generators.FileConfig{
+		Path:     "internal/mailer/mailer_helper.go",
+		Template: typeutil.Must(fs.ReadFile("templates/mailer_helper.go.tmpl")),
+		Gen: func(g *genhelper.GenHelper) {
+			g.WithImport("context", "context").
+				WithImport("github.com/alexisvisco/goframe/mail", "mail").
+				WithImport("github.com/nrednav/cuid2", "cuid2").
+				WithImport("go.temporal.io/sdk/client", "client").
+				WithImport("go.temporal.io/sdk/temporal", "temporal").
+				WithImport(filepath.Join(m.Gen.GoModuleName, "internal/workflow"), "workflow")
+		},
+	}
+}
+
 // GenerateMailer creates a new mailer with the specified action.
 func (m *MailerGenerator) GenerateMailer(name, action string) error {
 	files := []generators.FileConfig{
 		m.createMailerFile(name),
-		m.createRegistry(),
+		m.createOrUpdateRegistry(),
 		m.createMailView(name, action, "txt"),
 		m.createMailView(name, action, "mjml"),
 	}
 
 	if err := m.Gen.GenerateFiles(files); err != nil {
 		return err
+	}
+
+	if err := m.ensureMailerTypes(name, action); err != nil {
+		return fmt.Errorf("failed to update mailer types: %w", err)
 	}
 
 	if err := m.ensureAction(name, action); err != nil {
@@ -104,13 +124,13 @@ func (m *MailerGenerator) createMailerFile(name string) generators.FileConfig {
 	return generators.FileConfig{
 		Path:     path,
 		Template: typeutil.Must(fs.ReadFile("templates/new_mailer.go.tmpl")),
+		Skip:     m.Gen.SkipFileIfExists(path),
 		Gen: func(g *genhelper.GenHelper) {
 			g.WithVar("mailer_pascal", str.ToPascalCase(name)).
 				WithImport("context", "context").
-				WithImport("go.temporal.io/sdk/client", "client").
 				WithImport("go.uber.org/fx", "fx").
-				WithImport("github.com/nrednav/cuid2", "cuid2").
-				WithImport(filepath.Join(m.Gen.GoModuleName, "internal/workflow"), "workflow")
+				WithImport(filepath.Join(m.Gen.GoModuleName, "internal/workflow"), "workflow").
+				WithImport(filepath.Join(m.Gen.GoModuleName, "internal/types"), "types")
 		},
 	}
 }
@@ -135,13 +155,15 @@ func (m *MailerGenerator) createMailView(name, action, format string) generators
 	}
 }
 
-func (m *MailerGenerator) createRegistry() generators.FileConfig {
+func (m *MailerGenerator) createOrUpdateRegistry() generators.FileConfig {
 	return generators.FileConfig{
 		Path:     "internal/mailer/registry.go",
 		Template: typeutil.Must(fs.ReadFile("templates/registry.go.tmpl")),
 		Gen: func(g *genhelper.GenHelper) {
 			mailers, _ := m.listMailers() // directory may not exist yet
 			g.WithVar("mailers", mailers)
+			g.WithImport(filepath.Join(m.Gen.GoModuleName, "internal/types"), "types")
+			g.WithImport("github.com/alexisvisco/goframe/core/helpers/fxutil", "fxutil")
 		},
 	}
 }
@@ -171,11 +193,72 @@ func (m *MailerGenerator) ensureAction(name, action string) error {
 		return fmt.Errorf("failed to generate action %s for mailer %s: %w", action, name, err)
 	}
 
-	gofile.AddNamedImport("", "github.com/alexisvisco/goframe/mail")
-	gofile.AddNamedImport("", "go.temporal.io/sdk/temporal")
+	gofile.AddNamedImport("types", filepath.Join(m.Gen.GoModuleName, "internal/types"))
 	gofile.AddContent(actionContent)
 
 	return gofile.Save()
+}
+func (m *MailerGenerator) ensureMailerTypes(name, action string) error {
+	path := filepath.Join("internal/types", "mailer.go")
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return fmt.Errorf("failed to create directory for types: %w", err)
+		}
+		if err := os.WriteFile(path, []byte("package types\n"), 0644); err != nil {
+			return fmt.Errorf("failed to create types file: %w", err)
+		}
+	}
+
+	gf, err := genhelper.LoadGoFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to load type file: %w", err)
+	}
+
+	gf.AddNamedImport("", "context")
+
+	pascalMailer := str.ToPascalCase(name)
+	pascalAction := str.ToPascalCase(action)
+	paramName := pascalMailer + "Mailer" + pascalAction + "Params"
+	ifaceName := pascalMailer + "Mailer"
+
+	// Ensure interface exists first
+	if !gf.HasInterface(ifaceName) {
+		gf.AddContent("type " + ifaceName + " interface {\n\t" + pascalAction + "(ctx context.Context, vars " + paramName + ") error\n}\n")
+	} else {
+		// Interface exists, check if method needs to be added
+		lines := gf.GetLines()
+		start := -1
+		end := -1
+		for i, l := range lines {
+			if strings.Contains(l, "type "+ifaceName+" interface") {
+				start = i
+				continue
+			}
+			if start != -1 && strings.TrimSpace(l) == "}" {
+				end = i
+				break
+			}
+		}
+		if start != -1 && end != -1 {
+			exists := false
+			for i := start; i < end; i++ {
+				if strings.Contains(lines[i], pascalAction+"(") {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				gf.AddLineAfterString("type "+ifaceName+" interface {", "\t"+pascalAction+"(ctx context.Context, vars "+paramName+") error")
+			}
+		}
+	}
+
+	// Then ensure params struct exists
+	if !gf.HasStruct(paramName) {
+		gf.AddContent("type " + paramName + " struct {\n\tTo []string\n}\n")
+	}
+
+	return gf.Save()
 }
 
 func (m *MailerGenerator) updateAppModule() error {
@@ -203,6 +286,9 @@ func (m *MailerGenerator) listMailers() ([]string, error) {
 			continue
 		}
 		if e.Name() == "registry.go" {
+			continue
+		}
+		if e.Name() == "mailer_helper.go" {
 			continue
 		}
 

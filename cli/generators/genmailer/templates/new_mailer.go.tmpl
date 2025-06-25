@@ -13,6 +13,8 @@ type {{ .mailer_pascal }}MailerParams struct {
   Client client.Client
 }
 
+var _ types.{{ .mailer_pascal }}Mailer = (*{{ .mailer_pascal }}Mailer)(nil)
+
 func New{{ .mailer_pascal }}Mailer(p {{ .mailer_pascal }}MailerParams) *{{ .mailer_pascal }}Mailer {
   return &{{ .mailer_pascal }}Mailer{client: p.Client}
 }

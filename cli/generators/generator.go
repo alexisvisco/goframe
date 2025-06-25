@@ -93,3 +93,10 @@ func (g *Generator) SkipDirectoryIfExists(path string) bool {
 	}
 	return true // Directory exists, so we skip creating it
 }
+
+func (g *Generator) SkipFileIfExists(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
