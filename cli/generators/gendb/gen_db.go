@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -173,6 +174,10 @@ func (g *DatabaseGenerator) buildMigrationList() (bool, bool, []string) {
 	if err != nil {
 		return false, false, []string{}
 	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name() < entries[j].Name()
+	})
 
 	var migrations []string
 	hasSqlFiles := false
