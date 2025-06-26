@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
+	"regexp"
 
 	"github.com/alexisvisco/goframe/cli/generators"
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
@@ -138,29 +138,15 @@ func (s *ServiceGenerator) updateAppModule() error {
 }
 
 func (s *ServiceGenerator) listServices() ([]string, error) {
-	entries, err := os.ReadDir("internal/service")
+	gopkg, err := genhelper.LoadGoPkg("internal/service")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load service package: %w", err)
 	}
 
 	var services []string
-	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".go" {
-			continue
-		}
-		if e.Name() == "registry.go" {
-			continue
-		}
-
-		name := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
-		name = strings.TrimPrefix(name, "service_")
-		pascal := str.ToPascalCase(name)
-
-		if !strings.HasSuffix(pascal, "Service") {
-			pascal += "Service"
-		}
-
-		services = append(services, pascal)
+	structs := gopkg.FindAllStructRegexp(regexp.MustCompile(`(\w+)Service$`))
+	for _, info := range structs {
+		services = append(services, info.Name)
 	}
 
 	return services, nil

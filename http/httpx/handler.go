@@ -3,6 +3,7 @@ package httpx
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/alexisvisco/goframe/core/coretypes"
@@ -415,6 +416,7 @@ func onError(w http.ResponseWriter, r *http.Request, err error) {
 
 	var bindingError *params.BindingError
 	if errors.As(err, &bindingError) {
+		fmt.Println("Using binding error handler")
 		resp := NewJSONResponse(http.StatusBadRequest, Error{
 			Message: "binding error",
 			Code:    "BINDING_ERROR",
@@ -422,6 +424,8 @@ func onError(w http.ResponseWriter, r *http.Request, err error) {
 		_ = resp.WriteTo(w, r)
 		return
 	}
+
+	fmt.Println("Using default error handler")
 
 	DefaultHTTPError(w, r, err)
 }

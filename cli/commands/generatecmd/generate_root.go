@@ -12,7 +12,6 @@ func NewCmdRootGenerate(subCommands ...*cobra.Command) *cobra.Command {
 	cmd.AddCommand(migrationCmd())
 	cmd.AddCommand(taskCmd())
 	cmd.AddCommand(workerCmd())
-	cmd.AddCommand(repositoryCmd())
 	cmd.AddCommand(serviceCmd())
 	cmd.AddCommand(handlerCmd())
 	cmd.AddCommand(mailerCmd())

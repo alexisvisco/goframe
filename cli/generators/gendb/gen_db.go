@@ -43,6 +43,7 @@ func (g *DatabaseGenerator) Generate() error {
 
 	files := []generators.FileConfig{
 		g.createDBProvider("internal/provide/provide_db.go"),
+		g.createDbutil("internal/dbutil/dbutil.go"),
 		g.updateOrCreateMigrations("db/migrations.go"),
 	}
 
@@ -148,6 +149,13 @@ func (g *DatabaseGenerator) createGoMigrationFile(c CreateMigrationParams) gener
 				WithVar("version", version).
 				WithVar("name", nameSnakeCase)
 		},
+	}
+}
+
+func (g *DatabaseGenerator) createDbutil(path string) generators.FileConfig {
+	return generators.FileConfig{
+		Path:     path,
+		Template: typeutil.Must(fs.ReadFile("templates/dbutil_dbutil.go.tmpl")),
 	}
 }
 

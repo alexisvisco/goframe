@@ -1,0 +1,33 @@
+package types
+
+import (
+	"context"
+)
+
+type UserMailer interface {
+	EmailVerification(ctx context.Context, vars UserMailerEmailVerificationParams) error
+	MagicLink(ctx context.Context, vars UserMailerMagicLinkParams) error
+	PasswordReset(ctx context.Context, vars UserMailerPasswordResetParams) error
+	OAuthProviderVerification(ctx context.Context, vars UserMailerOAuthProviderVerificationParams) error
+}
+
+type UserMailerEmailVerificationParams struct {
+	To   []string
+	Link string
+}
+
+type UserMailerMagicLinkParams struct {
+	To   []string
+	Link string
+}
+
+type UserMailerPasswordResetParams struct {
+	To   []string
+	Link string
+}
+
+type UserMailerOAuthProviderVerificationParams struct {
+	To       []string
+	Link     string
+	Provider string
+}

@@ -4,11 +4,13 @@ import (
 	"fmt"
 
 	"github.com/alexisvisco/goframe/cli/generators"
+	"github.com/alexisvisco/goframe/cli/generators/genauth"
+	"github.com/alexisvisco/goframe/cli/generators/gendb"
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
 	"github.com/alexisvisco/goframe/cli/generators/genhttp"
-	"github.com/alexisvisco/goframe/cli/generators/genhttpexample"
-	"github.com/alexisvisco/goframe/cli/generators/genrepository"
+	"github.com/alexisvisco/goframe/cli/generators/genmailer"
 	"github.com/alexisvisco/goframe/cli/generators/genservice"
+	"github.com/alexisvisco/goframe/cli/generators/genworker"
 	"github.com/spf13/cobra"
 )
 
@@ -26,30 +28,26 @@ func moduleCmd() *cobra.Command {
 				ORMType:      "gorm",
 			}
 
-			//cfgGen := &genconfig.ConfigGenerator{Gen: g}
-			//coreGen := &gencore.CoreGenerator{Gen: g}
-			repoGen := &genrepository.RepositoryGenerator{Gen: g}
 			svcGen := &genservice.ServiceGenerator{Gen: g}
-			//dbGen := &gendb.DatabaseGenerator{Gen: g}
-			//storageGen := &genstorage.StorageGenerator{Gen: g, DBGen: dbGen}
-			//dockerGen := &gendocker.DockerGenerator{Gen: g}
+			dbGen := &gendb.DatabaseGenerator{Gen: g}
 			httpGen := &genhttp.HTTPGenerator{Gen: g}
-			//workerGen := &genworker.WorkerGenerator{Gen: g}
-			//mailerGen := &genmailer.MailerGenerator{Gen: g, Wf: workerGen}
-			exampleHttpGen := &genhttpexample.NoteExampleGenerator{
-				Gen:     g,
-				GenHTTP: httpGen,
-				GenSvc:  svcGen,
-				GenRepo: repoGen,
+			workerGen := &genworker.WorkerGenerator{Gen: g}
+			mailerGen := &genmailer.MailerGenerator{Gen: g, Wf: workerGen}
+			authGen := &genauth.AuthGenerator{
+				Gen:              g,
+				MailerGenerator:  mailerGen,
+				ServiceGenerator: svcGen,
+				HTTPGenerator:    httpGen,
+				DBGenerator:      dbGen,
 			}
 
 			name := args[0]
 
 			switch name {
-			case "example":
-				err := exampleHttpGen.Generate()
+			case "auth":
+				err := authGen.Generate()
 				if err != nil {
-					return fmt.Errorf("failed to create example module: %w", err)
+					return fmt.Errorf("failed to generate auth module: %w", err)
 				}
 			}
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/alexisvisco/goframe/cli/generators"
@@ -162,8 +163,10 @@ func (m *MailerGenerator) createOrUpdateRegistry() generators.FileConfig {
 		Gen: func(g *genhelper.GenHelper) {
 			mailers, _ := m.listMailers() // directory may not exist yet
 			g.WithVar("mailers", mailers)
-			g.WithImport(filepath.Join(m.Gen.GoModuleName, "internal/types"), "types")
-			g.WithImport("github.com/alexisvisco/goframe/core/helpers/fxutil", "fxutil")
+			if len(mailers) > 0 {
+				g.WithImport(filepath.Join(m.Gen.GoModuleName, "internal/types"), "types")
+				g.WithImport("github.com/alexisvisco/goframe/core/helpers/fxutil", "fxutil")
+			}
 		},
 	}
 }
@@ -275,32 +278,15 @@ func (m *MailerGenerator) updateAppModule() error {
 }
 
 func (m *MailerGenerator) listMailers() ([]string, error) {
-	entries, err := os.ReadDir("internal/mailer")
+	gopkg, err := genhelper.LoadGoPkg("internal/mailer")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load mailer package: %w", err)
 	}
 
 	var mailers []string
-	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".go" {
-			continue
-		}
-		if e.Name() == "registry.go" {
-			continue
-		}
-		if e.Name() == "mailer_helper.go" {
-			continue
-		}
-
-		name := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
-		name = strings.TrimPrefix(name, "mailer_")
-		pascal := str.ToPascalCase(name)
-
-		if !strings.HasSuffix(pascal, "Mailer") {
-			pascal += "Mailer"
-		}
-
-		mailers = append(mailers, pascal)
+	structs := gopkg.FindAllStructRegexp(regexp.MustCompile(`(\w+)Mailer$`))
+	for _, info := range structs {
+		mailers = append(mailers, info.Name)
 	}
 
 	return mailers, nil

@@ -18,13 +18,14 @@ var (
 )
 
 type Environment struct {
-  Database configuration.Database `yaml:"database"`
-  Server   configuration.Server   `yaml:"server"`
-  Logging  configuration.Logging  `yaml:"logging"`
-  Storage  configuration.Storage  `yaml:"storage"`
-  Worker   configuration.Worker   `yaml:"worker"`
-  Mail     configuration.Mail     `yaml:"mail"`
-  I18n     configuration.I18n     `yaml:"i18n"`
+  FrontendURL string                 `yaml:"frontend_url"`
+  Database    configuration.Database `yaml:"database"`
+  Server      configuration.Server   `yaml:"server"`
+  Logging     configuration.Logging  `yaml:"logging"`
+  Storage     configuration.Storage  `yaml:"storage"`
+  Worker      configuration.Worker   `yaml:"worker"`
+  Mail        configuration.Mail     `yaml:"mail"`
+  I18n        configuration.I18n     `yaml:"i18n"`
 }
 
 type Config struct {

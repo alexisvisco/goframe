@@ -1,7 +1,6 @@
 package createcmd
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,7 +13,6 @@ import (
 	"github.com/alexisvisco/goframe/cli/generators/gendocker"
 	"github.com/alexisvisco/goframe/cli/generators/genhttp"
 	"github.com/alexisvisco/goframe/cli/generators/genmailer"
-	"github.com/alexisvisco/goframe/cli/generators/genrepository"
 	"github.com/alexisvisco/goframe/cli/generators/genservice"
 	"github.com/alexisvisco/goframe/cli/generators/genstorage"
 	"github.com/alexisvisco/goframe/cli/generators/genworker"
@@ -79,7 +77,6 @@ func NewInitCmd() *cobra.Command {
 
 			cfgGen := &genconfig.ConfigGenerator{Gen: g}
 			coreGen := &gencore.CoreGenerator{Gen: g}
-			repoGen := &genrepository.RepositoryGenerator{Gen: g}
 			svcGen := &genservice.ServiceGenerator{Gen: g}
 			dbGen := &gendb.DatabaseGenerator{Gen: g}
 			storageGen := &genstorage.StorageGenerator{Gen: g, DBGen: dbGen}
@@ -97,7 +94,6 @@ func NewInitCmd() *cobra.Command {
 			filesGenerators := []generators.FilesGenerator{
 				cfgGen,
 				coreGen,
-				repoGen,
 				svcGen,
 				dbGen,
 				storageGen,
@@ -154,7 +150,7 @@ func NewInitCmd() *cobra.Command {
 			}
 
 			tw.Flush()
-			fmt.Println("\nRun 'docker compose up -d' then 'go run cmd/app/main.go' to start the app")
+			fmt.Println("\nRun 'docker compose up -d' then 'go mod tidy && go run cmd/app/main.go' to start the app")
 
 			return nil
 		},
@@ -237,19 +233,6 @@ func (i *initializer) mustHaveBinaries(installed []string) error {
 			return fmt.Errorf("missing required binary: %s", binary)
 		}
 	}
-	return nil
-}
-
-func (i *initializer) goModTidy() error {
-	cmd := exec.Command("go", "mod", "tidy")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("failed to run go mod tidy: %v", err)
-	}
-
 	return nil
 }
 

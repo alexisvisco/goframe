@@ -1,0 +1,18 @@
+type Auth struct {
+  VerifyEmailURL      string `yaml:"verify_email_url"`
+  MagicLinkURL        string `yaml:"magic_link_url"`
+  OAuthRedirectURL    string `yaml:"oauth_redirect_url"`
+  OAuthVerifyEmailURL string `yaml:"oauth_verify_email_url"`
+  ResetPasswordURL    string `yaml:"reset_password_url"`
+
+  GitHubClientID     string `yaml:"github_client_id"`
+  GitHubClientSecret string `yaml:"github_client_secret"`
+
+  AppleClientID         string `yaml:"apple_client_id"`
+  AppleTeamID           string `yaml:"apple_team_id"`
+  AppleKeyID            string `yaml:"apple_key_id"`
+  ApplePrivateKeyBase64 string `yaml:"apple_private_key_b64"`
+
+  DiscordClientID     string `yaml:"discord_client_id"`
+  DiscordClientSecret string `yaml:"discord_client_secret"`
+}

@@ -260,17 +260,8 @@ func bindStruct(v reflect.Value, req *http.Request, opts *bindOptions) error {
 		}
 	}
 
-	// Return combined errors
 	if len(errs) > 0 {
-		var errMsg strings.Builder
-		errMsg.WriteString("multiple binding errors occurred: ")
-		for i, err := range errs {
-			if i > 0 {
-				errMsg.WriteString("; ")
-			}
-			errMsg.WriteString(err.Error())
-		}
-		return errors.New(errMsg.String())
+		return errors.Join(errs...)
 	}
 
 	return nil

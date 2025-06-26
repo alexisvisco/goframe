@@ -3,8 +3,8 @@ package genhttp
 import (
 	"embed"
 	"fmt"
-	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/alexisvisco/goframe/cli/generators"
@@ -96,7 +96,7 @@ func (p *HTTPGenerator) createOrUpdateRegistry() generators.FileConfig {
 		Path:     path,
 		Template: typeutil.Must(fs.ReadFile("templates/registry.go.tmpl")),
 		Gen: func(g *genhelper.GenHelper) {
-			handlers := p.listHandlers()
+			handlers, _ := p.listHandlers()
 			g.WithVar("handlers", handlers)
 		},
 	}
@@ -136,13 +136,13 @@ func (p *HTTPGenerator) GenerateHandler(name string, services []string) error {
 		return err
 	}
 
-	if err := p.updateRouter(str.ToPascalCase(name) + "Handler"); err != nil {
+	if err := p.UpdateRouter(str.ToPascalCase(name) + "Handler"); err != nil {
 		return fmt.Errorf("failed to update router: %w", err)
 	}
 	return p.updateAppModule()
 }
 
-func (p *HTTPGenerator) updateRouter(handlerType string) error {
+func (p *HTTPGenerator) UpdateRouter(handlerType string) error {
 	path := "internal/v1handler/router.go"
 	gofile, err := genhelper.LoadGoFile(path)
 	if err != nil {
@@ -152,27 +152,17 @@ func (p *HTTPGenerator) updateRouter(handlerType string) error {
 	return gofile.Save()
 }
 
-func (p *HTTPGenerator) listHandlers() []string {
-	entries, err := os.ReadDir("internal/v1handler")
+func (p *HTTPGenerator) listHandlers() ([]string, error) {
+	gopkg, err := genhelper.LoadGoPkg("internal/v1handler")
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to load v1handler package: %w", err)
 	}
-	var handlers []string
-	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".go" {
-			continue
-		}
-		if e.Name() == "registry.go" || e.Name() == "router.go" {
-			continue
-		}
 
-		name := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
-		name = strings.TrimPrefix(name, "handler_")
-		pascal := str.ToPascalCase(name)
-		if !strings.HasSuffix(pascal, "Handler") {
-			pascal += "Handler"
-		}
-		handlers = append(handlers, pascal)
+	var handlers []string
+	structs := gopkg.FindAllStructRegexp(regexp.MustCompile(`(\w+)Handler$`))
+	for _, info := range structs {
+		handlers = append(handlers, info.Name)
 	}
-	return handlers
+
+	return handlers, nil
 }

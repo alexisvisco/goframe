@@ -1,0 +1,44 @@
+package dbutil
+
+import (
+  "context"
+  "fmt"
+  "strings"
+
+  "gorm.io/gorm"
+)
+
+func DB(ctx context.Context, defaultDb *gorm.DB) *gorm.DB {
+
+  ctxDB, ok := ctx.Value("db").(*gorm.DB)
+  if ok {
+    return ctxDB.Session(&gorm.Session{Context: ctx})
+  }
+
+  return defaultDb.Session(&gorm.Session{Context: ctx})
+}
+
+func WithDB(ctx context.Context, db *gorm.DB) context.Context {
+  return context.WithValue(ctx, "db", db)
+}
+
+func Transaction(ctx context.Context, defaultDB *gorm.DB, h func(ctx context.Context) error) error {
+  return DB(ctx, defaultDB).Transaction(func(tx *gorm.DB) error {
+    newCtx := WithDB(ctx, tx)
+    return h(newCtx)
+  })
+}
+
+func IsUniqueConstraintError(err error, indexName string) bool {
+  if err == nil {
+    return false
+  }
+
+  // postgres
+  matchErr := fmt.Sprintf(`ERROR: duplicate key value violates unique constraint "%s" (SQLSTATE 23505)`, indexName)
+  if strings.Contains(err.Error(), matchErr) {
+    return true
+  }
+
+  return false
+}

@@ -1,0 +1,329 @@
+package service
+
+import (
+	"context"
+	"crypto/ecdsa"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"time"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/nrednav/cuid2"
+	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/github"
+	{{ .imports }}
+)
+
+type AuthService struct {
+	cfg               *config.Config
+	appleClientSecret string
+	applePrivateKey   *ecdsa.PrivateKey
+	providers         map[types.OAuthProvider]*providerInfo
+	oauthStateSvc     types.OAuthStateService
+}
+
+type providerInfo struct {
+	config           *oauth2.Config
+	retrieveUserData func(code string) (*types.OAuthUserInfo, error)
+}
+
+type AppleTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	IDToken      string `json:"id_token"`
+}
+
+var _ types.AuthService = (*AuthService)(nil)
+
+func NewAuthService(cfg *config.Config, repo types.OAuthStateService) (*AuthService, error) {
+	a := &AuthService{cfg: cfg, oauthStateSvc: repo}
+
+	secret, err := a.generateAppleSecret()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate apple client secret: %w", err)
+	}
+
+	token, _, err := new(jwt.Parser).ParseUnverified(secret, jwt.MapClaims{})
+	if err == nil {
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			slog.Info("JWT Claims", slog.Any("claims", claims))
+		}
+	}
+
+	a.appleClientSecret = secret
+
+	a.providers = map[types.OAuthProvider]*providerInfo{
+		types.OAuthProviderGithub: {
+			config: &oauth2.Config{
+				ClientID:     a.cfg.GetAuth().GitHubClientID,
+				ClientSecret: a.cfg.GetAuth().GitHubClientSecret,
+				Endpoint:     github.Endpoint,
+				RedirectURL:  fmt.Sprintf("%s/v1/oauth/%s/callback", a.cfg.GetServer().URL, types.OAuthProviderGithub),
+				Scopes:       []string{"user:email"},
+			},
+			retrieveUserData: a.retrieveGithubUserData,
+		},
+		types.OAuthProviderApple: {
+			config: &oauth2.Config{
+				ClientID:     a.cfg.GetAuth().AppleClientID,
+				ClientSecret: a.appleClientSecret,
+				Endpoint: oauth2.Endpoint{
+					AuthURL:  "https://appleid.apple.com/auth/authorize?response_mode=form_post",
+					TokenURL: "https://appleid.apple.com/auth/token",
+				},
+				RedirectURL: fmt.Sprintf("%s/v1/oauth/%s/callback", a.cfg.GetServer().URL, types.OAuthProviderApple),
+				Scopes:      []string{"email"},
+			},
+			retrieveUserData: a.retrieveAppleUserData,
+		},
+		types.OAuthProviderDiscord: {
+			config: &oauth2.Config{
+				ClientID:     a.cfg.GetAuth().DiscordClientID,
+				ClientSecret: a.cfg.GetAuth().DiscordClientSecret,
+				Endpoint: oauth2.Endpoint{
+					AuthURL:  "https://discord.com/api/oauth2/authorize",
+					TokenURL: "https://discord.com/api/oauth2/token",
+				},
+				RedirectURL: fmt.Sprintf("%s/v1/oauth/%s/callback", a.cfg.GetServer().URL, types.OAuthProviderDiscord),
+				Scopes: []string{
+					"identify",
+					"email",
+				},
+			},
+			retrieveUserData: a.retrieveDiscordUserData,
+		},
+	}
+
+	return a, nil
+}
+
+func (s AuthService) GetProviderLink(ctx context.Context, provider types.OAuthProvider) (string, error) {
+	state := cuid2.Generate()
+	if err := s.oauthStateSvc.Create(ctx, &types.OAuthStateCode{
+		ID:           state,
+		WasConnected: false,
+		ExpiresAt:    time.Now().Add(15 * time.Minute),
+	}); err != nil {
+		return "", err
+	}
+
+	c, ok := s.providers[provider]
+	if !ok {
+		return "", types.ErrUnsupportedOAuthProvider
+	}
+
+	return c.config.AuthCodeURL(state, oauth2.AccessTypeOffline), nil
+}
+
+func (s AuthService) ExchangeCode(ctx context.Context, provider types.OAuthProvider, state string, code string) (*types.OAuthUserInfo, error) {
+	oauthStateCode, err := s.oauthStateSvc.FindByID(ctx, state)
+	if err != nil || oauthStateCode == nil {
+		return nil, types.ErrOAuthInvalidState
+	}
+	_ = s.oauthStateSvc.Delete(ctx, state)
+
+	providerInfo, ok := s.providers[provider]
+	if !ok {
+		return nil, types.ErrUnsupportedOAuthProvider
+	}
+
+	info, err := providerInfo.retrieveUserData(code)
+	if err != nil {
+		return nil, err
+	}
+	info.WasConnected = oauthStateCode.WasConnected
+	return info, nil
+}
+
+func (s AuthService) retrieveAppleUserData(code string) (*types.OAuthUserInfo, error) {
+	c := s.providers[types.OAuthProviderApple].config
+	tokenResp, err := c.Exchange(context.Background(), code)
+	if err != nil {
+		return nil, fmt.Errorf("apple oauth exchange failed: %w", err)
+	}
+
+	idTokenRaw := tokenResp.Extra("id_token")
+	if idTokenRaw == nil {
+		return nil, errors.New("id_token not found in token response")
+	}
+
+	idTokenStr, ok := idTokenRaw.(string)
+	if !ok {
+		return nil, errors.New("id_token is not s string")
+	}
+
+	token, _, err := new(jwt.Parser).ParseUnverified(idTokenStr, jwt.MapClaims{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse id_token: %w", err)
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, errors.New("failed to parse JWT claims")
+	}
+
+	sub, ok := claims["sub"].(string)
+	if !ok {
+		return nil, errors.New("sub claim not found or not s string")
+	}
+
+	email, ok := claims["email"].(string)
+	if !ok {
+		return nil, errors.New("email claim not found or not s string")
+	}
+
+	emailVerified, _ := claims["email_verified"].(bool)
+
+	return &types.OAuthUserInfo{
+		ID:               sub,
+		Email:            email,
+		AccessToken:      tokenResp.AccessToken,
+		RefreshToken:     tokenResp.RefreshToken,
+		EmailNotVerified: !emailVerified,
+	}, nil
+}
+
+func (s AuthService) retrieveGithubUserData(code string) (*types.OAuthUserInfo, error) {
+	token, err := s.providers[types.OAuthProviderGithub].config.Exchange(context.Background(), code)
+	if err != nil {
+		return nil, fmt.Errorf("oauth retrieveUserData failed: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://api.github.com/user", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	var data struct {
+		ID    int    `json:"id"`
+		Email string `json:"email"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+
+	return &types.OAuthUserInfo{
+		ID:           fmt.Sprint(data.ID),
+		Email:        data.Email,
+		AccessToken:  token.AccessToken,
+		RefreshToken: token.RefreshToken,
+	}, nil
+}
+
+func (s AuthService) retrieveDiscordUserData(code string) (*types.OAuthUserInfo, error) {
+	token, err := s.providers[types.OAuthProviderDiscord].config.Exchange(context.Background(), code)
+	if err != nil {
+		return nil, fmt.Errorf("discord oauth retrieveUserData failed: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://discord.com/api/users/@me", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	var data struct {
+		ID    string `json:"id"`
+		Email string `json:"email"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+
+	return &types.OAuthUserInfo{
+		ID:           data.ID,
+		Email:        data.Email,
+		AccessToken:  token.AccessToken,
+		RefreshToken: token.RefreshToken,
+	}, nil
+}
+
+func (s AuthService) EncryptPassword(password string) (string, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt password: %w", err)
+	}
+
+	return string(hashedPassword), nil
+}
+
+func (s AuthService) VerifyPassword(hashedPassword, password string) bool {
+	// Compare the hashed password with the provided password
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+// GenerateAccessToken creates a unique access token for the user
+// The token is a base64 encoded string containing user ID, email, and two unique identifiers
+func (s AuthService) GenerateAccessToken(id string, email string) string {
+	token := fmt.Sprintf("%s:%s:%s%s", id, email, cuid2.Generate(), cuid2.Generate())
+	return base64.RawURLEncoding.EncodeToString([]byte(token))
+}
+
+func (s AuthService) generateAppleSecret() (string, error) {
+	privateKeyPEM, err := base64.StdEncoding.DecodeString(s.cfg.GetAuth().ApplePrivateKeyBase64)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode base64 private key: %w", err)
+	}
+
+	block, _ := pem.Decode(privateKeyPEM)
+	if block == nil {
+		return "", errors.New("empty block after decoding")
+	}
+
+	privKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return "", err
+	}
+
+	// Create the Claims
+	now := time.Now()
+	claims := &jwt.RegisteredClaims{
+		Issuer: s.cfg.GetAuth().AppleTeamID,
+		IssuedAt: &jwt.NumericDate{
+			Time: now,
+		},
+		ExpiresAt: &jwt.NumericDate{
+			Time: now.Add(time.Hour*24*180 - time.Second),
+		},
+		Audience: jwt.ClaimStrings{
+			"https://appleid.apple.com",
+		},
+		Subject: s.cfg.GetAuth().AppleClientID,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token.Header["alg"] = "ES256"
+	token.Header["kid"] = s.cfg.GetAuth().AppleKeyID
+
+	return token.SignedString(privKey)
+}

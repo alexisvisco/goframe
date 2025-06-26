@@ -98,14 +98,6 @@ func (g *CoreGenerator) generateGoMod() error {
 	return nil
 }
 
-func (g *CoreGenerator) RunGoModTidy() error {
-	cmd := exec.Command("go", "mod", "tidy")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to run go mod tidy: %w", err)
-	}
-	return nil
-}
-
 func (g *CoreGenerator) createBinGoframe(path string) generators.FileConfig {
 	return generators.FileConfig{
 		Path:       path,

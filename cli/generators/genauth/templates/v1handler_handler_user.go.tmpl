@@ -1,0 +1,379 @@
+package v1handler
+
+import (
+	"fmt"
+	"net/http"
+	"github.com/alexisvisco/goframe/http/httpx"
+	"github.com/alexisvisco/goframe/http/params"
+	"go.uber.org/fx"
+  {{ .imports}}
+)
+
+type UserHandler struct {
+	userSvc types.UserService
+	authSvc types.AuthService
+}
+
+type UserParams struct {
+	fx.In
+	UserService types.UserService
+	AuthService types.AuthService
+}
+
+func NewUserHandler(p UserParams) *UserHandler {
+	return &UserHandler{
+		userSvc: p.UserService,
+		authSvc: p.AuthService,
+	}
+}
+
+type RegisterUserWithPasswordRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type RegisterUserWithPasswordResponse struct {
+	UserID string `json:"user_id"`
+}
+
+func (h *UserHandler) RegisterUserWithPassword() http.HandlerFunc {
+	return httpx.Chain(
+		requireUnauthenticated,
+	)(func(r *http.Request) (httpx.Response, error) {
+		var req RegisterUserWithPasswordRequest
+		err := params.Bind(&req, r)
+		if err != nil {
+			return nil, err
+		}
+
+		user, err := h.userSvc.CreateUserWithPassword(r.Context(), &types.CreateUserWithPasswordParams{
+			Email:    req.Email,
+			Password: req.Password,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return httpx.JSON.Created(RegisterUserWithPasswordResponse{
+			UserID: user.ID,
+		}), nil
+	})
+}
+
+type VerifyUserEmailRequest struct {
+	Code string `path:"code"`
+}
+
+type VerifyUserEmailResponse struct {
+	UserID      string `json:"user_id"`
+	AccessToken string `json:"access_token"`
+}
+
+func (h *UserHandler) VerifyUserEmail() http.HandlerFunc {
+	return httpx.Chain(
+		requireUnauthenticated,
+	)(func(r *http.Request) (httpx.Response, error) {
+		var req VerifyUserEmailRequest
+		if err := params.Bind(&req, r); err != nil {
+			return nil, err
+		}
+
+		user, err := h.userSvc.VerifyUserEmail(r.Context(), req.Code)
+		if err != nil {
+			return nil, err
+		}
+
+		return httpx.JSON.Ok(&VerifyUserEmailResponse{
+			UserID:      user.ID,
+			AccessToken: user.AccessToken,
+		}), nil
+	})
+}
+
+type LoginWithPasswordRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginWithPasswordResponse struct {
+	UserID      string `json:"user_id"`
+	AccessToken string `json:"access_token"`
+}
+
+func (h *UserHandler) LoginWithPassword() http.HandlerFunc {
+	return httpx.Chain(
+		requireUnauthenticated,
+	)(func(r *http.Request) (httpx.Response, error) {
+		var req LoginWithPasswordRequest
+		if err := params.Bind(&req, r); err != nil {
+			return nil, err
+		}
+
+		user, err := h.userSvc.LoginWithPassword(r.Context(), &types.LoginWithPasswordParams{
+			Email:    req.Email,
+			Password: req.Password,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return httpx.JSON.Ok(&LoginWithPasswordResponse{
+			UserID:      user.ID,
+			AccessToken: user.AccessToken,
+		}), nil
+	})
+}
+
+type LoginWithMagicLinkRequest struct {
+	Email string `json:"email"`
+}
+
+type LoginWithMagicLinkResponse struct {
+	UserID string `json:"user_id"`
+}
+
+func (h *UserHandler) LoginWithMagicLink() http.HandlerFunc {
+	return httpx.Chain(
+		requireUnauthenticated,
+	)(func(r *http.Request) (httpx.Response, error) {
+		var req LoginWithMagicLinkRequest
+		if err := params.Bind(&req, r); err != nil {
+			return nil, err
+		}
+
+		user, err := h.userSvc.CreateOrGetUserWithMagicLink(r.Context(), &types.CreateUserWithMagicLinkParams{Email: req.Email})
+		if err != nil {
+			return nil, err
+		}
+
+		return httpx.JSON.Created(LoginWithMagicLinkResponse{UserID: user.ID}), nil
+	})
+}
+
+type VerifyMagicLinkRequest struct {
+	Code string `path:"code"`
+}
+
+type VerifyMagicLinkResponse struct {
+	UserID      string `json:"user_id"`
+	AccessToken string `json:"access_token"`
+}
+
+func (h *UserHandler) VerifyMagicLink() http.HandlerFunc {
+	return httpx.Chain(
+		requireUnauthenticated,
+	)(func(r *http.Request) (httpx.Response, error) {
+		var req VerifyMagicLinkRequest
+		if err := params.Bind(&req, r); err != nil {
+			return nil, err
+		}
+
+		user, err := h.userSvc.VerifyMagicLink(r.Context(), req.Code)
+		if err != nil {
+			return nil, err
+		}
+
+		return httpx.JSON.Ok(&VerifyMagicLinkResponse{UserID: user.ID, AccessToken: user.AccessToken}), nil
+	})
+}
+
+type VerifyOAuthProviderRequest struct {
+	ProviderID string `path:"provider_id"`
+	Code       string `path:"code"`
+}
+
+type VerifyOAuthProviderResponse struct {
+	UserID      string `json:"user_id"`
+	AccessToken string `json:"access_token"`
+}
+
+func (h *UserHandler) VerifyOAuthProvider() http.HandlerFunc {
+	return httpx.Chain(
+		requireUnauthenticated,
+	)(func(r *http.Request) (httpx.Response, error) {
+		var req VerifyOAuthProviderRequest
+		if err := params.Bind(&req, r); err != nil {
+			return nil, err
+		}
+
+		user, err := h.userSvc.VerifyOAuthProvider(r.Context(), req.ProviderID, req.Code)
+		if err != nil {
+			return nil, err
+		}
+
+		return httpx.JSON.Ok(&VerifyOAuthProviderResponse{UserID: user.ID, AccessToken: user.AccessToken}), nil
+	})
+}
+
+type RequestPasswordResetRequest struct {
+	Email string `json:"email"`
+}
+
+func (h *UserHandler) RequestPasswordReset() http.HandlerFunc {
+	return httpx.Chain(
+		requireUnauthenticated,
+	)(func(r *http.Request) (httpx.Response, error) {
+		var req RequestPasswordResetRequest
+		if err := params.Bind(&req, r); err != nil {
+			return httpx.JSON.BadRequest("invalid request body"), err
+		}
+
+		if err := h.userSvc.RequestPasswordReset(r.Context(), req.Email); err != nil {
+			return nil, err
+		}
+
+		return httpx.JSON.Created(nil), nil
+	})
+}
+
+type ResetPasswordRequest struct {
+	Code     string `path:"code"`
+	Password string `json:"password"`
+}
+
+type ResetPasswordResponse struct {
+	UserID string `json:"user_id"`
+}
+
+func (h *UserHandler) ResetPassword() http.HandlerFunc {
+	return httpx.Chain(
+		requireUnauthenticated,
+	)(func(r *http.Request) (httpx.Response, error) {
+		var req ResetPasswordRequest
+		if err := params.Bind(&req, r); err != nil {
+			return nil, err
+		}
+
+		user, err := h.userSvc.ResetPassword(r.Context(), req.Code, req.Password)
+		if err != nil {
+			return nil, err
+		}
+
+		return httpx.JSON.Ok(&ResetPasswordResponse{UserID: user.ID}), nil
+	})
+}
+
+type LoginWithOAuth2Request struct {
+	Provider string `path:"provider"`
+}
+
+type LoginWithOAuth2Response struct {
+	URL string `json:"url"`
+}
+
+func (h *UserHandler) LoginWithOAuth2() http.HandlerFunc {
+	return httpx.Chain(
+		requireUnauthenticated,
+	)(func(r *http.Request) (httpx.Response, error) {
+		url, err := h.authSvc.GetProviderLink(r.Context(), types.OAuthProvider(r.PathValue("provider")))
+		if err != nil {
+			return nil, err
+		}
+		return httpx.JSON.Ok(LoginWithOAuth2Response{URL: url}), nil
+	})
+}
+
+type OAuth2CallbackRequest struct {
+	Code      string `query:"code"`
+	State     string `query:"state"`
+	CodeForm  string `form:"code"`
+	StateForm string `form:"state"`
+	Provider  string `path:"provider"`
+}
+
+func (req *OAuth2CallbackRequest) GetCode() string {
+	if req.Code != "" {
+		return req.Code
+	}
+	return req.CodeForm
+}
+
+func (req *OAuth2CallbackRequest) GetState() string {
+	if req.State != "" {
+		return req.State
+	}
+	return req.StateForm
+}
+
+func (h *UserHandler) OAuth2Callback() http.HandlerFunc {
+	return httpx.Chain(
+		requireUnauthenticated,
+	)(func(r *http.Request) (httpx.Response, error) {
+		var req OAuth2CallbackRequest
+		if err := params.Bind(&req, r); err != nil {
+			return nil, err
+		}
+
+		info, err := h.authSvc.ExchangeCode(r.Context(), types.OAuthProvider(req.Provider), req.GetState(), req.GetCode())
+		if err != nil {
+			return nil, fmt.Errorf("failed to exchange OAuth code: %w", err)
+		}
+
+		result, err := h.userSvc.CreateOrGetUserWithOAuth(r.Context(), &types.CreateOrGetUserWithOAuthParams{
+			Provider:         types.OAuthProvider(req.Provider),
+			ProviderID:       info.ID,
+			Email:            info.Email,
+			AccessToken:      info.AccessToken,
+			RefreshToken:     info.RefreshToken,
+			WasConnected:     info.WasConnected,
+			EmailNotVerified: info.EmailNotVerified,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return httpx.NewRedirectResponse(http.StatusTemporaryRedirect, result.RedirectURL), nil
+	})
+}
+
+type MeRequest struct {
+	User *types.User `ctx:"goframe.user"`
+}
+
+type MeResponse struct {
+	ID    string `json:"id"`
+	Email string `json:"email"`
+}
+
+func (h *UserHandler) Me() http.HandlerFunc {
+	return httpx.Chain(
+		requireUser(h.userSvc),
+	)(func(r *http.Request) (httpx.Response, error) {
+		var req MeRequest
+		if err := params.Bind(&req, r); err != nil {
+			return nil, err
+		}
+
+		return httpx.JSON.Ok(MeResponse{
+			ID:    req.User.ID,
+			Email: req.User.Email,
+		}), nil
+	})
+}
+
+func init() {
+	httpx.ErrorMapper[types.ErrUserAlreadyExists] = httpx.Error{
+		Message:    "user already exists",
+		Code:       "USER_ALREADY_EXISTS",
+		StatusCode: http.StatusConflict,
+	}
+
+	httpx.ErrorMapper[types.ErrInvalidUserCode] = httpx.Error{
+		Message:    "invalid user code",
+		Code:       "INVALID_USER_CODE",
+		StatusCode: http.StatusBadRequest,
+	}
+
+	httpx.ErrorMapper[types.ErrInvalidCredentials] = httpx.Error{
+		Message:    "invalid credentials",
+		Code:       "INVALID_CREDENTIALS",
+		StatusCode: http.StatusUnauthorized,
+	}
+
+	httpx.ErrorMapper[types.ErrUnsupportedOAuthProvider] = httpx.Error{
+		Message:    "unsupported OAuth provider",
+		Code:       "UNSUPPORTED_OAUTH_PROVIDER",
+		StatusCode: http.StatusBadRequest,
+	}
+
+}

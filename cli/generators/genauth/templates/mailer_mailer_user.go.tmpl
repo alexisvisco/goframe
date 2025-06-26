@@ -1,0 +1,37 @@
+package mailer
+
+import (
+	"context"
+	"go.temporal.io/sdk/client"
+	"go.uber.org/fx"
+	{{ .imports }}
+)
+
+type UserMailer struct {
+	client client.Client
+}
+
+type UserMailerParams struct {
+	fx.In
+	Client client.Client
+}
+
+func NewUserMailer(p UserMailerParams) *UserMailer {
+	return &UserMailer{client: p.Client}
+}
+
+func (m *UserMailer) EmailVerification(ctx context.Context, vars types.UserMailerEmailVerificationParams) error {
+	return triggerWorkflow(ctx, m.client, vars, vars.To, "Confirm your email", "user_email_verification")
+}
+
+func (m *UserMailer) MagicLink(ctx context.Context, vars types.UserMailerMagicLinkParams) error {
+	return triggerWorkflow(ctx, m.client, vars, vars.To, "Connect with your email", "user_magic_link")
+}
+
+func (m *UserMailer) PasswordReset(ctx context.Context, vars types.UserMailerPasswordResetParams) error {
+	return triggerWorkflow(ctx, m.client, vars, vars.To, "Reset your password", "user_password_reset")
+}
+
+func (m *UserMailer) OAuthProviderVerification(ctx context.Context, vars types.UserMailerOAuthProviderVerificationParams) error {
+	return triggerWorkflow(ctx, m.client, vars, vars.To, "Confirm your connection with a provider", "user_oauth_provider_verification")
+}

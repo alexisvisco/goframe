@@ -3,6 +3,7 @@ package generators
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
@@ -27,6 +28,7 @@ type FileConfig struct {
 	Path       string
 	Template   []byte
 	Gen        func(g *genhelper.GenHelper)
+	RawFile    bool // If true, the file will be created as is without templating
 	Skip       bool
 	Executable bool // If true, the file will be executable
 }
@@ -63,15 +65,22 @@ func (g *Generator) GenerateFile(f FileConfig) error {
 
 	defer file.Close()
 
-	gen := genhelper.New("current", f.Template)
+	if f.RawFile {
+		err := os.WriteFile(f.Path, f.Template, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write raw file: %w", err)
+		}
+	} else {
+		gen := genhelper.New("current", f.Template)
 
-	if f.Gen != nil {
-		f.Gen(gen)
-	}
+		if f.Gen != nil {
+			f.Gen(gen)
+		}
 
-	err = gen.WriteTo(file)
-	if err != nil {
-		return fmt.Errorf("failed to generate file: %w", err)
+		err = gen.WriteTo(file)
+		if err != nil {
+			return fmt.Errorf("failed to generate file: %w", err)
+		}
 	}
 
 	return nil
@@ -99,4 +108,20 @@ func (g *Generator) SkipFileIfExists(path string) bool {
 		return false
 	}
 	return true
+}
+
+func (g *Generator) RunGoModTidy() error {
+	cmd := exec.Command("go", "mod", "tidy")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run go mod tidy: %w", err)
+	}
+	return nil
+}
+
+func (g *Generator) SyncMails() error {
+	cmd := exec.Command("bin/goframe", "mails", "sync")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to sync mails: %w", err)
+	}
+	return nil
 }

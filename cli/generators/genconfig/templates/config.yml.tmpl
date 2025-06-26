@@ -1,4 +1,5 @@
 production:
+  frontend_url: "${FRONTEND_URL:http://localhost:3000}"
   database:
 {{- if eq .db "postgres" }}
     type: postgres
@@ -48,6 +49,7 @@ production:
 
 
 development: &dev
+  frontend_url: "${FRONTEND_URL:http://localhost:3000}"
   database:
 {{- if eq .db "postgres" }}
     type: postgres

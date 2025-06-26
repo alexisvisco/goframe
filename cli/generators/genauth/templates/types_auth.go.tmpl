@@ -1,0 +1,43 @@
+package types
+
+import (
+	"context"
+	"time"
+)
+
+// OAuthStateCode represents an OAuth state entry
+// used to protect against CSRF during OAuth flow.
+type OAuthStateCode struct {
+	ID           string
+	WasConnected bool
+	ExpiresAt    time.Time
+}
+
+type OAuthStateService interface {
+	Create(ctx context.Context, state *OAuthStateCode) error
+	FindByID(ctx context.Context, id string) (*OAuthStateCode, error)
+	Delete(ctx context.Context, id string) error
+}
+
+func (s *OAuthStateCode) TableName() string {
+	return "public.oauth_state_codes"
+}
+
+// AuthService exposes authentication helpers used by the user service.
+type AuthService interface {
+	GetProviderLink(ctx context.Context, provider OAuthProvider) (string, error)
+	ExchangeCode(ctx context.Context, provider OAuthProvider, state string, code string) (*OAuthUserInfo, error)
+	EncryptPassword(password string) (string, error)
+	VerifyPassword(hashedPassword, password string) bool
+	GenerateAccessToken(id string, email string) string
+}
+
+// OAuthUserInfo stores user information returned by an OAuth provider.
+type OAuthUserInfo struct {
+	ID               string
+	Email            string
+	AccessToken      string
+	RefreshToken     string
+	WasConnected     bool
+	EmailNotVerified bool
+}

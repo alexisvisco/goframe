@@ -1,0 +1,83 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"time"
+	"github.com/nrednav/cuid2"
+	"gorm.io/datatypes"
+	"gorm.io/gorm"
+	{{ .imports }}
+)
+
+type UserCodeService struct {
+	db *gorm.DB
+}
+
+var _ types.UserCodeService = (*UserCodeService)(nil)
+
+func NewUserCodeService(db *gorm.DB) *UserCodeService {
+	return &UserCodeService{
+		db: db,
+	}
+}
+
+func (s UserCodeService) GenerateCode(ctx context.Context, userID string, kind types.UserCodeKind, ttl time.Time, metadata datatypes.JSONMap) (*types.UserCode, error) {
+	code := &types.UserCode{
+		ID:        cuid2.Generate(),
+		UserID:    userID,
+		Kind:      kind,
+		ExpiresAt: ttl,
+		CreatedAt: time.Now(),
+		Metadata:  metadata,
+	}
+
+	if err := dbutil.DB(ctx, s.db).Create(code).Error; err != nil {
+		return nil, err
+	}
+
+	return code, nil
+}
+
+func (s UserCodeService) ValidateCode(ctx context.Context, userID string, code string, kind types.UserCodeKind) (bool, error) {
+	var userCode types.UserCode
+	err := dbutil.DB(ctx, s.db).Where("user_id = ? AND kind = ? AND id = ?", userID, kind, code).First(&userCode).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	if userCode.ExpiresAt.Before(time.Now().UTC()) {
+		return false, nil
+	}
+
+	if err := dbutil.DB(ctx, s.db).Delete(&userCode).Error; err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (s UserCodeService) GetCode(ctx context.Context, userID, code string, kind types.UserCodeKind) (*types.UserCode, error) {
+	var userCode types.UserCode
+	err := dbutil.DB(ctx, s.db).Where("user_id = ? AND kind = ? AND id = ?", userID, kind, code).First(&userCode).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	if userCode.ExpiresAt.Before(time.Now().UTC()) {
+		return nil, nil
+	}
+
+	return &userCode, nil
+}
+
+func (s UserCodeService) DeleteCode(ctx context.Context, userID, code string, kind types.UserCodeKind) error {
+	err := dbutil.DB(ctx, s.db).Where("user_id = ? AND kind = ? AND id = ?", userID, kind, code).Delete(&types.UserCode{}).Error
+	return err
+}

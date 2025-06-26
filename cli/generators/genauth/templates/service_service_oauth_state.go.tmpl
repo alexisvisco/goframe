@@ -1,0 +1,39 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"time"
+	"gorm.io/gorm"
+	{{ .imports }}
+)
+
+type OAuthStateService struct {
+	db *gorm.DB
+}
+
+var _ types.OAuthStateService = (*OAuthStateService)(nil)
+
+func NewOAuthStateService(db *gorm.DB) *OAuthStateService {
+	return &OAuthStateService{db: db}
+}
+
+func (s OAuthStateService) Create(ctx context.Context, state *types.OAuthStateCode) error {
+	return dbutil.DB(ctx, s.db).Create(state).Error
+}
+
+func (s OAuthStateService) FindByID(ctx context.Context, id string) (*types.OAuthStateCode, error) {
+	var stateCode types.OAuthStateCode
+	err := dbutil.DB(ctx, s.db).Where("id = ? AND expires_at > ?", id, time.Now()).First(&stateCode).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &stateCode, nil
+}
+
+func (s OAuthStateService) Delete(ctx context.Context, id string) error {
+	return dbutil.DB(ctx, s.db).Delete(&types.OAuthStateCode{}, "id = ?", id).Error
+}

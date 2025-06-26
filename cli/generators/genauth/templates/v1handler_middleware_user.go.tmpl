@@ -1,0 +1,42 @@
+package v1handler
+
+import (
+	"context"
+	"net/http"
+	"github.com/alexisvisco/goframe/http/httpx"
+	{{ .imports}}
+)
+
+func requireUser(u types.UserService) httpx.Middleware {
+	return func(handlerFunc http.HandlerFunc) http.HandlerFunc {
+		return func(writer http.ResponseWriter, request *http.Request) {
+			authorization := request.Header.Get("Authorization")
+			if authorization == "" {
+				_ = httpx.JSON.Unauthorized("missing authorization header").WriteTo(writer, request)
+				return
+			}
+
+			user, err := u.FindByAccessToken(request.Context(), authorization)
+			if user == nil || err != nil {
+				_ = httpx.JSON.Unauthorized("invalid access token").WriteTo(writer, request)
+				return
+			}
+
+			request = request.WithContext(context.WithValue(request.Context(), types.UserContextKey, user))
+
+			handlerFunc(writer, request)
+		}
+	}
+}
+
+func requireUnauthenticated(handlerFunc http.HandlerFunc) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		authorization := request.Header.Get("Authorization")
+		if authorization == "" {
+			handlerFunc(writer, request)
+			return
+		}
+
+		_ = httpx.JSON.Unauthorized("require not authenticated user").WriteTo(writer, request)
+	}
+}

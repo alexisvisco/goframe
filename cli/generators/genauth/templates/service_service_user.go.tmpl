@@ -1,0 +1,535 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+	"github.com/Oudwins/zog"
+	"github.com/Oudwins/zog/internals"
+	"github.com/alexisvisco/goframe/core/coretypes"
+	"github.com/nrednav/cuid2"
+	"go.uber.org/fx"
+	"gorm.io/gorm"
+	{{ .imports }}
+)
+
+type UserService struct {
+	userCodeSvc types.UserCodeService
+	authSvc     types.AuthService
+	userMailer  types.UserMailer
+
+	cfg *config.Config
+	db  *gorm.DB
+}
+
+type UserServiceParams struct {
+	fx.In
+
+	Auth       types.AuthService
+	Code       types.UserCodeService
+	UserMailer types.UserMailer
+	Config     *config.Config
+	DB         *gorm.DB
+}
+
+var _ types.UserService = (*UserService)(nil)
+
+func NewUserService(params UserServiceParams) *UserService {
+	return &UserService{
+		authSvc:     params.Auth,
+		userCodeSvc: params.Code,
+		db:          params.DB,
+		userMailer:  params.UserMailer,
+		cfg:         params.Config,
+	}
+}
+
+var (
+	userEmailPasswordSchema = zog.Struct(zog.Shape{
+		"Email":    zog.String().Required().Email().Transform(transformLower),
+		"Password": zog.String().Required().Min(1).Max(100),
+	})
+	userEmailSchema = zog.Struct(zog.Shape{
+		"Email": zog.String().Required().Email().Transform(transformLower),
+	})
+	resetPasswordSchema = zog.Struct(zog.Shape{
+		"Password": zog.String().Required().Min(1).Max(100),
+	})
+)
+
+func (s UserService) CreateUserWithPassword(ctx context.Context, params *types.CreateUserWithPasswordParams) (*types.User, error) {
+	if err := coretypes.ValidationErrorFromZog(userEmailPasswordSchema.Validate(params)); err != nil {
+		return nil, err
+	}
+
+	password, err := s.authSvc.EncryptPassword(params.Password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt password: %w", err)
+	}
+
+	user := &types.User{
+		ID:                cuid2.Generate(),
+		Email:             params.Email,
+		EncryptedPassword: &password,
+	}
+	user.AccessToken = s.authSvc.GenerateAccessToken(user.ID, user.Email)
+
+	code := ""
+	err = dbutil.Transaction(ctx, s.db, func(newContext context.Context) error {
+		err := s.createUser(newContext, user)
+		if err != nil {
+			if dbutil.IsUniqueConstraintError(err, "idx_users_email") {
+				return types.ErrUserAlreadyExists
+			}
+
+			return fmt.Errorf("failed to create user: %w", err)
+		}
+
+		userCode, err := s.userCodeSvc.GenerateCode(newContext, user.ID, types.UserCodeKindEmailVerification, time.Now().Add(24*time.Hour), nil)
+		if err != nil {
+			return fmt.Errorf("failed to generate user user code: %w", err)
+		}
+		code = userCode.ID
+
+		if err := s.userMailer.EmailVerification(ctx, types.UserMailerEmailVerificationParams{
+			To:   []string{user.Email},
+			Link: s.cfg.GetAuth().VerifyEmailURL + "?code=" + code,
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return user, err
+}
+
+func (s UserService) VerifyUserEmail(ctx context.Context, code string) (*types.User, error) {
+	user, err := s.findUserByCode(ctx, code)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user by code: %w", err)
+	}
+	if user == nil {
+		return nil, types.ErrInvalidUserCode
+	}
+
+	err = dbutil.Transaction(ctx, s.db, func(newContext context.Context) error {
+		valid, err := s.userCodeSvc.ValidateCode(ctx, user.ID, code, types.UserCodeKindEmailVerification)
+		if err != nil {
+			return fmt.Errorf("failed to validate code: %w", err)
+		}
+		if !valid {
+			return types.ErrInvalidUserCode
+		}
+
+		at := time.Now()
+		user.EmailVerifiedAt = &at
+		if err := s.updateUser(newContext, user, "email_verified_at"); err != nil {
+			return fmt.Errorf("failed to update user email verified at: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify user email: %w", err)
+	}
+
+	return user, nil
+}
+
+func (s UserService) LoginWithPassword(ctx context.Context, params *types.LoginWithPasswordParams) (*types.User, error) {
+	if err := coretypes.ValidationErrorFromZog(userEmailPasswordSchema.Validate(params)); err != nil {
+		return nil, err
+	}
+
+	user, err := s.findUserByEmail(ctx, params.Email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user by email: %w", err)
+	}
+	if user == nil || user.EncryptedPassword == nil || !s.authSvc.VerifyPassword(*user.EncryptedPassword, params.Password) {
+		return nil, types.ErrInvalidCredentials
+	}
+
+	if user.EmailVerifiedAt == nil {
+		return nil, types.ErrInvalidCredentials
+	}
+
+	return user, nil
+}
+
+func (s UserService) CreateOrGetUserWithMagicLink(ctx context.Context, params *types.CreateUserWithMagicLinkParams) (*types.User, error) {
+	if err := coretypes.ValidationErrorFromZog(userEmailSchema.Validate(params)); err != nil {
+		return nil, err
+	}
+
+	user, err := s.findUserByEmail(ctx, params.Email)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user by email: %w", err)
+	}
+
+	if user == nil {
+		now := time.Now()
+		user = &types.User{
+			ID:              cuid2.Generate(),
+			Email:           params.Email,
+			EmailVerifiedAt: &now,
+		}
+		user.AccessToken = s.authSvc.GenerateAccessToken(user.ID, user.Email)
+		if err := s.createUser(ctx, user); err != nil {
+			return nil, fmt.Errorf("failed to create user: %w", err)
+		}
+	}
+
+	code, err := s.userCodeSvc.GenerateCode(ctx, user.ID, types.UserCodeKindMagicLink, time.Now().Add(15*time.Minute), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate user code: %w", err)
+	}
+
+	if err := s.userMailer.MagicLink(ctx, types.UserMailerMagicLinkParams{
+		To:   []string{user.Email},
+		Link: s.cfg.GetAuth().MagicLinkURL + "?code=" + code.ID,
+	}); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (s UserService) VerifyMagicLink(ctx context.Context, code string) (*types.User, error) {
+	user, err := s.findUserByCode(ctx, code)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user by code: %w", err)
+	}
+	if user == nil {
+		return nil, types.ErrInvalidUserCode
+	}
+
+	valid, err := s.userCodeSvc.ValidateCode(ctx, user.ID, code, types.UserCodeKindMagicLink)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate code: %w", err)
+	}
+	if !valid {
+		return nil, types.ErrInvalidUserCode
+	}
+
+	return user, nil
+}
+
+func (s UserService) CreateOrGetUserWithOAuth(ctx context.Context, params *types.CreateOrGetUserWithOAuthParams) (*types.CreateOrGetUserWithOAuthResult, error) {
+	verified := false
+	providerID := ""
+	redirectURL := ""
+
+	if err := coretypes.ValidationErrorFromZog(userEmailSchema.Validate(params)); err != nil {
+		return nil, err
+	}
+
+	user, err := s.findUserByOAuth(ctx, params.Provider, params.ProviderID)
+	if err != nil {
+		return nil, err
+	}
+
+	if user != nil {
+		provider := user.FindOAuthProvider(params.Provider)
+		if provider != nil && provider.VerifiedAt != nil {
+			return &types.CreateOrGetUserWithOAuthResult{User: user, Verified: true}, nil
+		}
+		if provider != nil {
+			providerID = provider.ID
+		}
+	}
+
+	user, err = s.findUserByEmail(ctx, params.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	err = dbutil.Transaction(ctx, s.db, func(newContext context.Context) error {
+		if user == nil {
+			verified = true
+			now := time.Now()
+			user = &types.User{
+				ID:    cuid2.Generate(),
+				Email: params.Email,
+			}
+
+			if params.EmailNotVerified {
+				verified = false
+			} else {
+				user.EmailVerifiedAt = &now
+			}
+
+			user.AccessToken = s.authSvc.GenerateAccessToken(user.ID, user.Email)
+			if err := s.createUser(newContext, user); err != nil {
+				return err
+			}
+		}
+
+		if providerID == "" {
+			provider := &types.UserOAuthProvider{
+				ID:           cuid2.Generate(),
+				UserID:       user.ID,
+				Provider:     params.Provider,
+				ProviderID:   params.ProviderID,
+				AccessToken:  params.AccessToken,
+				RefreshToken: params.RefreshToken,
+			}
+
+			providerID = provider.ID
+
+			if verified {
+				now := time.Now()
+				provider.VerifiedAt = &now
+			}
+
+			if err := s.createUserOAuthProvider(newContext, provider); err != nil {
+				return err
+			}
+		}
+
+		if !verified {
+			code, codeErr := s.userCodeSvc.GenerateCode(ctx, user.ID, types.UserCodeKindOAuthProvider, time.Now().Add(15*time.Minute), nil)
+			if codeErr != nil {
+				return fmt.Errorf("failed to generate user code for OAuth provider verification: %w", codeErr)
+			}
+
+			link := fmt.Sprintf("%s?provider_id=%s&code=%s", s.cfg.GetAuth().OAuthVerifyEmailURL, providerID, code.ID)
+			err = s.userMailer.OAuthProviderVerification(ctx, types.UserMailerOAuthProviderVerificationParams{To: []string{user.Email}, Link: link, Provider: string(params.Provider)})
+			if err != nil {
+				return fmt.Errorf("failed to send OAuth provider verification email: %w", err)
+			}
+
+			redirectURL = s.cfg.GetAuth().OAuthVerifyEmailURL
+		} else {
+			redirectURL = redirectURL + "?access_token=" + user.AccessToken
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.CreateOrGetUserWithOAuthResult{User: user, Verified: verified, RedirectURL: redirectURL}, nil
+}
+
+func (s UserService) VerifyOAuthProvider(ctx context.Context, providerID string, code string) (*types.User, error) {
+	provider, err := s.findOAuthProviderByID(ctx, providerID)
+	if err != nil {
+		return nil, err
+	}
+	if provider == nil {
+		return nil, types.ErrInvalidUserCode
+	}
+
+	user, err := s.findUserByCode(ctx, code)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user by code: %w", err)
+	}
+	if user == nil || user.ID != provider.UserID {
+		return nil, types.ErrInvalidUserCode
+	}
+
+	err = dbutil.Transaction(ctx, s.db, func(newContext context.Context) error {
+		valid, err := s.userCodeSvc.ValidateCode(newContext, user.ID, code, types.UserCodeKindOAuthProvider)
+		if err != nil || !valid {
+			if err == nil {
+				err = types.ErrInvalidUserCode
+			}
+			return err
+		}
+
+		now := time.Now()
+		provider.VerifiedAt = &now
+		if err := s.updateOAuthProvider(newContext, provider, "verified_at"); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (s UserService) RequestPasswordReset(ctx context.Context, email string) error {
+	tmp := struct {
+		Email string `zog:"email"`
+	}{Email: email}
+
+	if err := coretypes.ValidationErrorFromZog(userEmailSchema.Validate(&tmp)); err != nil {
+		return err
+	}
+
+	user, err := s.findUserByEmail(ctx, tmp.Email)
+	if err != nil || user == nil {
+		// do not reveal existence of the email
+		return err
+	}
+
+	code, err := s.userCodeSvc.GenerateCode(ctx, user.ID, types.UserCodeKindPasswordReset, time.Now().Add(15*time.Minute), nil)
+	if err != nil {
+		return fmt.Errorf("failed to generate reset password code: %w", err)
+	}
+
+	return s.userMailer.PasswordReset(ctx, types.UserMailerPasswordResetParams{
+		To:   []string{user.Email},
+		Link: s.cfg.GetAuth().ResetPasswordURL + "?code=" + code.ID,
+	})
+}
+
+func (s UserService) ResetPassword(ctx context.Context, code string, password string) (*types.User, error) {
+	tmp := struct {
+		Password string `zog:"password"`
+	}{Password: password}
+
+	if err := coretypes.ValidationErrorFromZog(resetPasswordSchema.Validate(&tmp)); err != nil {
+		return nil, err
+	}
+
+	user, err := s.findUserByCode(ctx, code)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find user by code: %w", err)
+	}
+	if user == nil {
+		return nil, types.ErrInvalidUserCode
+	}
+
+	valid, err := s.userCodeSvc.ValidateCode(ctx, user.ID, code, types.UserCodeKindPasswordReset)
+	if err != nil || !valid {
+		if err == nil {
+			err = types.ErrInvalidUserCode
+		}
+		return nil, err
+	}
+
+	enc, err := s.authSvc.EncryptPassword(tmp.Password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt password: %w", err)
+	}
+
+	user.EncryptedPassword = &enc
+	if err := s.updateUser(ctx, user, "encrypted_password"); err != nil {
+		return nil, fmt.Errorf("failed to update user password: %w", err)
+	}
+
+	return user, nil
+}
+
+func (s UserService) FindByAccessToken(ctx context.Context, accessToken string) (*types.User, error) {
+	var user types.User
+	err := dbutil.DB(ctx, s.db).
+		Where("access_token = ?", accessToken).
+		First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("unable to find user by access token: %w", err)
+	}
+	return &user, nil
+}
+
+func (s UserService) createUser(ctx context.Context, user *types.User) error {
+	err := dbutil.DB(ctx, s.db).Create(user).Error
+	if err != nil {
+		return fmt.Errorf("unable to create user: %w", err)
+	}
+
+	return nil
+}
+
+func (s UserService) findUserByCode(ctx context.Context, code string) (*types.User, error) {
+	codeExpr := dbutil.DB(ctx, s.db).Model(&types.UserCode{}).Select("user_id").Where("id = ?", code)
+
+	var user types.User
+	err := dbutil.DB(ctx, s.db).Model(&types.User{}).Where("id = (?)", codeExpr).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("unable to find user by code: %w", err)
+	}
+
+	return &user, nil
+}
+
+func (s UserService) findUserByEmail(ctx context.Context, email string) (*types.User, error) {
+	var user types.User
+	err := dbutil.DB(ctx, s.db).Where("email = ?", email).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("unable to find user by email: %w", err)
+	}
+
+	return &user, nil
+}
+
+func (s UserService) findUserByOAuth(ctx context.Context, provider types.OAuthProvider, providerID string) (*types.User, error) {
+	var user types.User
+	err := dbutil.DB(ctx, s.db).
+		Preload("OAuthProviders").
+		Joins("JOIN user_oauth_providers uop ON uop.user_id = users.id").
+		Where("uop.provider = ? AND uop.provider_id = ?", provider, providerID).
+		First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("unable to find user by oauth: %w", err)
+	}
+	return &user, nil
+}
+
+func (s UserService) createUserOAuthProvider(ctx context.Context, provider *types.UserOAuthProvider) error {
+	if err := dbutil.DB(ctx, s.db).Create(provider).Error; err != nil {
+		return fmt.Errorf("unable to create user oauth provider: %w", err)
+	}
+	return nil
+}
+
+func (s UserService) updateUser(ctx context.Context, user *types.User, onlyColumns ...string) error {
+	if len(onlyColumns) == 0 {
+		return dbutil.DB(ctx, s.db).Save(user).Error
+	}
+
+	return dbutil.DB(ctx, s.db).Model(user).Select(onlyColumns).Updates(user).Error
+}
+
+func (s UserService) findOAuthProviderByID(ctx context.Context, id string) (*types.UserOAuthProvider, error) {
+	var provider types.UserOAuthProvider
+	err := dbutil.DB(ctx, s.db).Where("id = ?", id).First(&provider).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &provider, nil
+}
+
+func (s UserService) updateOAuthProvider(ctx context.Context, provider *types.UserOAuthProvider, onlyColumns ...string) error {
+	if len(onlyColumns) == 0 {
+		return dbutil.DB(ctx, s.db).Save(provider).Error
+	}
+	return dbutil.DB(ctx, s.db).Model(provider).Select(onlyColumns).Updates(provider).Error
+}
+
+func transformLower(valPtr *string, _ internals.Ctx) error {
+	if valPtr != nil {
+		*valPtr = strings.ToLower(*valPtr)
+	}
+
+	return nil
+}

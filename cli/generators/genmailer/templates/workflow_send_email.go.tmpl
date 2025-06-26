@@ -20,7 +20,10 @@ func NewSendEmailWorkflow(p SendEmailWorkflowParams) *SendEmailWorkflow {
 func (w *SendEmailWorkflow) SendEmail(ctx workflow.Context, p mail.Message) error {
   opts := workflow.ActivityOptions{
     StartToCloseTimeout: time.Minute,
-    RetryPolicy:         &temporal.RetryPolicy{MaximumAttempts: 3},
+    RetryPolicy:         &temporal.RetryPolicy{
+      MaximumAttempts:    3,
+      InitialInterval:    time.Second * 5,
+    },
   }
   ctx = workflow.WithActivityOptions(ctx, opts)
   return workflow.ExecuteActivity(ctx, w.Activity.SendEmail, p).Get(ctx, nil)
