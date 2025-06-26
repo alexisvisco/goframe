@@ -1,0 +1,61 @@
+import { Callout } from 'nextra/components'
+
+# Auth
+
+The **auth** module wires a basic user model with services, HTTP handlers and email templates.
+Install it with:
+
+```bash
+bin/goframe generate module auth
+```
+
+<Callout type={"warning"}>
+  Install this module only if your project does not already contain a user model.
+</Callout>
+
+## Generated files
+
+The generator creates:
+
+- `config/auth.go` and related entries in `config.yml`.
+- Types in `internal/types` for `User`, `UserCode`, `OAuthProvider` and mailing helpers.
+- Services in `internal/service` for authentication, user management and user codes.
+- HTTP handlers and middleware under `internal/v1handler`.
+- Mail templates in `views/mails`.
+- Database migrations creating `users`, `user_codes`, `user_oauth_providers` and `oauth_state_codes` tables.
+
+## Login and registration
+
+Three methods are available:
+
+1. **Email and password** – users register with a password and must verify their email before logging in.
+2. **Magic link** – a one time link sent by email lets users sign in without a password.
+3. **OAuth** – login through GitHub, Apple or Discord using OAuth2.
+
+## Routes
+
+The module adds the following HTTP endpoints:
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `GET`  | `/v1/users/@me` | Return the authenticated user |
+| `POST` | `/v1/users/auth/register_with_password` | Register a new user with email and password |
+| `POST` | `/v1/users/auth/login_with_magic_link` | Request a magic link to login by email |
+| `POST` | `/v1/users/auth/login_with_password` | Login using email and password |
+| `POST` | `/v1/users/auth/verify_email/{code}` | Validate the registration email |
+| `POST` | `/v1/users/auth/verify_magic_link/{code}` | Complete a magic-link login |
+| `POST` | `/v1/users/auth/request_password_reset` | Send a password reset link |
+| `POST` | `/v1/users/auth/reset_password/{code}` | Reset the password with a code |
+| `POST` | `/v1/users/oauth/verify_provider/{provider_id}/{code}` | Confirm an OAuth provider connection |
+| `GET`  | `/v1/users/oauth/{provider}/login` | Redirect to an OAuth provider |
+| `POST` | `/v1/users/oauth/{provider}/callback` | Handle the OAuth provider callback |
+| `GET`  | `/v1/users/oauth/{provider}/callback` | Same callback endpoint for providers using GET |
+
+## Safety via email codes
+
+Temporary codes stored in the `user_codes` table secure sensitive operations like
+email verification, magic link login, OAuth provider validation and password resets.
+The OAuth flow also uses short-lived entries in the `oauth_state_codes` table to
+prevent request forgery.
+Each code expires after a short period and is removed once used.
+

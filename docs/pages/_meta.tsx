@@ -4,6 +4,7 @@ export default {
   "getting-started": "Getting Started",
   http: "HTTP",
   database: "Database",
+  auth: "Auth",
   worker: "Worker",
   mails: "Mails",
   storage: "Storage",
