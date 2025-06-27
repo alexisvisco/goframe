@@ -3,8 +3,8 @@ package genworker
 import (
 	"embed"
 	"fmt"
-	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/alexisvisco/goframe/cli/generators"
@@ -151,12 +151,14 @@ func (w *WorkerGenerator) createOrUpdateRegistry() generators.FileConfig {
 		Path:     "internal/workflow/registry.go",
 		Template: typeutil.Must(fs.ReadFile("templates/registry.go.tmpl")),
 		Gen: func(g *genhelper.GenHelper) {
-			hasActivities, _, activities, workflows := w.buildRegistrationList()
+			activities, workflows := w.buildRegistrationList()
 
 			g.WithImport("go.temporal.io/sdk/worker", "worker")
 
-			if hasActivities {
-				g.WithImport(filepath.Join(w.Gen.GoModuleName, "internal/workflow/activity"), "activity")
+			for _, r := range append(workflows, activities...) {
+				if !r.SelfPackage {
+					g.WithImport(r.ImportPath, r.PackageName)
+				}
 			}
 
 			g.WithVar("activities", activities).
@@ -178,71 +180,65 @@ func (w *WorkerGenerator) updateAppModule() error {
 	return gf.Save()
 }
 
-type temporlWorkerRegistration struct {
-	StructName string
-	MethodName string
+type temporalRegistration struct {
+	StructName  string
+	MethodName  string
+	ImportPath  string
+	SelfPackage bool
+	PackageName string
 }
 
-func (w *WorkerGenerator) buildRegistrationList() (bool, bool, []temporlWorkerRegistration, []temporlWorkerRegistration) {
-	actDir := "internal/workflow/activity"
-	wfDir := "internal/workflow"
+func (tr temporalRegistration) Constructor() string {
+	if tr.SelfPackage {
+		return fmt.Sprintf("New%s", tr.StructName)
+	}
+	return fmt.Sprintf("%s.New%s", tr.PackageName, tr.StructName)
+}
 
-	actEntries, _ := os.ReadDir(actDir)
-	wfEntries, _ := os.ReadDir(wfDir)
+func (tr temporalRegistration) Type() string {
+	if tr.SelfPackage {
+		return tr.StructName
+	}
+	return fmt.Sprintf("%s.%s", tr.PackageName, tr.StructName)
+}
 
-	var acts []temporlWorkerRegistration
-	var wfs []temporlWorkerRegistration
-
-	hasActivities := false
-	hasWorkflows := false
-
-	// Process activities
-	for _, e := range actEntries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".go" {
-			continue
-		}
-		if e.Name() == "register.go" || e.Name() == "registry.go" {
-			continue
-		}
-
-		name := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
-		name = strings.TrimPrefix(name, "activity_")
-		structName := str.ToPascalCase(name)
-
-		if !strings.HasSuffix(structName, "Activity") {
-			structName += "Activity"
-		}
-
-		acts = append(acts, temporlWorkerRegistration{
-			StructName: structName,
-			MethodName: str.ToPascalCase(name),
-		})
-		hasActivities = true
+func (w *WorkerGenerator) buildRegistrationList() ([]temporalRegistration, []temporalRegistration) {
+	pkg, err := genhelper.LoadGoPkg("internal/workflow", true)
+	if err != nil {
+		return nil, nil
 	}
 
-	// Process workflows
-	for _, e := range wfEntries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".go" {
-			continue
-		}
-		if e.Name() == "register.go" || e.Name() == "registry.go" {
-			continue
-		}
+	structActivities := pkg.FindAllStructRegexp(regexp.MustCompile(`(\w+)Activity$`))
+	structWorkflows := pkg.FindAllStructRegexp(regexp.MustCompile(`(\w+)Workflow$`))
 
-		name := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
-		name = strings.TrimPrefix(name, "workflow_")
-		structName := str.ToPascalCase(name)
-
-		if !strings.HasSuffix(structName, "Workflow") {
-			structName += "Workflow"
+	var acts []temporalRegistration
+	var wfs []temporalRegistration
+	for _, sa := range structActivities {
+		name := sa.Name
+		if !strings.HasSuffix(name, "Activity") {
+			name += "Activity"
 		}
-
-		wfs = append(wfs, temporlWorkerRegistration{
-			StructName: structName,
-			MethodName: str.ToPascalCase(name),
+		acts = append(acts, temporalRegistration{
+			StructName:  name,
+			MethodName:  str.ToPascalCase(strings.TrimSuffix(name, "Activity")),
+			ImportPath:  sa.ImportPath,
+			SelfPackage: sa.Self,
+			PackageName: sa.Package,
 		})
-		hasWorkflows = true
+	}
+	for _, sw := range structWorkflows {
+		name := sw.Name
+		if !strings.HasSuffix(name, "Workflow") {
+			name += "Workflow"
+		}
+		wfs = append(wfs, temporalRegistration{
+			StructName:  name,
+			MethodName:  str.ToPascalCase(strings.TrimSuffix(name, "Workflow")),
+			ImportPath:  sw.ImportPath,
+			SelfPackage: sw.Self,
+			PackageName: sw.Package,
+		})
 	}
 
-	return hasActivities, hasWorkflows, acts, wfs
+	return acts, wfs
 }

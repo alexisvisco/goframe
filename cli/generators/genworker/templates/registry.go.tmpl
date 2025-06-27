@@ -9,19 +9,19 @@ import (
 type Registry struct {
   fx.In
   {{- range .workflows }}
-  {{ .StructName }} *{{ .StructName }}
+  {{ .StructName }} *{{ .Type }}
   {{- end }}
   {{- range .activities }}
-  {{ .StructName }} *activity.{{ .StructName }}
+  {{ .StructName }} *{{ .Type }}
   {{- end }}
 }
 
 var Dependencies = []any{
   {{- range .activities }}
-  activity.New{{ .StructName }},
+  {{ .Constructor }},
   {{- end }}
   {{- range .workflows }}
-  New{{ .StructName }},
+  {{ .Constructor }},
   {{- end }}
   {{- if and (eq (len .workflows) 0) (eq (len .activities) 0) }}
   // TODO: add workflows and activities constructors
