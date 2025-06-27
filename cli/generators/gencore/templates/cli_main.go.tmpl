@@ -5,6 +5,7 @@ import (
   "database/sql"
   "log/slog"
   "os"
+  "gorm.io/gorm"
 
   "github.com/alexisvisco/goframe/cli/commands/rootcmd"
   {{ .imports }}
@@ -29,12 +30,12 @@ func run() int {
     return exitError
   }
 
-	connector := func() (*sql.DB, error) {
-    _, sqlDB, err := provide.DB(false)(cfg)
+	connector := func() (*gorm.DB, error) {
+    gdb, _, err := provide.DB(false)(cfg)
     if err != nil {
       return nil, err
     }
-		return sqlDB, nil
+		return gdb, nil
   }
 
   cmdRoot := rootcmd.NewCmdRoot(

@@ -2,7 +2,6 @@ package migrate
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -12,21 +11,17 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
+
+	"github.com/alexisvisco/goframe/db/dbutil"
 )
 
-// DB represents a database connection that can execute SQL statements with context.
-// Both *sql.DB and *sql.Tx implement this interface when using context methods.
-type DB interface {
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
-	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
-}
-
 // Migration represents a database migration with up and down operations.
+// Each method retrieves the *gorm.DB to use from the context using dbutil.DB.
 type Migration interface {
-	Up(context.Context, DB) error
-	Down(context.Context, DB) error
+	Up(context.Context) error
+	Down(context.Context) error
 	Version() (name string, at time.Time)
 }
 
@@ -71,11 +66,11 @@ func LoggerOption(logger *slog.Logger) Option {
 
 // Migrator handles database migrations.
 type Migrator struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 // New creates a new Migrator instance.
-func New(db *sql.DB) *Migrator {
+func New(db *gorm.DB) *Migrator {
 	return &Migrator{db: db}
 }
 
@@ -242,14 +237,16 @@ func (m *Migrator) runInGlobalTransaction(ctx context.Context, migrations []Migr
 			"migration_count", len(migrations))
 	}
 
-	tx, err := m.db.BeginTx(ctx, nil)
-	if err != nil {
+	tx := m.db.WithContext(ctx).Begin()
+	if tx.Error != nil {
 		if cfg.logger != nil {
-			cfg.logger.ErrorContext(ctx, "failed to begin global transaction", "error", err)
+			cfg.logger.ErrorContext(ctx, "failed to begin global transaction", "error", tx.Error)
 		}
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return fmt.Errorf("failed to begin transaction: %w", tx.Error)
 	}
 	defer tx.Rollback()
+
+	txCtx := dbutil.WithDB(ctx, tx)
 
 	for _, migration := range migrations {
 		name, at := migration.Version()
@@ -267,9 +264,9 @@ func (m *Migrator) runInGlobalTransaction(ctx context.Context, migrations []Migr
 
 		var execErr error
 		if isUp {
-			execErr = migration.Up(ctx, tx)
+			execErr = migration.Up(txCtx)
 		} else {
-			execErr = migration.Down(ctx, tx)
+			execErr = migration.Down(txCtx)
 		}
 
 		if execErr != nil {
@@ -288,10 +285,11 @@ func (m *Migrator) runInGlobalTransaction(ctx context.Context, migrations []Migr
 		}
 
 		// Update migration table
+		var err error
 		if isUp {
-			_, err = tx.ExecContext(ctx, "INSERT INTO schema_migrations (version) VALUES ($1)", version)
+			err = tx.Exec("INSERT INTO schema_migrations (version) VALUES ($1)", version).Error
 		} else {
-			_, err = tx.ExecContext(ctx, "DELETE FROM schema_migrations WHERE version = $1", version)
+			err = tx.Exec("DELETE FROM schema_migrations WHERE version = $1", version).Error
 		}
 
 		if err != nil {
@@ -339,13 +337,12 @@ func (m *Migrator) ensureTable(ctx context.Context) error {
 		version VARCHAR NOT NULL PRIMARY KEY
 	)`
 
-	_, err := m.db.ExecContext(ctx, query)
-	return err
+	return m.db.WithContext(ctx).Exec(query).Error
 }
 
 // getAppliedMigrations returns a set of applied migration versions.
 func (m *Migrator) getAppliedMigrations(ctx context.Context) (map[string]bool, error) {
-	rows, err := m.db.QueryContext(ctx, "SELECT version FROM schema_migrations")
+	rows, err := m.db.WithContext(ctx).Raw("SELECT version FROM schema_migrations").Rows()
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +398,8 @@ func (m *Migrator) runUp(ctx context.Context, migration Migration, cfg *options)
 		return m.runInTransaction(ctx, migration, true, cfg)
 	}
 
-	if err := migration.Up(ctx, m.db); err != nil {
+	runCtx := dbutil.WithDB(ctx, m.db)
+	if err := migration.Up(runCtx); err != nil {
 		if cfg.logger != nil {
 			cfg.logger.ErrorContext(ctx, "failed to apply migration",
 				"migration_version", version,
@@ -411,7 +409,7 @@ func (m *Migrator) runUp(ctx context.Context, migration Migration, cfg *options)
 		return err
 	}
 
-	_, err := m.db.ExecContext(ctx, "INSERT INTO schema_migrations (version) VALUES ($1)", version)
+	err := m.db.WithContext(ctx).Exec("INSERT INTO schema_migrations (version) VALUES ($1)", version).Error
 	if err != nil {
 		if cfg.logger != nil {
 			cfg.logger.ErrorContext(ctx, "failed to record migration as applied",
@@ -445,7 +443,8 @@ func (m *Migrator) runDown(ctx context.Context, migration Migration, cfg *option
 		return m.runInTransaction(ctx, migration, false, cfg)
 	}
 
-	if err := migration.Down(ctx, m.db); err != nil {
+	runCtx := dbutil.WithDB(ctx, m.db)
+	if err := migration.Down(runCtx); err != nil {
 		if cfg.logger != nil {
 			cfg.logger.ErrorContext(ctx, "failed to rollback migration",
 				"migration_version", version,
@@ -455,7 +454,7 @@ func (m *Migrator) runDown(ctx context.Context, migration Migration, cfg *option
 		return err
 	}
 
-	_, err := m.db.ExecContext(ctx, "DELETE FROM schema_migrations WHERE version = $1", version)
+	err := m.db.WithContext(ctx).Exec("DELETE FROM schema_migrations WHERE version = $1", version).Error
 	if err != nil {
 		if cfg.logger != nil {
 			cfg.logger.ErrorContext(ctx, "failed to remove migration from applied list",
@@ -479,38 +478,25 @@ func (m *Migrator) runInTransaction(ctx context.Context, migration Migration, is
 	name, at := migration.Version()
 	version := formatVersion(name, at)
 
-	tx, err := m.db.BeginTx(ctx, nil)
-	if err != nil {
-		if cfg.logger != nil {
-			cfg.logger.ErrorContext(ctx, "failed to begin transaction for migration",
-				"migration_version", version,
-				"error", err)
+	return dbutil.Transaction(ctx, m.db, func(txCtx context.Context) error {
+		if isUp {
+			if err := migration.Up(txCtx); err != nil {
+				return err
+			}
+		} else {
+			if err := migration.Down(txCtx); err != nil {
+				return err
+			}
 		}
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
 
-	if isUp {
-		if err := migration.Up(ctx, tx); err != nil {
-			return err
+		var err error
+		if isUp {
+			err = dbutil.DB(txCtx, nil).Exec("INSERT INTO schema_migrations (version) VALUES ($1)", version).Error
+		} else {
+			err = dbutil.DB(txCtx, nil).Exec("DELETE FROM schema_migrations WHERE version = $1", version).Error
 		}
-	} else {
-		if err := migration.Down(ctx, tx); err != nil {
-			return err
-		}
-	}
-
-	if isUp {
-		_, err = tx.ExecContext(ctx, "INSERT INTO schema_migrations (version) VALUES ($1)", version)
-	} else {
-		_, err = tx.ExecContext(ctx, "DELETE FROM schema_migrations WHERE version = $1", version)
-	}
-
-	if err != nil {
 		return err
-	}
-
-	return tx.Commit()
+	})
 }
 
 // formatVersion creates a version string in the format {timestamp}_{name}.
@@ -652,21 +638,19 @@ type sqlMigration struct {
 }
 
 // Up executes the SQL migration.
-func (s *sqlMigration) Up(ctx context.Context, db DB) error {
+func (s *sqlMigration) Up(ctx context.Context) error {
 	if s.upSQL == "" {
 		return fmt.Errorf("no up SQL found for migration %s", s.name)
 	}
-	_, err := db.ExecContext(ctx, s.upSQL)
-	return err
+	return dbutil.DB(ctx, nil).Exec(s.upSQL).Error
 }
 
 // Down executes the SQL migration rollback.
-func (s *sqlMigration) Down(ctx context.Context, db DB) error {
+func (s *sqlMigration) Down(ctx context.Context) error {
 	if s.downSQL == "" {
-		return fmt.Errorf("no down SQL found for migration %s", s.name)
+		return nil
 	}
-	_, err := db.ExecContext(ctx, s.downSQL)
-	return err
+	return dbutil.DB(ctx, nil).Exec(s.downSQL).Error
 }
 
 // Version returns the migration name and timestamp.

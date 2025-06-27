@@ -1,22 +1,26 @@
 package migrations
 
 import (
-	"context"
-	"time"
+        "context"
+        "time"
 
-	"github.com/alexisvisco/goframe/db/migrate"
+        "github.com/alexisvisco/goframe/db/dbutil"
 )
 
 type {{.struct}} struct {}
 
-func ({{.struct}}) Up(ctx context.Context, db migrate.DB) error {
-	//TODO implement me
-	panic("implement me")
+func ({{.struct}}) Up(ctx context.Context) error {
+        db := dbutil.DB(ctx, nil)
+        _ = db
+        // TODO implement me
+        return nil
 }
 
-func ({{.struct}}) Down(ctx context.Context, db migrate.DB) error{
-	//TODO implement me
-	panic("implement me")
+func ({{.struct}}) Down(ctx context.Context) error{
+        db := dbutil.DB(ctx, nil)
+        _ = db
+        // TODO implement me
+        return nil
 }
 
 func ({{.struct}}) Version() (name string, at time.Time) {

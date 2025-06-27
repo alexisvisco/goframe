@@ -1,12 +1,12 @@
 package dbcmd
 
 import (
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"gorm.io/gorm"
 )
 
 func cleanCmd() *cobra.Command {
@@ -16,7 +16,7 @@ func cleanCmd() *cobra.Command {
 		Short:   "Drop all tables from the database with cascade",
 		Long:    "Remove all tables from the database. This operation is irreversible and will delete all data.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			connector, ok := cmd.Context().Value("db").(func() (*sql.DB, error))
+			connector, ok := cmd.Context().Value("db").(func() (*gorm.DB, error))
 			if !ok || connector == nil {
 				return fmt.Errorf("database connector not found")
 			}
@@ -25,16 +25,15 @@ func cleanCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to connect to database: %w", err)
 			}
-			defer db.Close()
 
 			// Detect database type
-			dbType, err := detectDatabaseType(db)
+			dbType, err := detectDatabaseTypeGORM(db)
 			if err != nil {
 				return fmt.Errorf("failed to detect database type: %w", err)
 			}
 
 			// Get all table names
-			tables, err := getAllTables(db, dbType)
+			tables, err := getAllTablesGORM(db, dbType)
 			if err != nil {
 				return fmt.Errorf("failed to get table list: %w", err)
 			}
@@ -44,12 +43,11 @@ func cleanCmd() *cobra.Command {
 			}
 
 			// Drop all tables
-			err = dropAllTables(db, dbType, tables)
-			if err != nil {
+			if err := dropAllTablesGORM(db, dbType, tables); err != nil {
 				return fmt.Errorf("failed to drop tables: %w", err)
 			}
 
-			slog.Info("successfully drop tables", "tables", strings.Join(tables, ", "))
+			slog.Info("successfully dropped tables", "tables", strings.Join(tables, ", "))
 			return nil
 		},
 	}
@@ -57,132 +55,82 @@ func cleanCmd() *cobra.Command {
 	return cmd
 }
 
-// detectDatabaseType detects the database type from the driver name
-func detectDatabaseType(db *sql.DB) (string, error) {
-	// Try to get driver name through a query-based approach
-	var dbType string
-
-	// Test for PostgreSQL
-	if err := db.QueryRow("SELECT version()").Scan(&dbType); err == nil {
-		if strings.Contains(strings.ToLower(dbType), "postgresql") {
-			return "postgres", nil
-		}
-	}
-
-	// Test for SQLite
-	if err := db.QueryRow("SELECT sqlite_version()").Scan(&dbType); err == nil {
+func detectDatabaseTypeGORM(db *gorm.DB) (string, error) {
+	dialect := db.Dialector.Name()
+	switch dialect {
+	case "postgres":
+		return "postgres", nil
+	case "sqlite":
 		return "sqlite", nil
+	default:
+		return "", fmt.Errorf("unsupported database dialect: %s", dialect)
 	}
-
-	return "", fmt.Errorf("unsupported database type")
 }
 
-// getAllTables returns all table names for the given database type
-func getAllTables(db *sql.DB, dbType string) ([]string, error) {
-	var query string
+func getAllTablesGORM(db *gorm.DB, dbType string) ([]string, error) {
+	var tables []string
 
 	switch dbType {
 	case "postgres":
-		query = `
-			SELECT tablename 
-			FROM pg_tables 
-			WHERE schemaname = 'public'
-			ORDER BY tablename`
+		rows, err := db.Raw(`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`).Rows()
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var table string
+			if err := rows.Scan(&table); err != nil {
+				return nil, err
+			}
+			tables = append(tables, table)
+		}
+
 	case "sqlite":
-		query = `
-			SELECT name 
-			FROM sqlite_master 
-			WHERE type = 'table' 
-			AND name NOT LIKE 'sqlite_%'
-			ORDER BY name`
+		rows, err := db.Raw(`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`).Rows()
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var table string
+			if err := rows.Scan(&table); err != nil {
+				return nil, err
+			}
+			tables = append(tables, table)
+		}
+
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", dbType)
 	}
 
-	rows, err := db.Query(query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var tables []string
-	for rows.Next() {
-		var tableName string
-		if err := rows.Scan(&tableName); err != nil {
-			return nil, err
-		}
-		tables = append(tables, tableName)
-	}
-
-	return tables, rows.Err()
+	return tables, nil
 }
 
-// dropAllTables drops all tables with appropriate cascade behavior
-func dropAllTables(db *sql.DB, dbType string, tables []string) error {
+func dropAllTablesGORM(db *gorm.DB, dbType string, tables []string) error {
 	switch dbType {
 	case "postgres":
-		return dropTablesPostgres(db, tables)
+		for _, table := range tables {
+			stmt := fmt.Sprintf(`DROP TABLE IF EXISTS "%s" CASCADE`, table)
+			if err := db.Exec(stmt).Error; err != nil {
+				return fmt.Errorf("failed to drop table %s: %w", table, err)
+			}
+		}
 	case "sqlite":
-		return dropTablesSQLite(db, tables)
+		if err := db.Exec("PRAGMA foreign_keys = OFF").Error; err != nil {
+			return fmt.Errorf("failed to disable foreign keys: %w", err)
+		}
+		for _, table := range tables {
+			stmt := fmt.Sprintf(`DROP TABLE IF EXISTS "%s"`, table)
+			if err := db.Exec(stmt).Error; err != nil {
+				_ = db.Exec("PRAGMA foreign_keys = ON") // ensure re-enable even if error
+				return fmt.Errorf("failed to drop table %s: %w", table, err)
+			}
+		}
+		if err := db.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
+			return fmt.Errorf("failed to re-enable foreign keys: %w", err)
+		}
 	default:
 		return fmt.Errorf("unsupported database type: %s", dbType)
 	}
-}
-
-// dropTablesPostgres drops all tables in PostgreSQL with CASCADE
-func dropTablesPostgres(db *sql.DB, tables []string) error {
-	if len(tables) == 0 {
-		return nil
-	}
-
-	// Disable foreign key checks temporarily and drop with CASCADE
-	for _, table := range tables {
-		query := fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", quoteIdentifier(table, "postgres"))
-		if _, err := db.Exec(query); err != nil {
-			return fmt.Errorf("failed to drop table %s: %w", table, err)
-		}
-	}
-
 	return nil
-}
-
-// dropTablesSQLite drops all tables in SQLite
-func dropTablesSQLite(db *sql.DB, tables []string) error {
-	if len(tables) == 0 {
-		return nil
-	}
-
-	// SQLite doesn't have CASCADE, but we can disable foreign keys temporarily
-	if _, err := db.Exec("PRAGMA foreign_keys = OFF"); err != nil {
-		return fmt.Errorf("failed to disable foreign key checks: %w", err)
-	}
-
-	// Drop all tables
-	for _, table := range tables {
-		query := fmt.Sprintf("DROP TABLE IF EXISTS %s", quoteIdentifier(table, "sqlite"))
-		if _, err := db.Exec(query); err != nil {
-			// Re-enable foreign key checks before returning error
-			db.Exec("PRAGMA foreign_keys = ON")
-			return fmt.Errorf("failed to drop table %s: %w", table, err)
-		}
-	}
-
-	// Re-enable foreign key checks
-	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		return fmt.Errorf("failed to re-enable foreign key checks: %w", err)
-	}
-
-	return nil
-}
-
-// quoteIdentifier properly quotes table/column names for different databases
-func quoteIdentifier(name, dbType string) string {
-	switch dbType {
-	case "postgres":
-		return fmt.Sprintf(`"%s"`, name)
-	case "sqlite":
-		return fmt.Sprintf(`"%s"`, name)
-	default:
-		return name
-	}
 }

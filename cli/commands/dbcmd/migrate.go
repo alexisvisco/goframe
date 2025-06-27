@@ -1,11 +1,11 @@
 package dbcmd
 
 import (
-	"database/sql"
 	"fmt"
 
 	"github.com/alexisvisco/goframe/db/migrate"
 	"github.com/spf13/cobra"
+	"gorm.io/gorm"
 )
 
 func migrateCmd() *cobra.Command {
@@ -14,7 +14,7 @@ func migrateCmd() *cobra.Command {
 		Aliases: []string{"up", "m"},
 		Short:   "Migrate the database with non-applied migrations",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			connector, ok := cmd.Context().Value("db").(func() (*sql.DB, error))
+			connector, ok := cmd.Context().Value("db").(func() (*gorm.DB, error))
 			if !ok || connector == nil {
 				return fmt.Errorf("database connector not found")
 			}

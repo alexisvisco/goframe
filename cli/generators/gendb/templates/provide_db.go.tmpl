@@ -39,7 +39,7 @@ func DB(withMigration bool) func (cfg *config.Config) (*gorm.DB, *sql.DB, error)
     }
 
     if withMigration {
-      err = migrate.New(sqlDB).Up(context.Background(), db.Migrations)
+      err = migrate.New(gormDB).Up(context.Background(), db.Migrations)
       if err != nil {
         return nil, nil, fmt.Errorf("failed to run migrations: %w", err)
       }

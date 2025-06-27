@@ -194,7 +194,7 @@ func (g *AuthGenerator) createService() []generators.FileConfig {
 			Template: typeutil.Must(fs.ReadFile("templates/service_service_oauth_state.go.tmpl")),
 			Gen: func(gen *genhelper.GenHelper) {
 				gen.WithImport(filepath.Join(g.Gen.GoModuleName, "internal/types"), "types")
-				gen.WithImport(filepath.Join(g.Gen.GoModuleName, "internal/dbutil"), "dbutil")
+				gen.WithImport("github.com/alexisvisco/goframe/db/dbutil", "dbutil")
 			},
 		},
 		{
@@ -202,7 +202,7 @@ func (g *AuthGenerator) createService() []generators.FileConfig {
 			Template: typeutil.Must(fs.ReadFile("templates/service_service_user.go.tmpl")),
 			Gen: func(gen *genhelper.GenHelper) {
 				gen.WithImport(filepath.Join(g.Gen.GoModuleName, "internal/types"), "types")
-				gen.WithImport(filepath.Join(g.Gen.GoModuleName, "internal/dbutil"), "dbutil")
+				gen.WithImport("github.com/alexisvisco/goframe/db/dbutil", "dbutil")
 				gen.WithImport(filepath.Join(g.Gen.GoModuleName, "config"), "config")
 			},
 		},
@@ -211,7 +211,7 @@ func (g *AuthGenerator) createService() []generators.FileConfig {
 			Template: typeutil.Must(fs.ReadFile("templates/service_service_user_code.go.tmpl")),
 			Gen: func(gen *genhelper.GenHelper) {
 				gen.WithImport(filepath.Join(g.Gen.GoModuleName, "internal/types"), "types")
-				gen.WithImport(filepath.Join(g.Gen.GoModuleName, "internal/dbutil"), "dbutil")
+				gen.WithImport("github.com/alexisvisco/goframe/db/dbutil", "dbutil")
 			},
 		},
 	}

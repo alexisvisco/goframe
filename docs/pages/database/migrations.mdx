@@ -27,7 +27,7 @@ You can also drop all tables with:
 bin/goframe db clean
 ```
 
-The migrator works with any `*sql.DB` so it remains independent of the ORM you choose.
+The migrator operates on a `*gorm.DB`, allowing migrations to participate in the same transactional context as your application code.
 
 ## When to run migration ?
 

@@ -1,6 +1,5 @@
 # Database
 
-GoFrame relies on [Gorm](https://gorm.io) by default to manage the connection and to give a simple API to query the database.
-The generated provider returns both a `*gorm.DB` and the underlying `*sql.DB` handle. Because all the helpers only require the standard `database/sql` API, you can swap Gorm for any ORM that can work with a `*sql.DB`.
+GoFrame relies on [Gorm](https://gorm.io) for database access. The generated provider exposes a `*gorm.DB` as the main entry point and also returns the underlying `*sql.DB` handle when you really need it.
 
 See [Connection](./connection.mdx) for how the provider is wired and [Migrations](./migrations.mdx) for keeping the schema in sync.

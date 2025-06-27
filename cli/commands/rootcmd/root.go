@@ -2,7 +2,6 @@ package rootcmd
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,13 +18,14 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/fx"
 	"golang.org/x/mod/modfile"
+	"gorm.io/gorm"
 )
 
 type OptionFunc func(*options)
 
 type options struct {
 	Migrations []migrate.Migration
-	DB         func() (*sql.DB, error)
+	DB         func() (*gorm.DB, error)
 	Commands   map[string][]*cobra.Command
 	FxOptions  []fx.Option
 	Config     any
@@ -37,7 +37,7 @@ func WithMigrations(migrations []migrate.Migration) OptionFunc {
 	}
 }
 
-func WithDB(dbConnector func() (*sql.DB, error)) OptionFunc {
+func WithDB(dbConnector func() (*gorm.DB, error)) OptionFunc {
 	return func(o *options) {
 		o.DB = dbConnector
 	}

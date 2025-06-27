@@ -1,11 +1,11 @@
 package dbcmd
 
 import (
-	"database/sql"
 	"fmt"
 
 	"github.com/alexisvisco/goframe/db/migrate"
 	"github.com/spf13/cobra"
+	"gorm.io/gorm"
 )
 
 func rollbackCmd() *cobra.Command {
@@ -14,7 +14,7 @@ func rollbackCmd() *cobra.Command {
 		Aliases: []string{"down", "r"},
 		Short:   "Migrate the database to the previous version",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			connector, ok := cmd.Context().Value("db").(func() (*sql.DB, error))
+			connector, ok := cmd.Context().Value("db").(func() (*gorm.DB, error))
 			if !ok || connector == nil {
 				return fmt.Errorf("database connector not found")
 			}

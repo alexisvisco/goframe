@@ -43,7 +43,7 @@ func (g *DatabaseGenerator) Generate() error {
 
 	files := []generators.FileConfig{
 		g.createDBProvider("internal/provide/provide_db.go"),
-		g.createDbutil("internal/dbutil/dbutil.go"),
+		g.createDbutil("db/dbutil/dbutil.go"),
 		g.updateOrCreateMigrations("db/migrations.go"),
 	}
 

@@ -5,10 +5,11 @@ go 1.24
 require (
 	github.com/alexisvisco/goframe/core v0.0.0-20241022120000-abcdef123456
 	github.com/alexisvisco/goframe/http v0.0.0-20241022120000-abcdef123456
-	github.com/gabriel-vasile/mimetype v1.4.9
-	github.com/minio/minio-go v6.0.14+incompatible
-	github.com/minio/minio-go/v7 v7.0.92
-	github.com/nrednav/cuid2 v1.0.1
+       github.com/gabriel-vasile/mimetype v1.4.9
+       github.com/minio/minio-go v6.0.14+incompatible
+       github.com/minio/minio-go/v7 v7.0.92
+       github.com/nrednav/cuid2 v1.0.1
+       gorm.io/gorm v1.25.5
 )
 
 require (
