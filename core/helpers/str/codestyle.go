@@ -166,6 +166,8 @@ func init() {
 	ConfigureAcronym("MD", "md")
 	ConfigureAcronym("SQL", "sql")
 	ConfigureAcronym("DB", "db")
+	ConfigureAcronym("OAUTH", "oauth")
+	ConfigureAcronym("OAuth", "oauth")
 	ConfigureAcronym("URI", "uri")
 }
 

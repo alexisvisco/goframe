@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -100,6 +101,9 @@ func (s *S3Storage) UploadAttachment(ctx context.Context, opts coretypes.UploadA
 
 	var attachment *coretypes.Attachment
 
+	marshal, _ := json.Marshal(s.config)
+	fmt.Println(string(marshal))
+
 	_, err = s.client.PutObject(
 		ctx,
 		s.config.Bucket,
@@ -173,14 +177,11 @@ func (s *S3Storage) AttachmentHandler(pathValueField string) http.HandlerFunc {
 			return httpx.JSON.NotFound("Attachment not found"), nil
 		}
 
-		// Construct the object key
-		key := path.Join("attachments", id)
-
 		// WriteTo presigned URL
 		presignedURL, err := s.client.PresignedGetObject(
 			r.Context(),
 			s.config.Bucket,
-			key,
+			attachment.Key,
 			1*time.Hour,
 			nil, // No additional query parameters
 		)

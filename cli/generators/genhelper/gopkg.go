@@ -194,6 +194,35 @@ func (g *GoPkg) FindAllStructRegexp(pattern *regexp.Regexp) []StructInfo {
 	return results
 }
 
+// FindAllMethodsForStruct returns all struct types in the package.
+// If no files are specified, it searches all files in the package.
+// If files are specified, it only searches those files.
+func (g *GoPkg) FindAllMethodsForStruct(structName string, files ...string) []string {
+	var methods []string
+
+	for _, filePath := range files {
+		pkgFile, exists := g.Files[filePath]
+		if !exists {
+			continue
+		}
+
+		ast.Inspect(pkgFile.File, func(n ast.Node) bool {
+			if fn, ok := n.(*ast.FuncDecl); ok && fn.Recv != nil {
+				for _, field := range fn.Recv.List {
+					if starExpr, ok := field.Type.(*ast.StarExpr); ok {
+						if ident, ok := starExpr.X.(*ast.Ident); ok && ident.Name == structName {
+							methods = append(methods, fn.Name.Name)
+						}
+					}
+				}
+			}
+			return true
+		})
+	}
+
+	return methods
+}
+
 func (g *GoPkg) GetImportPathFor(packageDir string) string {
 	absPath, err := filepath.Abs(packageDir)
 	if err != nil {

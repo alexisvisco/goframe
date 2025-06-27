@@ -11,6 +11,7 @@ import (
 	"github.com/alexisvisco/goframe/cli/commands/generatecmd"
 	"github.com/alexisvisco/goframe/cli/commands/i18ncmd"
 	"github.com/alexisvisco/goframe/cli/commands/mailcmd"
+	"github.com/alexisvisco/goframe/cli/commands/refactorcmd"
 	"github.com/alexisvisco/goframe/cli/commands/routescmd"
 	"github.com/alexisvisco/goframe/cli/commands/taskcmd"
 	"github.com/alexisvisco/goframe/core/configuration"
@@ -124,6 +125,7 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 	cmd.AddCommand(routescmd.NewCmdRoutes())
 	cmd.AddCommand(mailcmd.NewCmdMail())
 	cmd.AddCommand(i18ncmd.NewCmdI18n())
+	cmd.AddCommand(refactorcmd.NewCmdRefactor())
 
 	return cmd
 }
