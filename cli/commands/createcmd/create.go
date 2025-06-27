@@ -141,6 +141,7 @@ func NewInitCmd() *cobra.Command {
 			}
 
 			keyvalues = append(keyvalues, kv{"Mailpit", fmt.Sprintf("%s (for email testing)", termcolor.WrapBlue("http://localhost:8025"))})
+			keyvalues = append(keyvalues, kv{"Minio", fmt.Sprintf("%s (UI at %s)", termcolor.WrapBlue("http://localhost:9000"), termcolor.WrapBlue("http://localhost:9001"))})
 
 			tw := new(tabwriter.Writer)
 

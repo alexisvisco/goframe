@@ -66,9 +66,24 @@ services:
     tty: true
     restart: unless-stopped
 {{- end}}
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: root
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    networks:
+      - app-network
 
 
 volumes:
+  minio_data:
   mailpit_data:
 {{- if eq .db "postgres" }}
   postgres_data:
