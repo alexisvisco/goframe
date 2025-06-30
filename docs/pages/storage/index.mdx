@@ -26,6 +26,16 @@ attachment, err := storage.UploadAttachment(ctx, coretypes.UploadAttachmentOptio
 })
 ```
 
+To download an attachment you can use:
+
+```go
+reader, err := storage.DownloadAttachment(ctx, attachment.ID)
+if err != nil {
+    // handle error
+}
+defer reader.Close()
+```
+
 To serve attachments, register the handler in your router:
 
 ```go

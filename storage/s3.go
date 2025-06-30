@@ -161,6 +161,22 @@ func (s *S3Storage) DeleteAttachment(ctx context.Context, id string) error {
 	return nil
 }
 
+func (s *S3Storage) DownloadAttachment(ctx context.Context, id string) (io.ReadCloser, error) {
+	attachment, err := s.repository.GetAttachment(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch attachment: %w", err)
+	}
+	if attachment == nil {
+		return nil, os.ErrNotExist
+	}
+
+	reader, err := s.client.GetObject(ctx, s.config.Bucket, attachment.Key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to download attachment: %w", err)
+	}
+	return reader, nil
+}
+
 func (s *S3Storage) AttachmentHandler(pathValueField string) http.HandlerFunc {
 	return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
 		// Extract attachment ID from path parameter

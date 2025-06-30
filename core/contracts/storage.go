@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"context"
+	"io"
 	"net/http"
 
 	"github.com/alexisvisco/goframe/core/coretypes"
@@ -16,6 +17,7 @@ type (
 
 	Storage interface {
 		UploadAttachment(ctx context.Context, opts coretypes.UploadAttachmentOptions) (*coretypes.Attachment, error)
+		DownloadAttachment(ctx context.Context, id string) (io.ReadCloser, error)
 		DeleteAttachment(ctx context.Context, id string) error
 		AttachmentHandler(pathValueField string) http.HandlerFunc
 	}

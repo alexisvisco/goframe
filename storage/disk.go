@@ -141,6 +141,24 @@ func (d DiskStorage) DeleteAttachment(ctx context.Context, id string) error {
 	return nil
 }
 
+func (d DiskStorage) DownloadAttachment(ctx context.Context, id string) (io.ReadCloser, error) {
+	attachment, err := d.repository.GetAttachment(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch attachment: %w", err)
+	}
+
+	if attachment == nil {
+		return nil, os.ErrNotExist
+	}
+
+	filePath := filepath.Join(d.cfg.Directory, attachment.Key)
+	f, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
 func (d DiskStorage) AttachmentHandler(pathValueField string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue(pathValueField)
