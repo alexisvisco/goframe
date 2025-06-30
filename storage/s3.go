@@ -62,6 +62,22 @@ func (s *S3Storage) UploadAttachment(ctx context.Context, opts coretypes.UploadA
 		id = *opts.CurrentAttachmentID
 	}
 
+	if opts.Content == nil && opts.ContentMultipartFileHeader != nil {
+		f, err := opts.ContentMultipartFileHeader.Open()
+		if err != nil {
+			return nil, fmt.Errorf("failed to open multipart file: %w", err)
+		}
+		defer f.Close()
+		opts.Content = f
+		if opts.Filename == "" {
+			opts.Filename = opts.ContentMultipartFileHeader.Filename
+		}
+	}
+
+	if opts.Content == nil {
+		return nil, fmt.Errorf("content reader is nil")
+	}
+
 	// GenerateHandler temporary file
 	tmpFile, err := os.CreateTemp("", "upload-*")
 	if err != nil {

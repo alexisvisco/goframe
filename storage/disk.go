@@ -42,6 +42,22 @@ func (d DiskStorage) UploadAttachment(ctx context.Context, opts coretypes.Upload
 		id = *opts.CurrentAttachmentID
 	}
 
+	if opts.Content == nil && opts.ContentMultipartFileHeader != nil {
+		f, err := opts.ContentMultipartFileHeader.Open()
+		if err != nil {
+			return nil, fmt.Errorf("failed to open multipart file: %w", err)
+		}
+		defer f.Close()
+		opts.Content = f
+		if opts.Filename == "" {
+			opts.Filename = opts.ContentMultipartFileHeader.Filename
+		}
+	}
+
+	if opts.Content == nil {
+		return nil, fmt.Errorf("content reader is nil")
+	}
+
 	// ensure base directory exists
 	baseDir := filepath.Join(d.cfg.Directory, "attachments")
 	if err := os.MkdirAll(baseDir, 0o755); err != nil {

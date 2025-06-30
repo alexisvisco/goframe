@@ -2,6 +2,7 @@ package coretypes
 
 import (
 	"io"
+	"mime/multipart"
 	"time"
 )
 
@@ -18,8 +19,9 @@ type (
 	}
 
 	UploadAttachmentOptions struct {
-		Filename            string
-		Content             io.Reader
-		CurrentAttachmentID *string // Optional, for replacing existing attachment
+		Filename                   string
+		Content                    io.Reader
+		ContentMultipartFileHeader *multipart.FileHeader
+		CurrentAttachmentID        *string // Optional, for replacing existing attachment
 	}
 )

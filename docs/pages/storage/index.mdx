@@ -24,6 +24,12 @@ attachment, err := storage.UploadAttachment(ctx, coretypes.UploadAttachmentOptio
     Filename: "example.png",
     Content:  file,
 })
+
+// or using a multipart.FileHeader
+attachment, err := storage.UploadAttachment(ctx, coretypes.UploadAttachmentOptions{
+    Filename: "example.png",
+    ContentMultipartFileHeader: header,
+})
 ```
 
 To download an attachment you can use:
