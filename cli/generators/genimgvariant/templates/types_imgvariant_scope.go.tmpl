@@ -1,0 +1,81 @@
+package types
+
+import (
+	"gorm.io/gorm"
+)
+
+type ScopeImageVariantsLoaderOptions struct {
+	LoadVariants      bool
+	LoadOriginal      bool
+	LoadVariantsNames []string
+	HasMany           bool
+}
+
+type ScopeImageVariantsLoaderOption func(*ScopeImageVariantsLoaderOptions)
+
+func ScopeImageVariantsLoadWithVariants(opts *ScopeImageVariantsLoaderOptions) {
+	opts.LoadVariants = true
+}
+
+func ScopeImageVariantsLoadWithOriginalAttachment(opts *ScopeImageVariantsLoaderOptions) {
+	opts.LoadOriginal = true
+}
+
+func ScopeImageVariantsLoadWithVariantsNames(names ...string) ScopeImageVariantsLoaderOption {
+	return func(opts *ScopeImageVariantsLoaderOptions) {
+		opts.LoadVariantsNames = names
+	}
+}
+
+func ScopeImageVariantsLoadWithHasMany(hasMany bool) ScopeImageVariantsLoaderOption {
+	return func(opts *ScopeImageVariantsLoaderOptions) {
+		opts.HasMany = hasMany
+	}
+}
+
+func ScopeImageVariantsLoader(field string, opts ...ScopeImageVariantsLoaderOption) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		options := &ScopeImageVariantsLoaderOptions{
+			LoadVariants:      true,
+			LoadOriginal:      true,
+			LoadVariantsNames: nil,
+		}
+		for _, opt := range opts {
+			opt(options)
+		}
+
+		if options.HasMany {
+			db = db.Preload(field, func(db *gorm.DB) *gorm.DB {
+				if options.LoadOriginal {
+					db = db.Joins("OriginalAttachment")
+				}
+				return db
+			})
+			if options.LoadVariants {
+				db = db.Preload(field+".Variants", func(db *gorm.DB) *gorm.DB {
+					q := db.Joins("Attachment")
+					if len(options.LoadVariantsNames) > 0 {
+						q = q.Where("name IN (?)", options.LoadVariantsNames)
+					}
+					return q
+					return db
+				})
+			}
+		} else {
+			db.Joins(field)
+			if options.LoadOriginal {
+				db.Joins(field + ".OriginalAttachment")
+			}
+			if options.LoadVariants {
+				db = db.Preload(field+".Variants", func(db *gorm.DB) *gorm.DB {
+					q := db.Joins("Attachment")
+					if len(options.LoadVariantsNames) > 0 {
+						q = q.Where("name IN (?)", options.LoadVariantsNames)
+					}
+					return q
+				})
+			}
+		}
+		return db
+	}
+}

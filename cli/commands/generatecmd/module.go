@@ -1,13 +1,12 @@
 package generatecmd
 
 import (
-	"fmt"
-
 	"github.com/alexisvisco/goframe/cli/generators"
 	"github.com/alexisvisco/goframe/cli/generators/genauth"
 	"github.com/alexisvisco/goframe/cli/generators/gendb"
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
 	"github.com/alexisvisco/goframe/cli/generators/genhttp"
+	"github.com/alexisvisco/goframe/cli/generators/genimgvariant"
 	"github.com/alexisvisco/goframe/cli/generators/genmailer"
 	"github.com/alexisvisco/goframe/cli/generators/genservice"
 	"github.com/alexisvisco/goframe/cli/generators/genworker"
@@ -16,13 +15,15 @@ import (
 
 func moduleCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "module <name>",
-		Short: "Install a set of files that form a module for a particular functionality or feature",
-		RunE: genhelper.WithFileDiff(func(cmd *cobra.Command, args []string) error {
-			if len(args) < 1 {
-				return fmt.Errorf("migration name is required")
-			}
+		Use:   "module",
+		Short: "Install modules for particular functionalities or features",
+	}
 
+	// Auth subcommand
+	authCmd := &cobra.Command{
+		Use:   "auth",
+		Short: "Generate authentication module",
+		RunE: genhelper.WithFileDiff(func(cmd *cobra.Command, args []string) error {
 			g := &generators.Generator{
 				GoModuleName: cmd.Context().Value("module").(string),
 				ORMType:      "gorm",
@@ -33,6 +34,7 @@ func moduleCmd() *cobra.Command {
 			httpGen := &genhttp.HTTPGenerator{Gen: g}
 			workerGen := &genworker.WorkerGenerator{Gen: g}
 			mailerGen := &genmailer.MailerGenerator{Gen: g, Wf: workerGen}
+
 			authGen := &genauth.AuthGenerator{
 				Gen:              g,
 				MailerGenerator:  mailerGen,
@@ -40,20 +42,37 @@ func moduleCmd() *cobra.Command {
 				HTTPGenerator:    httpGen,
 				DBGenerator:      dbGen,
 			}
-
-			name := args[0]
-
-			switch name {
-			case "auth":
-				err := authGen.Generate()
-				if err != nil {
-					return fmt.Errorf("failed to generate auth module: %w", err)
-				}
-			}
-
-			return nil
+			return authGen.Generate()
 		}),
 	}
+
+	// Image variant subcommand
+	imgVariantCmd := &cobra.Command{
+		Use:   "image-variant",
+		Short: "Generate image variant module",
+		RunE: genhelper.WithFileDiff(func(cmd *cobra.Command, args []string) error {
+			g := &generators.Generator{
+				GoModuleName: cmd.Context().Value("module").(string),
+				ORMType:      "gorm",
+			}
+
+			svcGen := &genservice.ServiceGenerator{Gen: g}
+			dbGen := &gendb.DatabaseGenerator{Gen: g}
+			workerGen := &genworker.WorkerGenerator{Gen: g}
+
+			imgVariantGen := &genimgvariant.ImageVariantGenerator{
+				Gen:               g,
+				ServiceGenerator:  svcGen,
+				WorkflowGenerator: workerGen,
+				DBGenerator:       dbGen,
+			}
+			return imgVariantGen.Generate()
+		}),
+	}
+
+	// Add subcommands
+	cmd.AddCommand(authCmd)
+	cmd.AddCommand(imgVariantCmd)
 
 	return cmd
 }

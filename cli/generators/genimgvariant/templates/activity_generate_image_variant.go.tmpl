@@ -1,0 +1,72 @@
+package activity
+
+import (
+	"context"
+	"fmt"
+	"time"
+	"go.temporal.io/sdk/activity"
+
+	{{ .imports }}
+)
+
+type GenerateImageVariantActivity struct {
+	service types.ImageVariantService
+}
+
+type GenerateImageVariantInput struct {
+	OriginalAttachmentID string
+	ImageVariantSetID    string
+	Props                types.ImageVariantProperties
+	Name                 string
+}
+
+type GenerateImageVariantOutput struct {
+	Variant *types.ImageVariant
+}
+
+func NewGenerateImageVariantActivity(imgVariantService types.ImageVariantService) *GenerateImageVariantActivity {
+	return &GenerateImageVariantActivity{
+		service: imgVariantService,
+	}
+}
+
+func (a *GenerateImageVariantActivity) GenerateImageVariant(ctx context.Context, input *GenerateImageVariantInput) (*GenerateImageVariantOutput, error) {
+	if input == nil {
+		return nil, fmt.Errorf("input cannot be nil")
+	}
+
+	startAt := time.Now()
+
+	activity.GetLogger(ctx).Info("generating image variant",
+		"original_attachment_id",
+		input.OriginalAttachmentID,
+		"image_variant_set_id",
+		input.ImageVariantSetID,
+		"name",
+		input.Name,
+		"spec",
+		input.Props)
+
+	variant, err := a.service.CreateImageVariant(
+		ctx,
+		input.OriginalAttachmentID,
+		input.ImageVariantSetID,
+		input.Name,
+		input.Props,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create image variant: %w", err)
+	}
+
+	endAt := time.Now()
+	duration := endAt.Sub(startAt)
+	activity.GetLogger(ctx).Info("image variant generated",
+		"duration",
+		duration,
+		"variant_id",
+		variant.ID)
+
+	return &GenerateImageVariantOutput{
+		Variant: variant,
+	}, nil
+}

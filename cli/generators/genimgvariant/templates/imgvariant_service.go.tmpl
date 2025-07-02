@@ -1,0 +1,349 @@
+package service
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"log/slog"
+	"strings"
+	"time"
+	"github.com/alexisvisco/goframe/core/contracts"
+	"github.com/alexisvisco/goframe/db/dbutil"
+	"github.com/alexisvisco/goframe/core/coretypes"
+	"github.com/davidbyttow/govips/v2/vips"
+	"github.com/nrednav/cuid2"
+	"go.temporal.io/sdk/client"
+	"gorm.io/gorm"
+
+	{{ .imports }}
+)
+
+type ImageVariantService struct {
+	storage        contracts.Storage
+	db             *gorm.DB
+	temporalClient client.Client // temporal client is set deffered
+}
+
+var _ types.ImageVariantService = (*ImageVariantService)(nil)
+
+func NewImageVariantService(storage contracts.Storage, db *gorm.DB) *ImageVariantService {
+	vips.LoggingSettings(func(messageDomain string, messageLevel vips.LogLevel, message string) {
+		if messageLevel == vips.LogLevelError {
+			slog.Error(message, "component", "vips", "domain", messageDomain)
+		}
+	}, vips.LogLevelError)
+	vips.Startup(nil)
+
+	return &ImageVariantService{
+		storage: storage,
+		db:      db,
+	}
+}
+
+func (s *ImageVariantService) SetTemporalClient(temporalClient client.Client) {
+	s.temporalClient = temporalClient
+}
+
+func (s *ImageVariantService) CreateImage(
+	ctx context.Context,
+	params types.CreateImageVariantParams,
+) (*types.ImageVariantSet, error) {
+	if s.temporalClient == nil {
+		return nil, errors.New("temporal client is not set")
+	}
+
+	var imgVariantSet types.ImageVariantSet
+	err := dbutil.Transaction(ctx, s.db, func(nctx context.Context) error {
+		currentDB := dbutil.DB(nctx, nil)
+		attachment, err := s.storage.UploadAttachment(nctx, coretypes.UploadAttachmentOptions{
+			Filename:                   params.Filename,
+			ContentMultipartFileHeader: params.ContentMultipartFileHeader,
+			Content:                    params.Content,
+		})
+		if err != nil {
+			return err
+		}
+
+		imgVariantSet = types.ImageVariantSet{
+			ID:                   "ivs_" + cuid2.Generate(),
+			OriginalAttachmentID: attachment.ID,
+			originalAttachment:   attachment,
+		}
+
+		err = currentDB.Create(&imgVariantSet).Error
+		if err != nil {
+			return err
+		}
+
+		err = params.ResourceUpdater(nctx, imgVariantSet.ID)
+		if err != nil {
+			return err
+		}
+
+		_, err = s.temporalClient.ExecuteWorkflow(nctx, client.StartWorkflowOptions{
+			TaskQueue: "default",
+		}, "GenerateImageVariants", &types.GenerateImageVariantsWorkflowInput{
+			OriginalAttachmentID: attachment.ID,
+			ImageVariantSetID:    imgVariantSet.ID,
+			Props:                params.Properties,
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &imgVariantSet, nil
+}
+
+func (s *ImageVariantService) Close() {
+	vips.Shutdown()
+}
+
+func (s *ImageVariantService) CreateImageVariant(
+	ctx context.Context,
+	originalAttachmentID string,
+	imgVariantSetID string,
+	variantName string,
+	specs types.ImageVariantProperties,
+) (*types.ImageVariant, error) {
+	var variant types.ImageVariant
+	err := dbutil.Transaction(ctx, s.db, func(ctx context.Context) error {
+		currentDB := dbutil.DB(ctx, nil)
+		// Download the original image
+		reader, err := s.storage.DownloadAttachment(ctx, originalAttachmentID)
+		if err != nil {
+			return fmt.Errorf("failed to download original attachment: %w", err)
+		}
+		defer reader.Close()
+
+		// Create a buffer pool to minimize memory allocations
+		bufferPool := make([]byte, 100*1024) // 32KB chunks
+
+		// Create a pipe to stream data
+		pr, pw := io.Pipe()
+
+		// Start goroutine to copy data to pipe
+		go func() {
+			_, err := io.CopyBuffer(pw, reader, bufferPool)
+			pw.CloseWithError(err)
+		}()
+
+		// Load image with vips using the pipe reader
+		img, err := vips.NewImageFromReader(pr)
+		if err != nil {
+			return fmt.Errorf("failed to load image: %w", err)
+		}
+		defer img.Close()
+
+		// Apply transformations
+		transformedImg, err := s.applyTransformations(img, specs)
+		if err != nil {
+			return fmt.Errorf("failed to apply transformations: %w", err)
+		}
+		defer transformedImg.Close()
+
+		// Export the transformed image
+		outputData, outputFormat, err := s.exportImage(transformedImg, specs)
+		if err != nil {
+			return fmt.Errorf("failed to export image: %w", err)
+		}
+
+		// Generate filename for the variant
+		variantFilename := s.generateVariantFilename(originalAttachmentID, specs, outputFormat)
+
+		// Upload the transformed image
+		attachment, err := s.storage.UploadAttachment(ctx, coretypes.UploadAttachmentOptions{
+			Filename: variantFilename,
+			Content:  bytes.NewReader(outputData),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upload variant: %w", err)
+		}
+
+		// Create the ImageVariant record
+		variant = types.ImageVariant{
+			ID:                "iv_" + cuid2.Generate(),
+			AttachmentID:      attachment.ID,
+			ImageVariantSetID: imgVariantSetID,
+			Name:              variantName,
+			Metadata: map[string]any{
+				"width":   transformedImg.Width(),
+				"height":  transformedImg.Height(),
+				"format":  outputFormat,
+				"quality": specs.Quality,
+			},
+			CreatedAt: time.Now(),
+		}
+
+		if err := currentDB.Create(&variant).Error; err != nil {
+			return fmt.Errorf("failed to create variant: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &variant, nil
+}
+
+func (s *ImageVariantService) applyTransformations(img *vips.ImageRef, specs types.ImageVariantProperties) (*vips.ImageRef, error) {
+	result := img
+
+	// Apply rotation first
+	if specs.Rotation != 0 {
+		err := result.Rotate(vips.Angle(specs.Rotation))
+		if err != nil {
+			return nil, fmt.Errorf("failed to rotate image: %w", err)
+		}
+	}
+
+	// Apply flips
+	if specs.FlipHorizontal {
+		err := result.Flip(vips.DirectionHorizontal)
+		if err != nil {
+			return nil, fmt.Errorf("failed to flip horizontally: %w", err)
+		}
+	}
+
+	if specs.FlipVertical {
+		err := result.Flip(vips.DirectionVertical)
+		if err != nil {
+			return nil, fmt.Errorf("failed to flip vertically: %w", err)
+		}
+	}
+
+	// Calculate target dimensions
+	targetWidth, targetHeight := s.calculateDimensions(result, specs)
+
+	// Apply resizing if needed
+	if targetWidth != result.Width() || targetHeight != result.Height() {
+		err := result.Resize(float64(targetWidth)/float64(result.Width()), vips.KernelLanczos3)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resize image: %w", err)
+		}
+
+		// Crop to exact dimensions if aspect ratio requires it
+		if result.Height() != targetHeight {
+			err := result.ExtractArea(0, (result.Height()-targetHeight)/2, targetWidth, targetHeight)
+			if err != nil {
+				return nil, fmt.Errorf("failed to crop image: %w", err)
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func (s *ImageVariantService) calculateDimensions(img *vips.ImageRef, specs types.ImageVariantProperties) (int, int) {
+	originalWidth := img.Width()
+	originalHeight := img.Height()
+	originalRatio := float64(originalWidth) / float64(originalHeight)
+
+	// If both width and height are specified, use them directly
+	if specs.Width > 0 && specs.Height > 0 {
+		return specs.Width, specs.Height
+	}
+
+	// If ratio is specified, use it to calculate missing dimension
+	if specs.Ratio > 0 {
+		if specs.Width > 0 {
+			return specs.Width, int(float64(specs.Width) / specs.Ratio)
+		}
+		if specs.Height > 0 {
+			return int(float64(specs.Height) * specs.Ratio), specs.Height
+		}
+		// If only ratio is specified, maintain original area
+		area := originalWidth * originalHeight
+		newWidth := int(float64(area) * specs.Ratio / (1 + specs.Ratio))
+		newHeight := int(float64(newWidth) / specs.Ratio)
+		return newWidth, newHeight
+	}
+
+	// If only width is specified, maintain aspect ratio
+	if specs.Width > 0 {
+		return specs.Width, int(float64(specs.Width) / originalRatio)
+	}
+
+	// If only height is specified, maintain aspect ratio
+	if specs.Height > 0 {
+		return int(float64(specs.Height) * originalRatio), specs.Height
+	}
+
+	// No dimensions specified, return original
+	return originalWidth, originalHeight
+}
+
+func (s *ImageVariantService) exportImage(img *vips.ImageRef, specs types.ImageVariantProperties) ([]byte, string, error) {
+	// Determine output format
+	outputFormat := "jpeg" // default
+	if specs.Format != "" {
+		outputFormat = string(specs.Format)
+	}
+
+	// Convert quality from 0-1 scale to appropriate scale for format
+	var quality int
+	switch outputFormat {
+	// Default quality is in range 0-1, which is transformed differently for each format
+	case "jpeg":
+		quality = max(1, min(100, int(specs.Quality*100))) // Transform 0-1 to JPEG range 1-100
+		data, _, err := img.ExportJpeg(&vips.JpegExportParams{
+			Quality: quality,
+		})
+		return data, outputFormat, err
+
+	case "png":
+		compression := min(max(int((1.0-specs.Quality)*9), 0), 9) // Transform 0-1 to PNG compression 9-0 (inverted)
+		data, _, err := img.ExportPng(&vips.PngExportParams{
+			Compression: compression,
+		})
+		return data, outputFormat, err
+
+	case "webp":
+		quality = max(0, min(100, int(specs.Quality*100))) // Transform 0-1 to WebP range 0-100
+		data, _, err := img.ExportWebp(&vips.WebpExportParams{
+			Quality: quality,
+		})
+		return data, outputFormat, err
+
+	default:
+		return nil, "", fmt.Errorf("unsupported format: %s", outputFormat)
+	}
+}
+
+func (s *ImageVariantService) generateVariantFilename(originalID string, specs types.ImageVariantProperties, format string) string {
+	parts := []string{originalID, "variant"}
+
+	if specs.Width > 0 {
+		parts = append(parts, fmt.Sprintf("w%d", specs.Width))
+	}
+	if specs.Height > 0 {
+		parts = append(parts, fmt.Sprintf("h%d", specs.Height))
+	}
+	if specs.Ratio > 0 {
+		parts = append(parts, fmt.Sprintf("r%.2f", specs.Ratio))
+	}
+	if specs.Rotation != 0 {
+		parts = append(parts, fmt.Sprintf("rot%.0f", float64(specs.Rotation)))
+	}
+	if specs.FlipHorizontal {
+		parts = append(parts, "fliph")
+	}
+	if specs.FlipVertical {
+		parts = append(parts, "flipv")
+	}
+	if specs.Quality > 0 {
+		parts = append(parts, fmt.Sprintf("q%.0f", specs.Quality*100))
+	}
+
+	filename := strings.Join(parts, "_")
+	return fmt.Sprintf("%s.%s", filename, format)
+}

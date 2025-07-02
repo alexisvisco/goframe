@@ -1,0 +1,78 @@
+package workflow
+
+import (
+	"fmt"
+	"time"
+	"go.temporal.io/sdk/temporal"
+	"go.temporal.io/sdk/workflow"
+
+	{{ .imports }}
+)
+
+type GenerateImageVariantsWorkflow struct {
+	activities *activity.GenerateImageVariantActivity
+}
+
+func NewGenerateImageVariantsWorkflow(activities *activity.GenerateImageVariantActivity) *GenerateImageVariantsWorkflow {
+	return &GenerateImageVariantsWorkflow{
+		activities: activities,
+	}
+}
+
+// GenerateImageVariants generates image variants for a given set of properties.
+// It runs parallel activities for each image property and waits for all to complete.
+func (w *GenerateImageVariantsWorkflow) GenerateImageVariants(
+	ctx workflow.Context,
+	input *types.GenerateImageVariantsWorkflowInput,
+) (*types.GenerateImageVariantsWorkflowOutput, error) {
+	if input == nil {
+		return nil, fmt.Errorf("input cannot be nil")
+	}
+
+	activityOpts := workflow.ActivityOptions{
+		StartToCloseTimeout: 5 * time.Minute,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval:    time.Second,
+			BackoffCoefficient: 2.0,
+			MaximumInterval:    time.Minute,
+			MaximumAttempts:    3,
+		},
+	}
+	ctx = workflow.WithActivityOptions(ctx, activityOpts)
+
+	var futures []workflow.Future
+	var variants []*types.ImageVariant
+
+	// Launch parallel activities for each sprops always in the same order
+	for _, name := range workflow.DeterministicKeys(input.Props) {
+		props := input.Props[name]
+		activityInput := &activity.GenerateImageVariantInput{
+			OriginalAttachmentID: input.OriginalAttachmentID,
+			ImageVariantSetID:    input.ImageVariantSetID,
+			Props:                props,
+			Name:                 name,
+		}
+
+		future := workflow.ExecuteActivity(ctx, w.activities.GenerateImageVariant, activityInput)
+		futures = append(futures, future)
+	}
+
+	for _, future := range futures {
+		var result activity.GenerateImageVariantOutput
+		if err := future.Get(ctx, &result); err != nil {
+			return nil, fmt.Errorf("failed to generate image variant: %w", err)
+		}
+		variants = append(variants, result.Variant)
+	}
+
+	output := &types.GenerateImageVariantsWorkflowOutput{
+		ImageVariantSet: &types.ImageVariantSet{
+			ID:                   input.ImageVariantSetID,
+			OriginalAttachmentID: input.OriginalAttachmentID,
+			Variants:             variants,
+		},
+		Variants: variants,
+	}
+
+	return output, nil
+}

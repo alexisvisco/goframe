@@ -1,0 +1,19 @@
+package provide
+
+import (
+	"go.temporal.io/sdk/client"
+	"go.uber.org/fx"
+
+	{{ .imports }}
+)
+
+func ImageVariant(
+	svc types.ImageVariantService,
+	client client.Client,
+	lifecycle fx.Lifecycle,
+) {
+	svc.(*service.ImageVariantService).SetTemporalClient(client)
+	lifecycle.Append(fx.StopHook(func() {
+		svc.(*service.ImageVariantService).Close()
+	}))
+}

@@ -79,8 +79,13 @@ development: &dev
     tls_policy: "${MAIL_TLS_POLICY:none}"
     default_from: "${MAIL_DEFAULT_FROM:no-reply@example.com}"
   storage:
-    type: disk
-    directory: "${STORAGE_PATH:./tmp_storage}"
+    type: s3
+    bucket: "attachments"
+    region: "some"
+    access_key_id: "root123"
+    secret_access_key: "root123"
+    endpoint: "localhost:9000"
+    secure: ${STORAGE_SECURE:false}
   i18n: *i18n
   logging:
     level: debug

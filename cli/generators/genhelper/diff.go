@@ -3,12 +3,15 @@ package genhelper
 import (
 	"crypto/sha256"
 	"fmt"
+	"go/format"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/tools/imports"
 )
 
 type fileSnapshot map[string][32]byte
@@ -62,6 +65,31 @@ func diffSnapshots(before, after fileSnapshot) (added, changed, deleted []string
 	return
 }
 
+func formatGoFile(path string) error {
+	// Read the file
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	// Process the source with imports (removes unused imports and formats imports)
+	formatted, err := imports.Process(path, src, &imports.Options{
+		Comments:  true,
+		TabIndent: true,
+		TabWidth:  8,
+	})
+	if err != nil {
+		// If imports processing fails, try basic formatting
+		formatted, err = format.Source(src)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Write the formatted source back to the file
+	return os.WriteFile(path, formatted, 0644)
+}
+
 func WithFileDiff(run func(cmd *cobra.Command, args []string) error) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		before, _ := snapshotDir(".")
@@ -70,6 +98,16 @@ func WithFileDiff(run func(cmd *cobra.Command, args []string) error) func(cmd *c
 		}
 		after, _ := snapshotDir(".")
 		added, changed, deleted := diffSnapshots(before, after)
+
+		// Format Go files that were added or modified
+		for _, f := range append(added, changed...) {
+			if strings.HasSuffix(f, ".go") {
+				if err := formatGoFile(f); err != nil {
+					fmt.Printf("Warning: Could not format %s: %v\n", f, err)
+				}
+			}
+		}
+
 		if len(added)+len(changed)+len(deleted) == 0 {
 			fmt.Println("No file changes detected.")
 			return nil
