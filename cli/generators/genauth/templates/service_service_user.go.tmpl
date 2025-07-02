@@ -70,7 +70,7 @@ func (s UserService) CreateUserWithPassword(ctx context.Context, params *types.C
 	}
 
 	user := &types.User{
-		ID:                cuid2.Generate(),
+		ID:                "usr_" + cuid2.Generate(),
 		Email:             params.Email,
 		EncryptedPassword: &password,
 	}
@@ -176,7 +176,7 @@ func (s UserService) CreateOrGetUserWithMagicLink(ctx context.Context, params *t
 	if user == nil {
 		now := time.Now()
 		user = &types.User{
-			ID:              cuid2.Generate(),
+			ID:              "usr_" + cuid2.Generate(),
 			Email:           params.Email,
 			EmailVerifiedAt: &now,
 		}
@@ -255,7 +255,7 @@ func (s UserService) CreateOrGetUserWithOAuth(ctx context.Context, params *types
 			verified = true
 			now := time.Now()
 			user = &types.User{
-				ID:    cuid2.Generate(),
+				ID:    "usr_" + cuid2.Generate(),
 				Email: params.Email,
 			}
 
@@ -273,7 +273,7 @@ func (s UserService) CreateOrGetUserWithOAuth(ctx context.Context, params *types
 
 		if providerID == "" {
 			provider := &types.UserOAuthProvider{
-				ID:           cuid2.Generate(),
+				ID:           "uoap_" + cuid2.Generate(),
 				UserID:       user.ID,
 				Provider:     params.Provider,
 				ProviderID:   params.ProviderID,

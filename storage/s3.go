@@ -57,7 +57,7 @@ func NewS3Storage(
 
 func (s *S3Storage) UploadAttachment(ctx context.Context, opts coretypes.UploadAttachmentOptions) (*coretypes.Attachment, error) {
 	// WriteTo a unique ID for the attachment if not replacing existing
-	id := cuid2.Generate()
+	id := "att_" + cuid2.Generate()
 	if opts.CurrentAttachmentID != nil {
 		id = *opts.CurrentAttachmentID
 	}

@@ -37,7 +37,7 @@ func NewDiskStorage(cfg configuration.Storage, repository contracts.StorageRepos
 
 func (d DiskStorage) UploadAttachment(ctx context.Context, opts coretypes.UploadAttachmentOptions) (*coretypes.Attachment, error) {
 	// generate ID
-	id := cuid2.Generate()
+	id := "att_" + cuid2.Generate()
 	if opts.CurrentAttachmentID != nil {
 		id = *opts.CurrentAttachmentID
 	}

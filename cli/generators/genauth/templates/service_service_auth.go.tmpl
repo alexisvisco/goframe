@@ -106,7 +106,7 @@ func NewAuthService(cfg *config.Config, repo types.OAuthStateService) (*AuthServ
 }
 
 func (s AuthService) GetProviderLink(ctx context.Context, provider types.OAuthProvider) (string, error) {
-	state := cuid2.Generate()
+	state := "oasc_" + cuid2.Generate()
 	if err := s.oauthStateSvc.Create(ctx, &types.OAuthStateCode{
 		ID:           state,
 		WasConnected: false,

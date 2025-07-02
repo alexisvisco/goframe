@@ -24,7 +24,7 @@ func NewUserCodeService(db *gorm.DB) *UserCodeService {
 
 func (s UserCodeService) GenerateCode(ctx context.Context, userID string, kind types.UserCodeKind, ttl time.Time, metadata datatypes.JSONMap) (*types.UserCode, error) {
 	code := &types.UserCode{
-		ID:        cuid2.Generate(),
+		ID:        "uc_" + cuid2.Generate(),
 		UserID:    userID,
 		Kind:      kind,
 		ExpiresAt: ttl,
