@@ -31,11 +31,18 @@ The generator creates:
 
 ## How it works
 
-`ImageVariantService.CreateImage` uploads the original attachment (synchronously) and starts the workflow to create the configured variants. Each variant is processed using [govips](https://github.com/davidbyttow/govips) and stored through your storage provider.
+`ImageVariantService.CreateImage` uploads the original attachment (synchronously) and starts the workflow to create the configured variants (asynchronously).
+Each variant is processed using [govips](https://github.com/davidbyttow/govips) and stored through the storage provider.
 
 Here is a simplified handler showcasing its usage:
 
 ```go
+
+type UserHandler struct {
+  // other dependencies
+	imgVariantSvc types.ImageVariantService // service to create image variants
+}
+
 type UserUpdateAttachmentRequest struct {
 	  User *types.User `ctx:"user"`
     Attachment *multipart.FileHeader `file:"attachment"`
@@ -70,7 +77,7 @@ if err != nil {
 req.User.AttachmentSet = set
 ```
 
-## Different type of variant properties (ImageVariantProperties)
+## Variant properties (ImageVariantProperties)
 
 | flag           | description                                                                                                      |
 |----------------|------------------------------------------------------------------------------------------------------------------|
@@ -85,7 +92,7 @@ req.User.AttachmentSet = set
 
 What is cool about the fact that you generate this as a library in your code is that you can add your own properties (example: blur?)
 
-## Has one set of variant
+## Has one set of variants
 
 ```go
 type User struct {
@@ -112,6 +119,7 @@ type User struct {
 	AttachmentsSet []types.ImageVariantSet `gorm:"polymorphicType:Kind;polymorphicId:KindID;polymorphicValue:user_attachments"`
 }
 
+// to load it
 err := dbutil.DB(ctx, s.db).
 	Scopes(types.ScopeImageVariantsLoader("AttachmentsSet",
 		types.ScopeImageVariantsLoadWithVariantsNames("thumbnail"),
@@ -121,9 +129,9 @@ err := dbutil.DB(ctx, s.db).
 
 It's pretty similar to the has one relation, but you can load multiple sets of variants. You can also specify which variant names to load using the `ScopeImageVariantsLoadWithVariantsNames` scope.
 
-### insert with has many
+### Insert with has many
 
-When inserting a new set of variants, you can use the `types.ImageVariantSet` struct to create a new set and associate it with the user:
+Similar to the example above, but you need to add kind and kind id for the image variant set, instead of providing a resource updater function.
 
 ```go
 type UserUpdateAttachmentRequest struct {
