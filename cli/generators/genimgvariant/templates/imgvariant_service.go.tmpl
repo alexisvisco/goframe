@@ -86,6 +86,7 @@ func (s *ImageVariantService) CreateImage(
 		}
 
 		_, err = s.temporalClient.ExecuteWorkflow(nctx, client.StartWorkflowOptions{
+			ID:        "generate_image_variants__" + cuid2.Generate(),
 			TaskQueue: "default",
 		}, "GenerateImageVariants", &types.GenerateImageVariantsWorkflowInput{
 			OriginalAttachmentID: attachment.ID,

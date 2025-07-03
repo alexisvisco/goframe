@@ -14,7 +14,7 @@ func triggerWorkflow[T any](
 ) error {
   var wf workflow.SendEmailWorkflow
   _, err := cli.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
-    ID:          "mailer_" + cuid2.Generate(),
+    ID:          "mailer__"+ view + "__"+ cuid2.Generate(),
     TaskQueue:   "default",
     RetryPolicy: &temporal.RetryPolicy{MaximumAttempts: 1},
   }, wf.SendEmail, mail.Message{
