@@ -8,6 +8,6 @@ A `goframe` executable is generated in `cmd/cli/main.go`. Running `bin/goframe` 
 bin/goframe --help
 ```
 
-<Callout type="info">`bin/goframe` always tries to rebuild `bin/goframe.bin`. If the build fails it reuses the previous binary or runs `go mod tidy` before giving up.</Callout>
+<Callout type="info">`bin/goframe` caches the compiled binary in `~/.goframe/&lt;module_hash&gt;/bin/goframe`. It rebuilds the CLI when `cmd/cli/main.go` changes and falls back to the previous binary after one `go mod tidy` attempt if the build fails.</Callout>
 
 Commands are implemented with [Cobra](https://github.com/spf13/cobra). The default root command already exposes subcommands for tasks, database migrations and generators.

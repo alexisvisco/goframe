@@ -13,6 +13,7 @@ A quick overview of what you get out of the box:
 - **Task runner** for reusable CLI commands.
 - **Structured logging** via the canonical log helper built on `slog`.
 - **Storage** abstraction to handle attachments on disk or S3.
+- **Cache** with optional TTL and event notifications.
 
 ## Getting Started
 
@@ -46,7 +47,7 @@ For more commands check the built‑in help:
 bin/goframe --help
 ```
 
-`bin/goframe` always tries to compile the CLI into `bin/goframe.bin`. When compilation fails it reuses the previous binary if available. If no binary exists, it attempts `go mod tidy` once before asking you to fix the build errors.
+`bin/goframe` caches the compiled CLI under `~/.goframe/<module_hash>/bin/goframe`. The script rebuilds the binary when `cmd/cli/main.go` changes. If the build fails it runs `go mod tidy` once and falls back to the previous binary when possible.
 
 ## Documentation
 

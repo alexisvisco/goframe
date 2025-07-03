@@ -1,0 +1,23 @@
+# Cache
+
+GoFrame provides a simple cache layer backed by your database. Values are JSON encoded and may expire after a TTL.
+
+When using dependency injection, register the implementation as `contracts.Cache` so your services can depend on the interface.
+
+```go filename="usage.go"
+cache := cache.NewCache(cache.NewRepository(db), db, dsn)
+
+_ = cache.Put(ctx, "session:123", data, coretypes.WithTTL(time.Hour))
+var v SomeType
+_ = cache.Get(ctx, "session:123", &v)
+```
+
+You can watch for updates using PostgreSQL notifications:
+
+```go filename="watch.go"
+ch, _ := cache.Watch(ctx, "session:123")
+for ev := range ch {
+    fmt.Printf("%s %s", ev.Type, ev.Key)
+}
+```
+
