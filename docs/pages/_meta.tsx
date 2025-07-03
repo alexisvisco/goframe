@@ -8,6 +8,7 @@ export default {
   worker: "Worker",
   mails: "Mails",
   storage: "Storage",
+  cache: "Cache",
   tasks: "Tasks",
   i18n: "I18n",
   cli: "CLI",
