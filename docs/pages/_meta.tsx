@@ -18,4 +18,4 @@ export default {
     href: "https://twitter.com/alexisvisco",
     newWindow: true,
   },
-}
+};
