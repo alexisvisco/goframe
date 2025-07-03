@@ -130,6 +130,8 @@ func (g *ImageVariantGenerator) createMigrations() error {
 		Up: `CREATE TABLE image_variant_sets (
 				id TEXT PRIMARY KEY,
 				original_attachment_id TEXT NOT NULL REFERENCES attachments(id) ON DELETE CASCADE,
+				kind TEXT,
+    		kind_id TEXT,
 				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

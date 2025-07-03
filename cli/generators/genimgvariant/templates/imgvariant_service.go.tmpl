@@ -68,7 +68,9 @@ func (s *ImageVariantService) CreateImage(
 		imgVariantSet = types.ImageVariantSet{
 			ID:                   "ivs_" + cuid2.Generate(),
 			OriginalAttachmentID: attachment.ID,
-			originalAttachment:   attachment,
+			OriginalAttachment:   attachment,
+			Kind:                 params.ImageVariantSetKind,
+			KindID:               params.ImageVariantSetKindID,
 		}
 
 		err = currentDB.Create(&imgVariantSet).Error
@@ -76,9 +78,11 @@ func (s *ImageVariantService) CreateImage(
 			return err
 		}
 
-		err = params.ResourceUpdater(nctx, imgVariantSet.ID)
-		if err != nil {
-			return err
+		if params.ResourceUpdater != nil {
+			err = params.ResourceUpdater(nctx, imgVariantSet.ID)
+			if err != nil {
+				return err
+			}
 		}
 
 		_, err = s.temporalClient.ExecuteWorkflow(nctx, client.StartWorkflowOptions{

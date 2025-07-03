@@ -1,104 +1,108 @@
 package types
 
 import (
-	"context"
-	"io"
-	"mime/multipart"
-	"time"
+  "context"
+  "io"
+  "mime/multipart"
+  "time"
 
-	"github.com/alexisvisco/goframe/core/coretypes"
-	"gorm.io/datatypes"
+  "github.com/alexisvisco/goframe/core/coretypes"
+  "gorm.io/datatypes"
 )
 
 type CreateImageVariantParams struct {
-	ContentMultipartFileHeader *multipart.FileHeader
-	Content                    io.Reader
-	Filename                   string // optional if ContentMultipartFileHeader is provided
-	Properties                 map[string]ImageVariantProperties
-	ResourceUpdater            func(ctx context.Context, imageVariantSetID string) error
+  ContentMultipartFileHeader *multipart.FileHeader
+  Content                    io.Reader
+  Filename                   string // optional if ContentMultipartFileHeader is provided
+  Properties                 map[string]ImageVariantProperties
+  ImageVariantSetKind        string
+  ImageVariantSetKindID      string
+  ResourceUpdater            func(ctx context.Context, imageVariantSetID string) error
 }
 
 type ImageVariantService interface {
-	// CreateImage creates a new image variant set and its variants through a temporal workflow.
-	CreateImage(
-		ctx context.Context,
-		params CreateImageVariantParams,
-	) (*ImageVariantSet, error)
+  // CreateImage creates a new image variant set and its variants through a temporal workflow.
+  CreateImage(
+          ctx context.Context,
+          params CreateImageVariantParams,
+  ) (*ImageVariantSet, error)
 
-	// CreateImageVariant creates a new image variant by applying the provided properties.
-	CreateImageVariant(
-		ctx context.Context,
-		originalAttachmentID string,
-		imgVariantSetID string,
-		variantName string,
-		props ImageVariantProperties,
-	) (*ImageVariant, error)
+  // CreateImageVariant creates a new image variant by applying the provided properties.
+  CreateImageVariant(
+          ctx context.Context,
+          originalAttachmentID string,
+          imgVariantSetID string,
+          variantName string,
+          props ImageVariantProperties,
+  ) (*ImageVariant, error)
 }
 
 type ImageVariant struct {
-	ID                string
-	AttachmentID      string
-	Attachment        *coretypes.Attachment
-	ImageVariantSetID string
-	Name              string
-	Metadata          datatypes.JSONMap
-	CreatedAt         time.Time
+  ID                string
+  AttachmentID      string
+  Attachment        *coretypes.Attachment
+  ImageVariantSetID string
+  Name              string
+  Metadata          datatypes.JSONMap
+  CreatedAt         time.Time
 }
 
 type ImageVariantSet struct {
-	ID                   string
-	OriginalAttachmentID string
-	OriginalAttachment   *coretypes.Attachment
-	Variants             []*ImageVariant `gorm:"foreignKey:ImageVariantSetID"`
+  ID                   string
+  OriginalAttachmentID string
+  OriginalAttachment   *coretypes.Attachment
+  Kind                 string
+  KindID               string
+  Variants             []*ImageVariant `gorm:"foreignKey:ImageVariantSetID"`
 }
 
 type GenerateImageVariantsWorkflowInput struct {
-	OriginalAttachmentID string
-	ImageVariantSetID    string
-	Props                map[string]ImageVariantProperties
+  OriginalAttachmentID string
+  ImageVariantSetID    string
+  Props                map[string]ImageVariantProperties
 }
 
 type GenerateImageVariantsWorkflowOutput struct {
-	ImageVariantSet *ImageVariantSet
-	Variants        []*ImageVariant
+  ImageVariantSet *ImageVariantSet
+  Variants        []*ImageVariant
 }
 
 func (s *ImageVariantSet) FindVariant(name string) *ImageVariant {
-	for _, variant := range s.Variants {
-		if variant.Name == name {
-			return variant
-		}
-	}
-	return nil
+  for _, variant := range s.Variants {
+    if variant.Name == name {
+      return variant
+    }
+  }
+  return nil
 }
 
 func (s *ImageVariantSet) FindVariants(names ...string) []*ImageVariant {
-	var variants []*ImageVariant
-	for _, name := range names {
-		variant := s.FindVariant(name)
-		if variant != nil {
-			variants = append(variants, variant)
-		}
-	}
-	return variants
+  var variants []*ImageVariant
+  for _, name := range names {
+    variant := s.FindVariant(name)
+    if variant != nil {
+      variants = append(variants, variant)
+    }
+  }
+  return variants
 }
 
 type ImageVariantProperties struct {
-	Width          int         // 0 means unspecified
-	Height         int         // 0 means unspecified
-	Ratio          float64     // 0 means unspecified
-	Rotation       int         // 0 means no rotation
-	FlipHorizontal bool        // false means no flip
-	FlipVertical   bool        // false means no flip
-	Quality        float64     // 0 means use default quality (1.0)
-	Format         ImageFormat // empty means use default format
+  Width          int         // 0 means unspecified
+  Height         int         // 0 means unspecified
+  Ratio          float64     // 0 means unspecified
+  Rotation       int         // 0 means no rotation
+  FlipHorizontal bool        // false means no flip
+  FlipVertical   bool        // false means no flip
+  Quality        float64     // 0 means use default quality (1.0)
+  Format         ImageFormat // empty means use default format
 }
 
 type ImageFormat string
 
 const (
-	ImageFormatJPEG        ImageFormat = "jpeg"
-	ImageFormatPNG         ImageFormat = "png"
-	ImageFormatWEBP        ImageFormat = "webp"
-	ImageFormatUnspecified ImageFormat = ""
+  ImageFormatJPEG        ImageFormat = "jpeg"
+  ImageFormatPNG         ImageFormat = "png"
+  ImageFormatWEBP        ImageFormat = "webp"
+  ImageFormatUnspecified ImageFormat = ""
 )
