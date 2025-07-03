@@ -58,6 +58,7 @@ func (g *CoreGenerator) generateGoMod() error {
 		"github.com/alexisvisco/goframe/cli",
 		"github.com/alexisvisco/goframe/storage",
 		"github.com/alexisvisco/goframe/mail",
+		"github.com/alexisvisco/goframe/cache",
 	}
 
 	dependencies := goframeDeps
@@ -120,6 +121,7 @@ func (g *CoreGenerator) createAppModule(path string) generators.FileConfig {
 		Template: typeutil.Must(fs.ReadFile("templates/app_module.go.tmpl")),
 		Gen: func(genh *genhelper.GenHelper) {
 			providers := []string{
+				"provide.Cache",
 				"provide.DB(true)",
 				"fxutil.As(storage.NewRepository, new(contracts.StorageRepository))",
 				"provide.Storage",

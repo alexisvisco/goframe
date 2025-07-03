@@ -1,0 +1,20 @@
+package provide
+
+import (
+  "fmt"
+  {{ .imports }}
+)
+
+func Cache(cfg *config.Config, db *gorm.DB) (contracts.Cache, error) {
+  dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+    cfg.GetDatabase().Host,
+    cfg.GetDatabase().Port,
+    cfg.GetDatabase().Username,
+    cfg.GetDatabase().Password,
+    cfg.GetDatabase().Database,
+    cfg.GetDatabase().SSLMode,
+  )
+  repo := cache.NewPostgresRepository(db)
+  return cache.NewPostgresCache(repo, db, dsn), nil
+}
+

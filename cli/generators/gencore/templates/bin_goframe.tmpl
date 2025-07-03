@@ -1,23 +1,116 @@
 #!/usr/bin/env bash
+#
+# goframe - Go CLI Build and Execute Script
+#
+# DESCRIPTION:
+#   This script automatically builds and executes a Go CLI application from a project
+#   containing a go.mod file. It uses intelligent caching to avoid unnecessary rebuilds.
+#
+# BEHAVIOR:
+#   1. Searches for go.mod file starting from current directory, traversing up the tree
+#   2. Extracts the module name from go.mod and generates a SHA256 hash for caching
+#   3. Creates a cache directory at ~/.goframe/<module_name_hash>/
+#   4. Builds the CLI binary from cmd/cli/main.go if:
+#      - No cached binary exists
+#      - The main.go file has changed (checksum comparison)
+#   5. Executes the cached binary with all provided arguments
+#
+# CACHE STRUCTURE:
+#   ~/.goframe/<module_name_hash>/
+#   ├── bin/goframe              # Compiled binary
+#   └── cli_main_checksum        # SHA256 checksum of the previous main.go
+#
+# BUILD PROCESS:
+#   - Attempts to build with 'go build'
+#   - If build fails, runs 'go mod tidy' and retries
+#   - Updates checksum file after successful build
+#
+# REQUIREMENTS:
+#   - Go project with go.mod file
+#   - CLI main file at cmd/cli/main.go relative to go.mod
+#   - Standard Go build tools (go, sha256sum, awk)
+
 set -euo pipefail
 
-mkdir -p bin
+find_go_mod() {
+    local dir="$PWD"
+    while [[ "$dir" != "/" ]]; do
+        if [[ -f "$dir/go.mod" ]]; then
+            cat "$dir/go.mod"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    echo "No go.mod found"
+    return 1
+}
 
-# Always try to build the CLI binary
-if go build -o bin/goframe.bin.new ./cmd/cli/main.go; then
-  mv bin/goframe.bin.new bin/goframe.bin
-  exec bin/goframe.bin "$@"
+# Get the root folder containing go.mod
+get_go_root() {
+    local dir="$PWD"
+    while [[ "$dir" != "/" ]]; do
+        if [[ -f "$dir/go.mod" ]]; then
+            echo "$dir"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    echo "No go.mod found"
+    return 1
+}
+
+GOMOD=$(find_go_mod | awk '/^module / {print $2; exit}')
+SHA256_GOMOD=$(echo -n "$GOMOD" | sha256sum | awk '{print $1}')
+GO_ROOT=$(get_go_root)
+
+# Create a dir in the home that is correlated to the go module name sha256
+mkdir -p "$HOME/.goframe/$SHA256_GOMOD"
+
+# Path to the CLI main file and checksum file
+CLI_MAIN_FILE="$GO_ROOT/cmd/cli/main.go"
+CHECKSUM_FILE="$HOME/.goframe/$SHA256_GOMOD/cli_main_checksum"
+
+# Function to build the binary
+build_binary() {
+    cd "$GO_ROOT"
+
+    # Try to build first
+    if ! go build -o "$HOME/.goframe/$SHA256_GOMOD/bin/goframe" "$CLI_MAIN_FILE"; then
+        echo "Build failed, trying go mod tidy..."
+        go mod tidy
+        if ! go build -o "$HOME/.goframe/$SHA256_GOMOD/bin/goframe" "$CLI_MAIN_FILE"; then
+            echo "Build failed even after go mod tidy"
+            exit 1
+        fi
+    fi
+
+    # Update the checksum after successful build
+    if [[ -f "$CLI_MAIN_FILE" ]]; then
+        sha256sum "$CLI_MAIN_FILE" | awk '{print $1}' > "$CHECKSUM_FILE"
+    fi
+}
+
+# Check if cmd/cli/main.go exists and get its checksum
+if [[ -f "$CLI_MAIN_FILE" ]]; then
+    CURRENT_CHECKSUM=$(sha256sum "$CLI_MAIN_FILE" | awk '{print $1}')
+
+    # Check if checksum file exists and compare
+    if [[ -f "$CHECKSUM_FILE" ]]; then
+        STORED_CHECKSUM=$(cat "$CHECKSUM_FILE")
+        if [[ "$CURRENT_CHECKSUM" != "$STORED_CHECKSUM" ]]; then
+            build_binary
+        fi
+    else
+        build_binary
+    fi
+else
+    echo "Warning: cmd/cli/main.go not found at $CLI_MAIN_FILE"
 fi
 
-# Build failed, reuse previous binary if available
-if [[ -x "bin/goframe.bin" ]]; then
-  echo "Build failed, using existing goframe binary" >&2
-  exec bin/goframe.bin "$@"
+# Check if there is a bin file and execute it
+if [[ -f "$HOME/.goframe/$SHA256_GOMOD/bin/goframe" ]]; then
+    exec "$HOME/.goframe/$SHA256_GOMOD/bin/goframe" "$@"
+else
+    echo "goframe binary not found or build failed"
+    exit 1
 fi
-
-if go mod tidy && go build -o bin/goframe.bin ./cmd/cli/main.go; then
-  exec bin/goframe.bin "$@"
-fi
-
-echo "goframe could not be built. Please fix the errors first." >&2
-exit 1

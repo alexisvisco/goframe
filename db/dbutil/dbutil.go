@@ -13,9 +13,9 @@ import (
 // so all executed queries are tied to it.
 func DB(ctx context.Context, defaultDB *gorm.DB) *gorm.DB {
 	if ctxDB, ok := ctx.Value("db").(*gorm.DB); ok {
-		return ctxDB.Session(&gorm.Session{Context: ctx})
+		return ctxDB.Session(&gorm.Session{Context: ctx}).Debug()
 	}
-	return defaultDB.Session(&gorm.Session{Context: ctx})
+	return defaultDB.Session(&gorm.Session{Context: ctx}).Debug()
 }
 
 // WithDB stores a *gorm.DB in the context so it can be retrieved later with DB.

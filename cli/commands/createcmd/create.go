@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/alexisvisco/goframe/cli/generators"
+	"github.com/alexisvisco/goframe/cli/generators/gencache"
 	"github.com/alexisvisco/goframe/cli/generators/genconfig"
 	"github.com/alexisvisco/goframe/cli/generators/gencore"
 	"github.com/alexisvisco/goframe/cli/generators/gendb"
@@ -80,6 +81,7 @@ func NewInitCmd() *cobra.Command {
 			svcGen := &genservice.ServiceGenerator{Gen: g}
 			dbGen := &gendb.DatabaseGenerator{Gen: g}
 			storageGen := &genstorage.StorageGenerator{Gen: g, DBGen: dbGen}
+			cacheGen := &gencache.CacheGenerator{Gen: g, DBGen: dbGen}
 			dockerGen := &gendocker.DockerGenerator{Gen: g}
 			httpGen := &genhttp.HTTPGenerator{Gen: g}
 			workerGen := &genworker.WorkerGenerator{Gen: g}
@@ -97,6 +99,7 @@ func NewInitCmd() *cobra.Command {
 				svcGen,
 				dbGen,
 				storageGen,
+				cacheGen,
 				dockerGen,
 				workerGen,
 				httpGen,
