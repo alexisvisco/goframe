@@ -1,59 +1,144 @@
 package cache
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/alexisvisco/goframe/core/contracts"
 	"github.com/alexisvisco/goframe/core/coretypes"
+	"github.com/alexisvisco/goframe/db/dbutil"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
+// Cache persists encoded values in the database.
+// Events are emitted through PostgreSQL notifications.
 type Cache struct {
-	repo contracts.CacheRepository
-	db   *gorm.DB
-	dsn  string
+	db  *gorm.DB
+	dsn string
 }
 
 var _ contracts.Cache = (*Cache)(nil)
 
-func NewCache(repo contracts.CacheRepository, db *gorm.DB, dsn string) *Cache {
-	return &Cache{repo: repo, db: db, dsn: dsn}
+// Encode encodes a value before storing it in the database. It defaults to gob.
+var Encode = func(v any) ([]byte, error) {
+	var b bytes.Buffer
+	if err := gob.NewEncoder(&b).Encode(v); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
+// Decode decodes a value fetched from the database. It defaults to gob.
+var Decode = func(data []byte, out any) error {
+	return gob.NewDecoder(bytes.NewReader(data)).Decode(out)
+}
+
+// SetCodec allows overriding the encode/decode functions.
+func SetCodec(enc func(any) ([]byte, error), dec func([]byte, any) error) {
+	if enc != nil {
+		Encode = enc
+	}
+	if dec != nil {
+		Decode = dec
+	}
+}
+
+// NewCache creates a cache implementation using the given database.
+func NewCache(db *gorm.DB, dsn string) *Cache {
+	return &Cache{db: db, dsn: dsn}
 }
 
 func (c *Cache) Get(ctx context.Context, key string, resultPtr any) error {
-	err := c.repo.Get(ctx, key)
+	var entry coretypes.CacheEntry
+	err := dbutil.DB(ctx, c.db).
+		Where("expires_at IS NULL OR expires_at > now()").
+		First(&entry, "key = ?", key).Error
 	if err != nil {
-		return err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return fmt.Errorf("get cache entry: %w", err)
 	}
 
+	if resultPtr == nil {
+		return nil
+	}
+
+	if err := Decode(entry.Value, resultPtr); err != nil {
+		return fmt.Errorf("decode value: %w", err)
+	}
 	return nil
 }
 
 func (c *Cache) Put(ctx context.Context, key string, value any, opts ...coretypes.CacheOption) error {
-	if err := c.repo.Put(ctx, key, value, opts...); err != nil {
-		return err
+	opt := &coretypes.CacheOptions{}
+	for _, o := range opts {
+		o(opt)
 	}
-	return nil
+	ttl := opt.TTL
+	data, err := Encode(value)
+	if err != nil {
+		return fmt.Errorf("encode value: %w", err)
+	}
+
+	entry := coretypes.CacheEntry{
+		Key:   key,
+		Value: data,
+	}
+	if ttl > 0 {
+		now := time.Now().Add(ttl)
+		entry.ExpiresAt = &now
+	}
+
+	return dbutil.DB(ctx, c.db).
+		Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "key"}}, UpdateAll: true}).
+		Create(&entry).Error
 }
 
 func (c *Cache) Delete(ctx context.Context, key string) error {
-	if err := c.repo.Delete(ctx, key); err != nil {
-		return err
-	}
-	return nil
+	return dbutil.DB(ctx, c.db).Delete(&coretypes.CacheEntry{}, "key = ?", key).Error
 }
 
 func (c *Cache) Update(ctx context.Context, key string, value any, opts ...coretypes.CacheOption) error {
-	if err := c.repo.Update(ctx, key, value, opts...); err != nil {
-		return err
+	opt := &coretypes.CacheOptions{}
+	for _, o := range opts {
+		o(opt)
+	}
+	ttl := opt.TTL
+
+	data, err := Encode(value)
+	if err != nil {
+		return fmt.Errorf("encode value: %w", err)
+	}
+
+	updates := map[string]any{"value": data}
+	if ttl > 0 {
+		updates["expires_at"] = time.Now().Add(ttl)
+	}
+
+	result := dbutil.DB(ctx, c.db).Model(&coretypes.CacheEntry{}).
+		Where("key = ?", key).
+		Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("cache key not found")
 	}
 	return nil
 }
 
-func (c *Cache) Watch(ctx context.Context, key string) (<-chan coretypes.CacheEvent, error) {
+func (c *Cache) watch(ctx context.Context, key string) (<-chan coretypes.CacheEvent, error) {
 	ch := make(chan coretypes.CacheEvent)
 	listener := pq.NewListener(c.dsn, 10*time.Second, time.Minute, nil)
 	if err := listener.Listen("cache_events"); err != nil {
@@ -83,4 +168,58 @@ func (c *Cache) Watch(ctx context.Context, key string) (<-chan coretypes.CacheEv
 	}()
 
 	return ch, nil
+}
+
+func Watch[T any](ctx context.Context, cache contracts.Cache, key string) (<-chan coretypes.TypedCacheEvent[T], error) {
+	type watchable interface {
+		watch(ctx context.Context, key string) (<-chan coretypes.CacheEvent, error)
+	}
+
+	w, ok := cache.(watchable)
+	if !ok {
+		return nil, fmt.Errorf("cache does not support watching")
+	}
+
+	ch, err := w.watch(ctx, key)
+	if err != nil {
+		return nil, fmt.Errorf("watch cache: %w", err)
+	}
+
+	typedCh := make(chan coretypes.TypedCacheEvent[T])
+	go func() {
+		defer close(typedCh)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ev, ok := <-ch:
+				if !ok {
+					return
+				}
+				var value T
+				if ev.Value != nil {
+					byteVal := []byte(*ev.Value)
+					if strings.HasPrefix(*ev.Value, "\\x") {
+						hexStr := strings.TrimPrefix(*ev.Value, "\\x")
+						data, hexErr := hex.DecodeString(hexStr)
+						if hexErr != nil {
+							slog.Error("failed to decode hex string", slog.String("key", ev.Key), slog.Any("error", hexErr))
+							continue
+						}
+
+						byteVal = data
+					}
+
+					// Now decode the gob-encoded data
+					if decErr := Decode(byteVal, &value); decErr != nil {
+						slog.Error("failed to decode cache value", slog.String("key", ev.Key), slog.Any("error", decErr))
+						continue
+					}
+					typedCh <- coretypes.TypedCacheEvent[T]{Type: ev.Type, Key: ev.Key, Value: &value}
+				}
+			}
+		}
+	}()
+
+	return typedCh, nil
 }

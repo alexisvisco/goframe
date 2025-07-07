@@ -1,0 +1,21 @@
+package seeds
+
+import (
+        "context"
+        "time"
+
+        "github.com/alexisvisco/goframe/db/dbutil"
+)
+
+type {{.struct}} struct{}
+
+func ({{.struct}}) Run(ctx context.Context) error {
+        db := dbutil.DB(ctx, nil)
+        _ = db
+        // TODO implement me
+        return nil
+}
+
+func ({{.struct}}) Version() (name string, at time.Time) {
+        return "{{.name}}", time.Date({{.date}}, time.UTC)
+}

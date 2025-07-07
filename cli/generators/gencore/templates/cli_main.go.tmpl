@@ -39,6 +39,7 @@ func run() int {
 
   cmdRoot := rootcmd.NewCmdRoot(
     rootcmd.WithMigrations(db.Migrations),
+    rootcmd.WithSeeds(db.Seeds),
     rootcmd.WithDB(connector),
     rootcmd.WithConfig(cfg),
     rootcmd.WithFxOptions(app.Module(cfg)...),

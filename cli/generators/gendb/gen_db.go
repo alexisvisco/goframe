@@ -45,6 +45,7 @@ func (g *DatabaseGenerator) Generate() error {
 		g.createDBProvider("internal/provide/provide_db.go"),
 		g.createDbutil("db/dbutil/dbutil.go"),
 		g.updateOrCreateMigrations("db/migrations.go"),
+		g.updateOrCreateSeeds("db/seeds.go"),
 	}
 
 	if err := g.Gen.GenerateFiles(files); err != nil {

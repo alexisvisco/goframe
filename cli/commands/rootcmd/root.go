@@ -15,6 +15,7 @@ import (
 	"github.com/alexisvisco/goframe/cli/commands/taskcmd"
 	"github.com/alexisvisco/goframe/core/configuration"
 	"github.com/alexisvisco/goframe/db/migrate"
+	"github.com/alexisvisco/goframe/db/seed"
 	"github.com/spf13/cobra"
 	"go.uber.org/fx"
 	"golang.org/x/mod/modfile"
@@ -25,6 +26,7 @@ type OptionFunc func(*options)
 
 type options struct {
 	Migrations []migrate.Migration
+	Seeds      []seed.Seed
 	DB         func() (*gorm.DB, error)
 	Commands   map[string][]*cobra.Command
 	FxOptions  []fx.Option
@@ -34,6 +36,12 @@ type options struct {
 func WithMigrations(migrations []migrate.Migration) OptionFunc {
 	return func(o *options) {
 		o.Migrations = migrations
+	}
+}
+
+func WithSeeds(seeds []seed.Seed) OptionFunc {
+	return func(o *options) {
+		o.Seeds = seeds
 	}
 }
 
@@ -68,6 +76,7 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 	// Default options
 	defaultOpts := &options{
 		Migrations: []migrate.Migration{},
+		Seeds:      []seed.Seed{},
 		DB:         nil,
 	}
 
@@ -105,6 +114,7 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 			ctx = context.WithValue(ctx, "module", moduleName)
 			ctx = context.WithValue(ctx, "workdir", workdir)
 			ctx = context.WithValue(ctx, "migrations", defaultOpts.Migrations)
+			ctx = context.WithValue(ctx, "seeds", defaultOpts.Seeds)
 			ctx = context.WithValue(ctx, "db", defaultOpts.DB)
 			ctx = applyConfigs(ctx, defaultOpts.Config)
 
@@ -134,6 +144,8 @@ func applyConfigs(ctx context.Context, config any) context.Context {
 	if config == nil {
 		return ctx
 	}
+
+	ctx = context.WithValue(ctx, "config", config)
 
 	type i18nConfig interface {
 		GetI18n() configuration.I18n
