@@ -145,6 +145,8 @@ func applyConfigs(ctx context.Context, config any) context.Context {
 		return ctx
 	}
 
+	ctx = context.WithValue(ctx, "config", config)
+
 	type i18nConfig interface {
 		GetI18n() configuration.I18n
 	}

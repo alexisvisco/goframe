@@ -10,9 +10,15 @@ type (
 	}
 
 	CacheEvent struct {
-		Type  string      `json:"type"`
-		Key   string      `json:"key"`
-		Value interface{} `json:"value,omitempty"`
+		Type  string  `json:"type"`
+		Key   string  `json:"key"`
+		Value *string `json:"value,omitempty"`
+	}
+
+	TypedCacheEvent[T any] struct {
+		Type  string `json:"type"`
+		Key   string `json:"key"`
+		Value *T     `json:"value,omitempty"`
 	}
 
 	CacheOptions struct {

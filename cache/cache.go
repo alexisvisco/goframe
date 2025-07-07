@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/alexisvisco/goframe/core/contracts"
@@ -135,7 +138,7 @@ func (c *Cache) Update(ctx context.Context, key string, value any, opts ...coret
 	return nil
 }
 
-func (c *Cache) Watch(ctx context.Context, key string) (<-chan coretypes.CacheEvent, error) {
+func (c *Cache) watch(ctx context.Context, key string) (<-chan coretypes.CacheEvent, error) {
 	ch := make(chan coretypes.CacheEvent)
 	listener := pq.NewListener(c.dsn, 10*time.Second, time.Minute, nil)
 	if err := listener.Listen("cache_events"); err != nil {
@@ -165,4 +168,58 @@ func (c *Cache) Watch(ctx context.Context, key string) (<-chan coretypes.CacheEv
 	}()
 
 	return ch, nil
+}
+
+func Watch[T any](ctx context.Context, cache contracts.Cache, key string) (<-chan coretypes.TypedCacheEvent[T], error) {
+	type watchable interface {
+		watch(ctx context.Context, key string) (<-chan coretypes.CacheEvent, error)
+	}
+
+	w, ok := cache.(watchable)
+	if !ok {
+		return nil, fmt.Errorf("cache does not support watching")
+	}
+
+	ch, err := w.watch(ctx, key)
+	if err != nil {
+		return nil, fmt.Errorf("watch cache: %w", err)
+	}
+
+	typedCh := make(chan coretypes.TypedCacheEvent[T])
+	go func() {
+		defer close(typedCh)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ev, ok := <-ch:
+				if !ok {
+					return
+				}
+				var value T
+				if ev.Value != nil {
+					byteVal := []byte(*ev.Value)
+					if strings.HasPrefix(*ev.Value, "\\x") {
+						hexStr := strings.TrimPrefix(*ev.Value, "\\x")
+						data, hexErr := hex.DecodeString(hexStr)
+						if hexErr != nil {
+							slog.Error("failed to decode hex string", slog.String("key", ev.Key), slog.Any("error", hexErr))
+							continue
+						}
+
+						byteVal = data
+					}
+
+					// Now decode the gob-encoded data
+					if decErr := Decode(byteVal, &value); decErr != nil {
+						slog.Error("failed to decode cache value", slog.String("key", ev.Key), slog.Any("error", decErr))
+						continue
+					}
+					typedCh <- coretypes.TypedCacheEvent[T]{Type: ev.Type, Key: ev.Key, Value: &value}
+				}
+			}
+		}
+	}()
+
+	return typedCh, nil
 }

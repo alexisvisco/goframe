@@ -84,3 +84,19 @@ func (l *Line) Log(msg string) {
 
 	logger.LogAttrs(context.Background(), l.level, msg, l.attrs...)
 }
+
+func Add(ctx context.Context, keyVals ...any) {
+	_, line := FromContext(ctx)
+	if line == nil {
+		slog.Error("clog: no line found in context, cannot add attributes")
+		return
+	}
+
+	for i := 0; i < len(keyVals); i += 2 {
+		if i+1 < len(keyVals) {
+			line.Add(keyVals[i].(string), keyVals[i+1])
+		} else {
+			line.Add(keyVals[i].(string), nil)
+		}
+	}
+}
