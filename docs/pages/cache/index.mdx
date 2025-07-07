@@ -28,3 +28,20 @@ for {
 }
 ```
 
+## Modify cache encoder/decoder
+
+By default the cache uses GOB encoding. You can change this by implementing the `cache.Encode` and `cache.Decode` functions. For example, to use JSON encoding:
+
+
+to
+
+```go
+func init() {
+	cache.Encode = func(v any) ([]byte, error) {
+		return json.Marshal(v)
+	}
+	cache.Decode = func(data []byte, out any) error {
+		return json.Unmarshal(data, out)
+	}
+}
+```
