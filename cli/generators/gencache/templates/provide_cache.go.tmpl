@@ -14,7 +14,6 @@ func Cache(cfg *config.Config, db *gorm.DB) (contracts.Cache, error) {
     cfg.GetDatabase().Database,
     cfg.GetDatabase().SSLMode,
   )
-  repo := cache.NewPostgresRepository(db)
-  return cache.NewPostgresCache(repo, db, dsn), nil
+  return cache.NewCache(db, dsn), nil
 }
 

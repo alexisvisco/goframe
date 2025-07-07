@@ -46,20 +46,6 @@ var _ types.AuthService = (*AuthService)(nil)
 func NewAuthService(cfg *config.Config, repo types.OAuthStateService) (*AuthService, error) {
 	a := &AuthService{cfg: cfg, oauthStateSvc: repo}
 
-	secret, err := a.generateAppleSecret()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate apple client secret: %w", err)
-	}
-
-	token, _, err := new(jwt.Parser).ParseUnverified(secret, jwt.MapClaims{})
-	if err == nil {
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			slog.Info("JWT Claims", slog.Any("claims", claims))
-		}
-	}
-
-	a.appleClientSecret = secret
-
 	a.providers = map[types.OAuthProvider]*providerInfo{
 		types.OAuthProviderGithub: {
 			config: &oauth2.Config{
@@ -70,19 +56,6 @@ func NewAuthService(cfg *config.Config, repo types.OAuthStateService) (*AuthServ
 				Scopes:       []string{"user:email"},
 			},
 			retrieveUserData: a.retrieveGithubUserData,
-		},
-		types.OAuthProviderApple: {
-			config: &oauth2.Config{
-				ClientID:     a.cfg.GetAuth().AppleClientID,
-				ClientSecret: a.appleClientSecret,
-				Endpoint: oauth2.Endpoint{
-					AuthURL:  "https://appleid.apple.com/auth/authorize?response_mode=form_post",
-					TokenURL: "https://appleid.apple.com/auth/token",
-				},
-				RedirectURL: fmt.Sprintf("%s/v1/oauth/%s/callback", a.cfg.GetServer().URL, types.OAuthProviderApple),
-				Scopes:      []string{"email"},
-			},
-			retrieveUserData: a.retrieveAppleUserData,
 		},
 		types.OAuthProviderDiscord: {
 			config: &oauth2.Config{
@@ -289,6 +262,42 @@ func (s AuthService) GenerateAccessToken(id string, email string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(token))
 }
 
+func (a *AuthService) initAppleClientSecret() error {
+	secret, err := a.generateAppleSecret()
+	if err != nil {
+		return fmt.Errorf("failed to generate apple client secret: %w", err)
+	}
+
+	token, _, err := new(jwt.Parser).ParseUnverified(secret, jwt.MapClaims{})
+	if err == nil {
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			slog.Info("JWT Claims", slog.Any("claims", claims))
+		}
+	}
+
+	a.appleClientSecret = secret
+
+	/*
+	after calling this method add this to the provider map in the constructor:
+
+	types.OAuthProviderApple: {
+				config: &oauth2.Config{
+					ClientID:     a.cfg.GetAuth().AppleClientID,
+					ClientSecret: a.appleClientSecret,
+					Endpoint: oauth2.Endpoint{
+						AuthURL:  "https://appleid.apple.com/auth/authorize?response_mode=form_post",
+						TokenURL: "https://appleid.apple.com/auth/token",
+					},
+					RedirectURL: fmt.Sprintf("%s/v1/oauth/%s/callback", a.cfg.GetServer().URL, types.OAuthProviderApple),
+					Scopes:      []string{"email"},
+				},
+				retrieveUserData: a.retrieveAppleUserData,
+			},
+	 */
+
+	return nil
+}
+
 func (s AuthService) generateAppleSecret() (string, error) {
 	privateKeyPEM, err := base64.StdEncoding.DecodeString(s.cfg.GetAuth().ApplePrivateKeyBase64)
 	if err != nil {
@@ -327,3 +336,4 @@ func (s AuthService) generateAppleSecret() (string, error) {
 
 	return token.SignedString(privKey)
 }
+

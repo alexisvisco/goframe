@@ -97,7 +97,7 @@ if [[ -f "$CLI_MAIN_FILE" ]]; then
     # Check if checksum file exists and compare
     if [[ -f "$CHECKSUM_FILE" ]]; then
         STORED_CHECKSUM=$(cat "$CHECKSUM_FILE")
-        if [[ "$CURRENT_CHECKSUM" != "$STORED_CHECKSUM" ]]; then
+        if [[ "$CURRENT_CHECKSUM" != "$STORED_CHECKSUM" || "${NOCACHE:-}" == "true" ]]; then
             build_binary
         fi
     else
