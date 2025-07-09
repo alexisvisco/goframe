@@ -52,7 +52,7 @@ func (g *GoPkg) ExtractMethod(typeName, methodName, fromFile, newFileName string
 
 	pkgFile.File.Decls = otherDecls
 
-	usedImports := collectUsedImports(pkgFile.File, methodDecl)
+	usedImports := collectUsedImportsFromFunc(pkgFile.File, methodDecl)
 	newPath := filepath.Join(g.rootPath, filepath.Dir(fromFile), newFileName)
 
 	mergedFile, err := mergeIntoExistingFile(g.fset, newPath, methodDecl, usedImports, pkgFile.PackageName)
@@ -139,10 +139,17 @@ func (g *GoPkg) ExtractStruct(structName, fromFile, newFileName string) error {
 		return fmt.Errorf("failed to update original file: %w", err)
 	}
 
+	forStruct := g.FindAllMethodsForStruct(structName, fromFile)
+	for _, method := range forStruct {
+		if err := g.ExtractMethod(structName, method, fromFile, newFileName); err != nil {
+			return fmt.Errorf("failed to extract method %s: %w", method, err)
+		}
+	}
+
 	return nil
 }
 
-func collectUsedImports(file *ast.File, fn *ast.FuncDecl) []*ast.ImportSpec {
+func collectUsedImportsFromFunc(file *ast.File, fn *ast.FuncDecl) []*ast.ImportSpec {
 	usedIdents := map[string]bool{}
 	ast.Inspect(fn, func(n ast.Node) bool {
 		switch x := n.(type) {
