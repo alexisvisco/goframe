@@ -1,0 +1,5 @@
+export const errorSchema = z.object({
+  message: z.string().optional(),
+  code: z.string(),
+  metadata: z.record(z.any()).optional(),
+})

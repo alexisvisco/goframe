@@ -1,0 +1,286 @@
+/**
+ * Duration class that mimics Go's time.Duration functionality
+ * Can be constructed from either a string (like "1h30m45s") or nanoseconds
+ */
+export class Duration {
+  private _nanoseconds: number;
+
+  // Time unit constants in nanoseconds
+  static readonly NANOSECOND = 1;
+  static readonly MICROSECOND = 1000;
+  static readonly MILLISECOND = 1000 * 1000;
+  static readonly SECOND = 1000 * 1000 * 1000;
+  static readonly MINUTE = 60 * Duration.SECOND;
+  static readonly HOUR = 60 * Duration.MINUTE;
+
+  constructor(value: string | number) {
+    if (typeof value === 'number') {
+      this._nanoseconds = Math.floor(value);
+    } else {
+      this._nanoseconds = Duration.parseDuration(value);
+    }
+  }
+
+  /**
+   * Parse a duration string like "1h30m45s", "2.5h", "100ms", etc.
+   */
+  private static parseDuration(s: string): number {
+    if (!s) {
+      throw new Error('empty duration string');
+    }
+
+    // Remove whitespace
+    s = s.trim();
+
+    // Handle negative durations
+    const negative = s.startsWith('-');
+    if (negative) {
+      s = s.substring(1);
+    }
+
+    let total = 0;
+    let current = '';
+    let i = 0;
+
+    while (i < s.length) {
+      const char = s[i];
+
+      if (char >= '0' && char <= '9' || char === '.') {
+        current += char;
+      } else {
+        if (!current) {
+          throw new Error(`invalid duration format: ${s}`);
+        }
+
+        // Find the unit
+        let unit = '';
+        while (i < s.length && (s[i] < '0' || s[i] > '9') && s[i] !== '.') {
+          unit += s[i];
+          i++;
+        }
+
+        const value = parseFloat(current);
+        if (isNaN(value)) {
+          throw new Error(`invalid duration format: ${s}`);
+        }
+
+        const nanoseconds = Duration.getUnitMultiplier(unit) * value;
+        total += nanoseconds;
+        current = '';
+        continue;
+      }
+      i++;
+    }
+
+    if (current) {
+      throw new Error(`missing unit in duration: ${s}`);
+    }
+
+    return negative ? -total : total;
+  }
+
+  /**
+   * Get the multiplier for a given unit
+   */
+  private static getUnitMultiplier(unit: string): number {
+    switch (unit) {
+      case 'ns': return Duration.NANOSECOND;
+      case 'us': case 'µs': return Duration.MICROSECOND;
+      case 'ms': return Duration.MILLISECOND;
+      case 's': return Duration.SECOND;
+      case 'm': return Duration.MINUTE;
+      case 'h': return Duration.HOUR;
+      default:
+        throw new Error(`unknown unit: ${unit}`);
+    }
+  }
+
+  /**
+   * Returns the duration as nanoseconds
+   */
+  nanoseconds(): number {
+    return this._nanoseconds;
+  }
+
+  /**
+   * Returns the duration as microseconds
+   */
+  microseconds(): number {
+    return this._nanoseconds / Duration.MICROSECOND;
+  }
+
+  /**
+   * Returns the duration as milliseconds
+   */
+  milliseconds(): number {
+    return this._nanoseconds / Duration.MILLISECOND;
+  }
+
+  /**
+   * Returns the duration as seconds
+   */
+  seconds(): number {
+    return this._nanoseconds / Duration.SECOND;
+  }
+
+  /**
+   * Returns the duration as minutes
+   */
+  minutes(): number {
+    return this._nanoseconds / Duration.MINUTE;
+  }
+
+  /**
+   * Returns the duration as hours
+   */
+  hours(): number {
+    return this._nanoseconds / Duration.HOUR;
+  }
+
+  /**
+   * Add another duration to this one
+   */
+  add(other: Duration): Duration {
+    return new Duration(this._nanoseconds + other._nanoseconds);
+  }
+
+  /**
+   * Subtract another duration from this one
+   */
+  subtract(other: Duration): Duration {
+    return new Duration(this._nanoseconds - other._nanoseconds);
+  }
+
+  /**
+   * Multiply duration by a scalar
+   */
+  multiply(factor: number): Duration {
+    return new Duration(this._nanoseconds * factor);
+  }
+
+  /**
+   * Divide duration by a scalar
+   */
+  divide(divisor: number): Duration {
+    return new Duration(this._nanoseconds / divisor);
+  }
+
+  /**
+   * Compare durations
+   */
+  equals(other: Duration): boolean {
+    return this._nanoseconds === other._nanoseconds;
+  }
+
+  /**
+   * Check if this duration is less than another
+   */
+  lessThan(other: Duration): boolean {
+    return this._nanoseconds < other._nanoseconds;
+  }
+
+  /**
+   * Check if this duration is greater than another
+   */
+  greaterThan(other: Duration): boolean {
+    return this._nanoseconds > other._nanoseconds;
+  }
+
+  /**
+   * Get absolute value of duration
+   */
+  abs(): Duration {
+    return new Duration(Math.abs(this._nanoseconds));
+  }
+
+  /**
+   * Convert to string representation
+   */
+  toString(): string {
+    if (this._nanoseconds === 0) {
+      return '0s';
+    }
+
+    const negative = this._nanoseconds < 0;
+    let ns = Math.abs(this._nanoseconds);
+
+    const parts: string[] = [];
+
+    // Hours
+    if (ns >= Duration.HOUR) {
+      const hours = Math.floor(ns / Duration.HOUR);
+      parts.push(`${hours}h`);
+      ns %= Duration.HOUR;
+    }
+
+    // Minutes
+    if (ns >= Duration.MINUTE) {
+      const minutes = Math.floor(ns / Duration.MINUTE);
+      parts.push(`${minutes}m`);
+      ns %= Duration.MINUTE;
+    }
+
+    // Seconds
+    if (ns >= Duration.SECOND) {
+      const seconds = Math.floor(ns / Duration.SECOND);
+      parts.push(`${seconds}s`);
+      ns %= Duration.SECOND;
+    }
+
+    // Milliseconds
+    if (ns >= Duration.MILLISECOND) {
+      const milliseconds = Math.floor(ns / Duration.MILLISECOND);
+      parts.push(`${milliseconds}ms`);
+      ns %= Duration.MILLISECOND;
+    }
+
+    // Microseconds
+    if (ns >= Duration.MICROSECOND) {
+      const microseconds = Math.floor(ns / Duration.MICROSECOND);
+      parts.push(`${microseconds}µs`);
+      ns %= Duration.MICROSECOND;
+    }
+
+    // Nanoseconds
+    if (ns > 0) {
+      parts.push(`${ns}ns`);
+    }
+
+    const result = parts.join('');
+    return negative ? `-${result}` : result;
+  }
+
+  /**
+   * Static factory methods for common durations
+   */
+  static nanoseconds(n: number): Duration {
+    return new Duration(n);
+  }
+
+  static microseconds(n: number): Duration {
+    return new Duration(n * Duration.MICROSECOND);
+  }
+
+  static milliseconds(n: number): Duration {
+    return new Duration(n * Duration.MILLISECOND);
+  }
+
+  static seconds(n: number): Duration {
+    return new Duration(n * Duration.SECOND);
+  }
+
+  static minutes(n: number): Duration {
+    return new Duration(n * Duration.MINUTE);
+  }
+
+  static hours(n: number): Duration {
+    return new Duration(n * Duration.HOUR);
+  }
+
+  /**
+   * Parse a duration string
+   */
+  static parse(s: string): Duration {
+    return new Duration(s);
+  }
+}
