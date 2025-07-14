@@ -46,12 +46,14 @@ func NewCmdGenClient() *cobra.Command {
 
 			generator := gentsclient.NewTypescriptClientGenerator()
 
-			generator.AddSchema("", *r.Requests)
+			generator.AddSchema("", true, *r.Request)
 			for _, response := range r.StatusToResponse {
 				if response.Response != nil {
-					generator.AddSchema("", *response.Response)
+					generator.AddSchema("", true, *response.Response)
 				}
 			}
+
+			generator.AddRoute(*r)
 
 			// Print the JSON result to stdout
 			cmd.Println(generator.File())

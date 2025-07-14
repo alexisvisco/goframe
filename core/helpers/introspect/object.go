@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/types"
 	"reflect"
+	"slices"
 	"strings"
 
 	"golang.org/x/tools/go/packages"
@@ -51,6 +52,22 @@ func (f Field) ExposedName() string {
 	return f.Name
 }
 
+// IsNotSerializable Field is not serializable if it has json:"-" tag and no other field kind tags
+func (f Field) IsNotSerializable() bool {
+	var hasJSONTag bool
+	var hasOtherTags bool
+
+	for _, tag := range f.Tags {
+		if tag.Key == FieldKindJSON && tag.Value == "-" {
+			hasJSONTag = true
+		} else if _, exists := tags[tag.Key]; exists {
+			hasOtherTags = true
+		}
+	}
+
+	return hasJSONTag && !hasOtherTags
+}
+
 type FieldKind = string
 
 const (
@@ -62,8 +79,20 @@ const (
 	FieldKindCookie   FieldKind = "cookie"
 	FieldKindFile     FieldKind = "file"
 	FieldKindFiles    FieldKind = "files"
-	FieldKindOptional FieldKind = "optional" // New field kind for optional tag
+	FieldKindOptional FieldKind = "optional"
 )
+
+var tags = map[FieldKind]struct{}{
+	FieldKindJSON:     {},
+	FieldKindQuery:    {},
+	FieldKindHeader:   {},
+	FieldKindForm:     {},
+	FieldKindPath:     {},
+	FieldKindCookie:   {},
+	FieldKindFile:     {},
+	FieldKindFiles:    {},
+	FieldKindOptional: {},
+}
 
 type FieldTag struct {
 	Key     FieldKind `json:"key"`     // The tag key (json, query, header, etc.)
@@ -74,6 +103,47 @@ type FieldTag struct {
 type ObjectType struct {
 	TypeName string  `json:"type_name"`
 	Fields   []Field `json:"fields"`
+}
+
+// Generic helper method to check for any field kind
+func (o ObjectType) hasFieldKind(kinds ...string) bool {
+	for _, field := range o.Fields {
+		for _, tag := range field.Tags {
+			has := slices.Contains(kinds, tag.Key)
+			if has {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (o ObjectType) HasSearchParams() bool {
+	return o.hasFieldKind(FieldKindQuery)
+}
+
+func (o ObjectType) HasPathParams() bool {
+	return o.hasFieldKind(FieldKindPath)
+}
+
+func (o ObjectType) HasHeaders() bool {
+	return o.hasFieldKind(FieldKindHeader)
+}
+
+func (o ObjectType) HasCookies() bool {
+	return o.hasFieldKind(FieldKindCookie)
+}
+
+func (o ObjectType) HasBody() bool {
+	return o.hasFieldKind(FieldKindJSON, FieldKindForm, FieldKindFile, FieldKindFiles)
+}
+
+func (o ObjectType) HasJSONBody() bool {
+	return o.hasFieldKind(FieldKindJSON)
+}
+
+func (o ObjectType) HasFormBody() bool {
+	return o.hasFieldKind(FieldKindForm, FieldKindFile, FieldKindFiles)
 }
 
 type FieldType struct {
@@ -338,7 +408,7 @@ func (ctx *ParseContext) parseFieldTags(structTag string) []FieldTag {
 
 	// Process each tag type that exists
 	for _, tagKey := range tagKeys {
-		if value := tag.Get(tagKey.key); value != "" && value != "-" {
+		if value := tag.Get(tagKey.key); value != "" {
 			// Parse the tag value and options
 			parts := strings.Split(value, ",")
 			tagValue := parts[0]
@@ -368,11 +438,6 @@ func (ctx *ParseContext) parseFieldTags(structTag string) []FieldTag {
 }
 
 func (ctx *ParseContext) isFieldOptional(tags []FieldTag, isPointer bool) bool {
-	// Check if field type is a pointer
-	if isPointer {
-		return true
-	}
-
 	// Check for optional tag
 	for _, tag := range tags {
 		if tag.Key == FieldKindOptional {

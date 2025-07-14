@@ -1,0 +1,117 @@
+export type FetcherOptions = RequestInit & {
+	searchParams?: Record<string, unknown>;
+	cookies?: Record<string, unknown>;
+	path: string
+}
+interface Res {
+	json: () => Promise<any>;
+}
+export type Fetcher = (options?: FetcherOptions) => Promise<{
+	data: Res,
+	status: number,
+	headers: Headers
+}>;
+
+function setPathParams(options: FetcherOptions, pathParams: Record<string, unknown>) {
+	for (const key in pathParams) {
+		if (Object.prototype.hasOwnProperty.call(pathParams, key)) {
+			const value = pathParams[key];
+			if (value !== undefined && value !== null) {
+				options.path = options.path.replace(`{${key}}`, encodeURIComponent(String(value)));
+			} else {
+				options.path = options.path.replace(`{${key}}`, '');
+			}
+		}
+	}
+}
+
+function setSearchParams(options: FetcherOptions, searchParams: Record<string, unknown>) {
+	const urlSearchParams = new URLSearchParams();
+	for (const [key, value] of Object.entries(searchParams)) {
+		urlSearchParams.append(key, String(value));
+	}
+	options.path += (options.path.includes('?') ? '&' : '?') + urlSearchParams.toString();
+}
+
+function setHeaders(options: FetcherOptions, headers: Record<string, unknown>) {
+	options.headers = Object.entries(headers).reduce((acc, [key, value]) => {
+		acc[key] = String(value);
+		return acc;
+	}, {});
+}
+
+function setCookies(options: FetcherOptions, cookies: Record<string, unknown>) {
+	if (!options.headers) {
+		options.headers = {};
+	}
+	const cookieHeader = Object.entries(cookies)
+		.map(([key, value]) => `${key}=${String(value)}`)
+		.join('; ');
+	if (cookieHeader) {
+		options.headers['Cookie'] = cookieHeader;
+	}
+}
+
+function setRequestBody(options: FetcherOptions, body: any) {
+	if (body === undefined || body === null) {
+		return;
+	}
+	if ('json' in body && body.json) {
+		options.headers = options.headers || {};
+		options.headers['Content-Type'] = 'application/json';
+		options.body = JSON.stringify(body.json);
+	} else if ('formData' in body && body.formData) {
+		const formData = new FormData();
+		for (const [key, value] of Object.entries(body.formData)) {
+			if (value !== undefined && value !== null) {
+				if (value instanceof File) {
+					formData.append(key, value);
+				} else if (Array.isArray(value)) {
+					value.forEach((item) => {
+						if (item instanceof File) {
+							formData.append(key + '[]', item);
+						} else {
+							formData.append(key + '[]', String(item));
+						}
+					});
+				} else {
+					formData.append(key, String(value));
+				}
+			}
+		}
+		options.body = formData;
+	}
+}
+
+function handleResponse(
+	response: { status: number, data: Res, headers: Headers },
+  statusesAllowedToSchema: { pattern: RegExp, schema: ZodSchema<any>, raw?: boolean }[]) {
+	const matchingSchema = statusesAllowedToSchema.find(item => item.pattern.test(response.status.toString()));
+	if (matchingSchema) {
+		try {
+			let validatedData: any;
+			if (matchingSchema.raw) {
+				validatedData = response.data;
+			} else {
+				validatedData = matchingSchema.schema.parse(response.data.json());
+			}
+			return { data: validatedData, status: response.status, headers: response.headers };
+		} catch (parseError) {
+			throw new ResponseParseError(parseError as Error);
+		}
+	} else {
+		// Status code not in allowed list, treat as error
+		try {
+			const errorResponse = ErrorResponse.fromJSON(response.data.json());
+			errorResponse.statusCode = response.status;
+			throw errorResponse;
+		} catch (error) {
+			if (error instanceof ErrorResponse) {
+				throw error;
+			} else {
+				// Fallback for non-standard error responses
+				throw new ErrorResponse(`Unhandled HTTP ${response.status}`, 'HTTP_ERROR', { status: response.status, data: response.data }, response.status);
+			}
+		}
+	}
+}

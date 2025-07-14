@@ -1,3 +1,5 @@
+import { Callout} from 'nextra/components';
+
 # Binding requests
 
 Use `params.Bind` to bind an incoming `http.Request` into a struct. Fields are annotated with tags such as `json`, `form`, `query`, or `path`.
@@ -71,8 +73,24 @@ Only available for the root level of the struct.
 
 ### Context: `ctx`
 Read values from the request context.
-
 Only available for the root level of the struct.
+
+<Callout type={"error"}>
+	You MUST set tag json <bold>json:"-"</bold> for POST request otherwise an attacker can try to set structs or objects in the request body and this will be bind to the struct.
+
+	For example, if you have a struct like this:
+	```go
+	type MeRequest struct {
+		User *types.User `ctx:"goframe.user"`
+	}
+	```
+
+	The attacker may send a body with a User field and a `{ ID: "123" }` value, which will be bound to the `User` field.
+
+	If the ctx exists it will erase the JSON decoded value, but it is better to be safe than sorry.
+</Callout>
+
+
 
 ### Defaults and helpers
 Use the `default` tag to set a value when nothing was bound. Slices may use `exploder` to split a single string into multiple values.

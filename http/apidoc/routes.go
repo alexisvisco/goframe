@@ -12,8 +12,9 @@ import (
 )
 
 type Route struct {
+	Name             string
 	Paths            map[string][]string // Maps path to methods
-	Requests         *introspect.ObjectType
+	Request          *introspect.ObjectType
 	StatusToResponse []StatusToResponse
 	RequiredHeaders  []string
 }
@@ -164,8 +165,9 @@ func ParseRoute(rootPath, relPkgPath, structName, method string) (*Route, error)
 	}
 
 	return &Route{
+		Name:             method,
 		Paths:            pathsMap,
-		Requests:         requests,
+		Request:          requests,
 		StatusToResponse: statusResponses,
 		RequiredHeaders:  fromDoc.RequiredHeaders,
 	}, nil

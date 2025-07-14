@@ -1,5 +1,52 @@
-export const errorSchema = z.object({
-  message: z.string().optional(),
-  code: z.string(),
-  metadata: z.record(z.any()).optional(),
+const errorSchema = z.object({
+	message: z.string().optional(),
+	code: z.string(),
+	metadata: z.record(z.any()).optional(),
 })
+
+class ErrorResponse extends Error {
+	code: string;
+	metadata?: Record<string, any>;
+	statusCode?: number;
+
+	constructor(message: string, code: string, metadata?: Record<string, any>, statusCode?: number) {
+		super(message);
+		this.name = 'ErrorResponse';
+		this.code = code;
+		this.metadata = metadata;
+		this.statusCode = statusCode;
+	}
+
+	static fromJSON(json: unknown): ErrorResponse {
+		const parsed = errorSchema.parse(json);
+		return new ErrorResponse(parsed.message || 'An error occurred', parsed.code, parsed.metadata);
+	}
+}
+
+class FetchError extends Error {
+	origin: Error;
+	constructor(error: Error) {
+		super(`Failed to fetch: ${error.message}`);
+		this.name = 'FetchError';
+		this.origin = error;
+	}
+}
+
+class RequestParseError extends Error {
+	origin: Error;
+
+	constructor(error: Error) {
+		super(`Failed to parse request: ${error.message}`);
+		this.name = 'RequestParseError';
+		this.origin = error;
+	}
+}
+
+class ResponseParseError extends Error {
+	origin: Error;
+	constructor(error: Error) {
+		super(`Failed to parse response: ${error.message}`);
+		this.name = 'ResponseParseError';
+		this.origin = error;
+	}
+}
