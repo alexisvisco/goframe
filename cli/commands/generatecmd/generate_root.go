@@ -58,7 +58,7 @@ func NewCmdGenClient() *cobra.Command {
 				}
 				for _, response := range r.StatusToResponse {
 					if response.Response != nil {
-						generator.AddSchema("", true, *response.Response)
+						generator.AddSchema("", false, *response.Response)
 					}
 				}
 				generator.AddRoute(*r)
