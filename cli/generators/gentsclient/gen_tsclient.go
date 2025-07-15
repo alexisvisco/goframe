@@ -283,7 +283,7 @@ func (gen *TypescriptClientGenerator) generateZodSchema(schemaName string, obj i
 		}
 	}
 
-	sb.WriteString("});\n")
+	sb.WriteString("}).passthrough();\n")
 	return sb.String()
 }
 
