@@ -4,7 +4,7 @@ const errorSchema = z.object({
 	metadata: z.record(z.any()).optional(),
 })
 
-class ErrorResponse extends Error {
+export class ErrorResponse extends Error {
 	code: string;
 	metadata?: Record<string, any>;
 	statusCode?: number;
@@ -23,7 +23,7 @@ class ErrorResponse extends Error {
 	}
 }
 
-class FetchError extends Error {
+export class FetchError extends Error {
 	origin: Error;
 	constructor(error: Error) {
 		super(`Failed to fetch: ${error.message}`);
@@ -32,7 +32,7 @@ class FetchError extends Error {
 	}
 }
 
-class RequestParseError extends Error {
+export class RequestParseError extends Error {
 	origin: Error;
 
 	constructor(error: Error) {
@@ -42,7 +42,7 @@ class RequestParseError extends Error {
 	}
 }
 
-class ResponseParseError extends Error {
+export class ResponseParseError extends Error {
 	origin: Error;
 	constructor(error: Error) {
 		super(`Failed to parse response: ${error.message}`);

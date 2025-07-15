@@ -10,11 +10,12 @@ import (
 )
 
 type TypescriptClientGenerator struct {
-	schemaCode map[string]string                // schemaName -> Zod schema
-	routeCode  map[string]string                // routeName -> function code
-	lookup     map[string]string                // TypeName -> schemaName
-	objects    map[string]introspect.ObjectType // schemaName -> object
-	isRequest  map[string]bool                  // schemaName -> true if request
+	schemaCode  map[string]string                // schemaName -> Zod schema
+	schemaOrder []string                         // Keep insertion order of schemas
+	routeCode   map[string]string                // routeName -> function code
+	lookup      map[string]string                // TypeName -> schemaName
+	objects     map[string]introspect.ObjectType // schemaName -> object
+	isRequest   map[string]bool                  // schemaName -> true if request
 }
 
 const indentStr = "  "
@@ -24,11 +25,12 @@ var fs embed.FS
 
 func NewTypescriptClientGenerator() *TypescriptClientGenerator {
 	t := &TypescriptClientGenerator{
-		schemaCode: make(map[string]string),
-		routeCode:  make(map[string]string),
-		lookup:     make(map[string]string),
-		objects:    make(map[string]introspect.ObjectType),
-		isRequest:  make(map[string]bool),
+		schemaCode:  make(map[string]string),
+		schemaOrder: []string{},
+		routeCode:   make(map[string]string),
+		lookup:      make(map[string]string),
+		objects:     make(map[string]introspect.ObjectType),
+		isRequest:   make(map[string]bool),
 	}
 
 	t.createErrorSchema()
@@ -43,10 +45,8 @@ func (gen *TypescriptClientGenerator) indent(n int) string {
 func (gen *TypescriptClientGenerator) File() string {
 	var sb strings.Builder
 	sb.WriteString("import { z, ZodSchema } from 'zod';\n\n")
-
-	identifiers := maps.Keys(gen.schemaCode)
-	slices.Sort(identifiers)
-	for _, key := range identifiers {
+	sb.WriteString("export type ValueOf<T> = T[keyof T];\n\n")
+	for _, key := range gen.schemaOrder {
 		sb.WriteString(gen.schemaCode[key])
 		sb.WriteString("\n")
 	}

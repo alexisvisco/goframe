@@ -29,6 +29,7 @@ func (gen *TypescriptClientGenerator) AddSchema(prefix string, isRequest bool, o
 		gen.schemaCode[schemaName] = gen.generateZodSchema(schemaName, objectType, isRequest)
 		gen.objects[schemaName] = objectType
 		gen.isRequest[schemaName] = isRequest
+		gen.schemaOrder = append(gen.schemaOrder, schemaName)
 	}
 }
 
@@ -202,6 +203,7 @@ func (gen *TypescriptClientGenerator) createEnumSchema(prefix string, enum intro
 		sb.WriteString(fmt.Sprintf("%s%s: %d,\n", gen.indent(1), strings.ToUpper(str.ToSnakeCase(key)), value))
 	}
 	sb.WriteString("} as const;\n")
+	sb.WriteString(fmt.Sprintf("export type %s = ValueOf<typeof %s>;\n", enumName, enumName))
 
 	sb.WriteString(fmt.Sprintf("export const %s = z.union([", enumSchemaName))
 	first := true
@@ -224,6 +226,7 @@ func (gen *TypescriptClientGenerator) createEnumSchema(prefix string, enum intro
 	gen.lookup[enum.TypeName] = enumSchemaName
 	gen.schemaCode[enumSchemaName] = sb.String()
 	gen.objects[enumSchemaName] = introspect.ObjectType{}
+	gen.schemaOrder = append(gen.schemaOrder, enumSchemaName)
 }
 
 func (gen *TypescriptClientGenerator) createDurationSchema() {
@@ -238,6 +241,7 @@ func (gen *TypescriptClientGenerator) createDurationSchema() {
 	gen.lookup["durationSchema"] = "durationSchema"
 	gen.schemaCode["durationSchema"] = sb.String()
 	gen.objects["durationSchema"] = introspect.ObjectType{}
+	gen.schemaOrder = append(gen.schemaOrder, "durationSchema")
 }
 
 func (gen *TypescriptClientGenerator) createDateSchema() {
@@ -247,6 +251,7 @@ func (gen *TypescriptClientGenerator) createDateSchema() {
 	gen.lookup["dateSchema"] = "dateSchema"
 	gen.schemaCode["dateSchema"] = "const dateSchema = z.string().datetime().transform((str) => new Date(str))"
 	gen.objects["dateSchema"] = introspect.ObjectType{}
+	gen.schemaOrder = append(gen.schemaOrder, "dateSchema")
 }
 
 func (gen *TypescriptClientGenerator) createErrorSchema() {
@@ -257,6 +262,7 @@ func (gen *TypescriptClientGenerator) createErrorSchema() {
 	gen.lookup["errorSchema"] = "errorSchema"
 	gen.schemaCode["errorSchema"] = string(b) + "\n"
 	gen.objects["errorSchema"] = introspect.ObjectType{}
+	gen.schemaOrder = append(gen.schemaOrder, "errorSchema")
 }
 
 func (gen *TypescriptClientGenerator) addIndent(str string, n int) string {
@@ -394,7 +400,7 @@ func (gen *TypescriptClientGenerator) tsFieldType(ft introspect.FieldType) strin
 	} else if ft.Enum != nil {
 		enumSchema := gen.lookup[ft.Enum.TypeName]
 		return gen.schemaNameToExportedType(enumSchema)
-	} else if ft.Object != nil {
+	} else if ft.Object != nil && ft.Primitive != introspect.FieldTypePrimitiveFile && ft.Primitive != introspect.FieldTypePrimitiveTime {
 		gen.AddSchema("", false, *ft.Object)
 		refSchema := gen.lookup[ft.Object.TypeName]
 		return gen.schemaNameToExportedType(refSchema)

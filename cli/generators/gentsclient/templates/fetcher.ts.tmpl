@@ -3,9 +3,11 @@ export type FetcherOptions = RequestInit & {
 	cookies?: Record<string, unknown>;
 	path: string
 }
-interface Res {
+
+export interface Res {
 	json: () => Promise<any>;
 }
+
 export type Fetcher = (options?: FetcherOptions) => Promise<{
 	data: Res,
 	status: number,
@@ -83,7 +85,7 @@ function setRequestBody(options: FetcherOptions, body: any) {
 	}
 }
 
-function handleResponse(
+async function handleResponse(
 	response: { status: number, data: Res, headers: Headers },
   statusesAllowedToSchema: { pattern: RegExp, schema: ZodSchema<any>, raw?: boolean }[]) {
 	const matchingSchema = statusesAllowedToSchema.find(item => item.pattern.test(response.status.toString()));
@@ -93,7 +95,7 @@ function handleResponse(
 			if (matchingSchema.raw) {
 				validatedData = response.data;
 			} else {
-				validatedData = matchingSchema.schema.parse(response.data.json());
+				validatedData = matchingSchema.schema.parse(await response.data.json());
 			}
 			return { data: validatedData, status: response.status, headers: response.headers };
 		} catch (parseError) {
@@ -102,7 +104,7 @@ function handleResponse(
 	} else {
 		// Status code not in allowed list, treat as error
 		try {
-			const errorResponse = ErrorResponse.fromJSON(response.data.json());
+			const errorResponse = ErrorResponse.fromJSON(await response.data.json());
 			errorResponse.statusCode = response.status;
 			throw errorResponse;
 		} catch (error) {

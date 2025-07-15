@@ -1,7 +1,6 @@
 package apidoc
 
 import (
-	"encoding/json"
 	"fmt"
 	"go/ast"
 	"regexp"
@@ -57,12 +56,6 @@ func ParseRoute(rootPath, relPkgPath, structName, method string) (*Route, error)
 	}
 
 	fromDoc := ParseAPIDocRoute(methodComments)
-
-	jsonFromDoc, err := json.MarshalIndent(fromDoc, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal API doc: %w", err)
-	}
-	fmt.Println(string(jsonFromDoc))
 
 	// Build import map for resolving types
 	imports := buildImportMap(pkg)
@@ -147,7 +140,7 @@ func ParseRoute(rootPath, relPkgPath, structName, method string) (*Route, error)
 		defaultResponseType := method + "Response"
 		if defaultResponse, err := parseTypeReference(ctx, defaultResponseType, imports, relPkgPath); err == nil {
 			// Add as 200 response by default
-			pattern := regexp.MustCompile("^200$")
+			pattern := regexp.MustCompile("^2[0-9]{2}$")
 			statusResponses = append(statusResponses, StatusToResponse{
 				StatusPattern: pattern,
 				Response:      defaultResponse,

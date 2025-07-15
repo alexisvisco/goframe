@@ -74,7 +74,7 @@ func (gen *TypescriptClientGenerator) AddRoute(route apidoc.Route) {
 
 	constCall := `try {
     const response = await fetcher(options);
-    return handleResponse(response, statusesAllowedToSchema);
+    return await handleResponse(response, statusesAllowedToSchema);
   } catch (error) {
     if (error instanceof ErrorResponse || error instanceof RequestParseError || error instanceof ResponseParseError) {
       throw error;
