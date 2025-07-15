@@ -144,7 +144,7 @@ func (gen *TypescriptClientGenerator) AddRoute(route apidoc.Route) {
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf("\n%sconst statusesAllowedToSchema: { pattern: RegExp, schema: ZodSchema, raw?: boolean }[] = [%s];\n", gen.indent(1), gen.getAllowedStatusCodesToSchema(route.StatusToResponse)))
+	sb.WriteString(fmt.Sprintf("\n%sconst statusesAllowedToSchema: { pattern: RegExp, schema: ZodSchema<any>, raw?: boolean }[] = [%s];\n", gen.indent(1), gen.getAllowedStatusCodesToSchema(route.StatusToResponse)))
 
 	const callFetcher = `try {
     const response = await fetcher(options);
