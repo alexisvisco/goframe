@@ -85,7 +85,15 @@ func (gen *TypescriptClientGenerator) AddRoute(route apidoc.Route) {
 	sb.WriteString(fmt.Sprintf("%s%s\n", gen.indent(1), constCall))
 	sb.WriteString("}")
 
-	gen.routeCode[route.Name] = sb.String()
+	ns := "root"
+	if route.ParentStructName != nil {
+		ns = strings.TrimSuffix(*route.ParentStructName, "Handler")
+	}
+	ns = str.ToCamelCase(ns)
+	if _, ok := gen.routeCode[ns]; !ok {
+		gen.routeCode[ns] = make(map[string]string)
+	}
+	gen.routeCode[ns][route.Name] = sb.String()
 }
 
 func (gen *TypescriptClientGenerator) createResponseType(route apidoc.Route) string {

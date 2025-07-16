@@ -12,6 +12,7 @@ import (
 
 type Route struct {
 	Name             string
+	PackagePath      string
 	ParentStructName *string             // Name of the parent struct (if any)
 	Paths            map[string][]string // Maps path to methods
 	Request          *introspect.ObjectType
@@ -172,6 +173,7 @@ func ParseRoute(rootPath, relPkgPath, structName, method string) (*Route, error)
 
 	return &Route{
 		Name:             method,
+		PackagePath:      pkg.PkgPath,
 		ParentStructName: parentStructName,
 		Paths:            pathsMap,
 		Request:          requests,
