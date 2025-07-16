@@ -52,10 +52,32 @@ func (g *GoPkg) ExtractMethod(typeName, methodName, fromFile, newFileName string
 
 	pkgFile.File.Decls = otherDecls
 
+	// Extract comments related to the method so they can be moved to the new file
+	var methodComments []*ast.CommentGroup
+	var remainingComments []*ast.CommentGroup
+	start, end := methodDecl.Pos(), methodDecl.End()
+
+	if methodDecl.Doc != nil && methodDecl.Doc.Pos() < start {
+		start = methodDecl.Doc.Pos()
+	}
+
+	for _, cg := range pkgFile.File.Comments {
+		if cg.Pos() >= start && cg.End() <= end {
+			methodComments = append(methodComments, cg)
+		} else {
+			remainingComments = append(remainingComments, cg)
+		}
+	}
+	pkgFile.File.Comments = remainingComments
+
+	// Clone the method so we can remove its documentation from the original file
+	extractedMethod := *methodDecl
+	methodDecl.Doc = nil
+
 	usedImports := collectUsedImportsFromFunc(pkgFile.File, methodDecl)
 	newPath := filepath.Join(g.rootPath, filepath.Dir(fromFile), newFileName)
 
-	mergedFile, err := mergeIntoExistingFile(g.fset, newPath, methodDecl, usedImports, pkgFile.PackageName)
+	mergedFile, err := mergeIntoExistingFile(g.fset, newPath, &extractedMethod, usedImports, pkgFile.PackageName, methodComments)
 	if err != nil {
 		return err
 	}
@@ -125,7 +147,7 @@ func (g *GoPkg) ExtractStruct(structName, fromFile, newFileName string) error {
 	usedImports := collectUsedImportsFromStruct(pkgFile.File, structDecl)
 	newPath := filepath.Join(g.rootPath, filepath.Dir(fromFile), newFileName)
 
-	mergedFile, err := mergeIntoExistingFile(g.fset, newPath, structDecl, usedImports, pkgFile.PackageName)
+	mergedFile, err := mergeIntoExistingFile(g.fset, newPath, structDecl, usedImports, pkgFile.PackageName, nil)
 	if err != nil {
 		return err
 	}
@@ -214,7 +236,7 @@ func collectUsedImportsFromStruct(file *ast.File, decl ast.Decl) []*ast.ImportSp
 	return result
 }
 
-func mergeIntoExistingFile(fset *token.FileSet, path string, newDecl ast.Decl, newImports []*ast.ImportSpec, pkgName string) (*ast.File, error) {
+func mergeIntoExistingFile(fset *token.FileSet, path string, newDecl ast.Decl, newImports []*ast.ImportSpec, pkgName string, comments []*ast.CommentGroup) (*ast.File, error) {
 	if data, err := os.ReadFile(path); err == nil {
 		file, err := parser.ParseFile(fset, path, data, parser.ParseComments)
 		if err != nil {
@@ -223,6 +245,7 @@ func mergeIntoExistingFile(fset *token.FileSet, path string, newDecl ast.Decl, n
 
 		// Add the new declaration
 		file.Decls = append(file.Decls, newDecl)
+		file.Comments = append(file.Comments, comments...)
 
 		// Merge imports properly
 		mergedImports := upsertImports(file.Imports, newImports)
@@ -233,9 +256,10 @@ func mergeIntoExistingFile(fset *token.FileSet, path string, newDecl ast.Decl, n
 
 	// Create new file
 	newFile := &ast.File{
-		Name:    ast.NewIdent(pkgName),
-		Decls:   []ast.Decl{newDecl},
-		Imports: newImports,
+		Name:     ast.NewIdent(pkgName),
+		Decls:    []ast.Decl{newDecl},
+		Imports:  newImports,
+		Comments: comments,
 	}
 
 	// Create import declaration if there are imports
