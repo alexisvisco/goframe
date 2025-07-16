@@ -3,6 +3,7 @@ package genhttp
 import (
 	"embed"
 	"fmt"
+	"go/ast"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
 	"github.com/alexisvisco/goframe/core/helpers/str"
 	"github.com/alexisvisco/goframe/core/helpers/typeutil"
+	"github.com/alexisvisco/goframe/http/apidoc"
 )
 
 // HTTPGenerator handles http related files and handlers.
@@ -123,6 +125,10 @@ func (p *HTTPGenerator) Update() error {
 		return fmt.Errorf("failed to update app module: %w", err)
 	}
 
+	if err := p.GenerateRoutes(nil); err != nil {
+		return fmt.Errorf("failed to generate routes: %w", err)
+	}
+
 	return nil
 }
 
@@ -165,4 +171,85 @@ func (p *HTTPGenerator) listHandlers() ([]string, error) {
 	}
 
 	return handlers, nil
+}
+
+func (p *HTTPGenerator) collectRoutes(workdir string) ([]*apidoc.Route, error) {
+	var routes []*apidoc.Route
+
+	gopkg, err := genhelper.LoadGoPkg(filepath.Join(workdir, "internal/v1handler"), true)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range gopkg.Files {
+		ast.Inspect(file.File, func(n ast.Node) bool {
+			fd, ok := n.(*ast.FuncDecl)
+			if !ok || fd.Doc == nil || fd.Recv == nil {
+				return true
+			}
+			hasRoute := false
+			for _, c := range fd.Doc.List {
+				if strings.Contains(c.Text, "goframe:http_route") {
+					hasRoute = true
+					break
+				}
+			}
+			if !hasRoute {
+				return true
+			}
+
+			var structName string
+			switch t := fd.Recv.List[0].Type.(type) {
+			case *ast.StarExpr:
+				if ident, ok := t.X.(*ast.Ident); ok {
+					structName = ident.Name
+				}
+			case *ast.Ident:
+				structName = t.Name
+			}
+			if structName == "" {
+				return true
+			}
+
+			r, err := apidoc.ParseRoute(workdir, file.ImportPath, structName, fd.Name.Name)
+			if err == nil {
+				routes = append(routes, r)
+			}
+			return true
+		})
+	}
+	return routes, nil
+}
+
+func (p *HTTPGenerator) GenerateRoutes(routes []*apidoc.Route) error {
+	if routes == nil {
+		var err error
+		routes, err = p.collectRoutes(".")
+		if err != nil {
+			return fmt.Errorf("failed to collect routes: %w", err)
+		}
+	}
+
+	if len(routes) == 0 {
+		return nil
+	}
+
+	gf, err := genhelper.LoadGoFile("internal/v1handler/router.go")
+	if err != nil {
+		return fmt.Errorf("failed to load router file: %w", err)
+	}
+
+	for _, r := range routes {
+		if r.ParentStructName == nil {
+			continue
+		}
+		for pathRoute, methods := range r.Paths {
+			for _, m := range methods {
+				line := fmt.Sprintf("\tp.Mux.HandleFunc(\"%s %s\", p.%s.%s())", m, pathRoute, *r.ParentStructName, r.Name)
+				gf.AddLineAfterRegex(`func\s+Router\(p\s+RouterParams\)\s+{`, line)
+			}
+		}
+	}
+
+	return gf.Save()
 }

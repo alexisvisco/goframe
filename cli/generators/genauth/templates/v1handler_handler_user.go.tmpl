@@ -36,6 +36,7 @@ type RegisterUserWithPasswordResponse struct {
 	UserID string `json:"user_id"`
 }
 
+// goframe:http_route path=/v1/users/auth/register_with_password method=POST
 func (h *UserHandler) RegisterUserWithPassword() http.HandlerFunc {
 	return httpx.Chain(
 		requireUnauthenticated,
@@ -69,6 +70,7 @@ type VerifyUserEmailResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
+// goframe:http_route path=/v1/users/auth/verify_email/{code} method=POST
 func (h *UserHandler) VerifyUserEmail() http.HandlerFunc {
 	return httpx.Chain(
 		requireUnauthenticated,
@@ -100,6 +102,7 @@ type LoginWithPasswordResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
+// goframe:http_route path=/v1/users/auth/login_with_password method=POST
 func (h *UserHandler) LoginWithPassword() http.HandlerFunc {
 	return httpx.Chain(
 		requireUnauthenticated,
@@ -132,6 +135,7 @@ type LoginWithMagicLinkResponse struct {
 	UserID string `json:"user_id"`
 }
 
+// goframe:http_route path=/v1/users/auth/login_with_magic_link method=POST
 func (h *UserHandler) LoginWithMagicLink() http.HandlerFunc {
 	return httpx.Chain(
 		requireUnauthenticated,
@@ -159,6 +163,7 @@ type VerifyMagicLinkResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
+// goframe:http_route path=/v1/users/auth/verify_magic_link/{code} method=POST
 func (h *UserHandler) VerifyMagicLink() http.HandlerFunc {
 	return httpx.Chain(
 		requireUnauthenticated,
@@ -187,6 +192,7 @@ type VerifyOAuthProviderResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
+// goframe:http_route path=/v1/users/oauth/verify_provider/{provider_id}/{code} method=POST
 func (h *UserHandler) VerifyOAuthProvider() http.HandlerFunc {
 	return httpx.Chain(
 		requireUnauthenticated,
@@ -209,6 +215,7 @@ type RequestPasswordResetRequest struct {
 	Email string `json:"email"`
 }
 
+// goframe:http_route path=/v1/users/auth/request_password_reset method=POST
 func (h *UserHandler) RequestPasswordReset() http.HandlerFunc {
 	return httpx.Chain(
 		requireUnauthenticated,
@@ -235,6 +242,7 @@ type ResetPasswordResponse struct {
 	UserID string `json:"user_id"`
 }
 
+// goframe:http_route path=/v1/users/auth/reset_password/{code} method=POST
 func (h *UserHandler) ResetPassword() http.HandlerFunc {
 	return httpx.Chain(
 		requireUnauthenticated,
@@ -261,6 +269,7 @@ type LoginWithOAuth2Response struct {
 	URL string `json:"url"`
 }
 
+// goframe:http_route path=/v1/users/oauth/{provider}/login method=GET
 func (h *UserHandler) LoginWithOAuth2() http.HandlerFunc {
 	return httpx.Chain(
 		requireUnauthenticated,
@@ -295,6 +304,8 @@ func (req *OAuth2CallbackRequest) GetState() string {
 	return req.StateForm
 }
 
+// goframe:http_route path=/v1/users/oauth/{provider}/callback method=GET
+// goframe:http_route path=/v1/users/oauth/{provider}/callback method=POST
 func (h *UserHandler) OAuth2Callback() http.HandlerFunc {
 	return httpx.Chain(
 		requireUnauthenticated,
@@ -335,6 +346,7 @@ type MeResponse struct {
 	Email string `json:"email"`
 }
 
+// goframe:http_route path=/v1/users/@me method=GET
 func (h *UserHandler) Me() http.HandlerFunc {
 	return httpx.Chain(
 		requireUser(h.userSvc),

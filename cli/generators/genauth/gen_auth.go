@@ -48,10 +48,6 @@ func (g *AuthGenerator) Generate() error {
 		return err
 	}
 
-	if err := g.updateRouter(); err != nil {
-		return fmt.Errorf("failed to update router: %w", err)
-	}
-
 	if err := g.MailerGenerator.Update(); err != nil {
 		return err
 	}
@@ -341,31 +337,4 @@ drop table if exists user_oauth_providers;
 drop table if exists users;
 drop table if exists oauth_state_codes;`,
 	})
-}
-
-func (g *AuthGenerator) updateRouter() error {
-	routes := `	p.Mux.HandleFunc("GET /v1/users/@me", p.UserHandler.Me())
-	p.Mux.HandleFunc("POST /v1/users/auth/register_with_password", p.UserHandler.RegisterUserWithPassword())
-	p.Mux.HandleFunc("POST /v1/users/auth/login_with_magic_link", p.UserHandler.LoginWithMagicLink())
-	p.Mux.HandleFunc("POST /v1/users/auth/login_with_password", p.UserHandler.LoginWithPassword())
-	p.Mux.HandleFunc("POST /v1/users/auth/verify_email/{code}", p.UserHandler.VerifyUserEmail())
-	p.Mux.HandleFunc("POST /v1/users/auth/verify_magic_link/{code}", p.UserHandler.VerifyMagicLink())
-	p.Mux.HandleFunc("POST /v1/users/auth/request_password_reset", p.UserHandler.RequestPasswordReset())
-	p.Mux.HandleFunc("POST /v1/users/auth/reset_password/{code}", p.UserHandler.ResetPassword())
-	p.Mux.HandleFunc("POST /v1/users/oauth/verify_provider/{provider_id}/{code}", p.UserHandler.VerifyOAuthProvider())
-	p.Mux.HandleFunc("GET /v1/users/oauth/{provider}/login", p.UserHandler.LoginWithOAuth2())
-	p.Mux.HandleFunc("POST /v1/users/oauth/{provider}/callback", p.UserHandler.OAuth2Callback())
-	p.Mux.HandleFunc("GET /v1/users/oauth/{provider}/callback", p.UserHandler.OAuth2Callback())`
-
-	file, err := genhelper.LoadGoFile("internal/v1handler/router.go")
-	if err != nil {
-		return fmt.Errorf("failed to load router.go: %w", err)
-	}
-
-	file.AddLineAfterRegex(`func\s+Router\(p\s+RouterParams\)\s+{`, routes)
-	if err := file.Save("internal/v1handler/router.go"); err != nil {
-		return fmt.Errorf("failed to save updated router.go: %w", err)
-	}
-
-	return nil
 }
