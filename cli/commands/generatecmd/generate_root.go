@@ -1,12 +1,14 @@
 package generatecmd
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+)
 
 func NewCmdRootGenerate(subCommands ...*cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "generate <subcommand> [flags]",
 		Aliases: []string{"gen", "g"},
-		Short:   "WriteTo code",
+		Short:   "Generate code",
 	}
 
 	cmd.AddCommand(migrationCmd())
@@ -17,6 +19,7 @@ func NewCmdRootGenerate(subCommands ...*cobra.Command) *cobra.Command {
 	cmd.AddCommand(mailerCmd())
 	cmd.AddCommand(seedCmd())
 	cmd.AddCommand(moduleCmd())
+	cmd.AddCommand(tsclientCmd())
 	for _, subCmd := range subCommands {
 		cmd.AddCommand(subCmd)
 	}

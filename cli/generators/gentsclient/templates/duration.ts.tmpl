@@ -1,0 +1,83 @@
+export class Duration {
+	private ns: number;
+
+	// Time units in nanoseconds
+	static readonly NS = 1;
+	static readonly US = 1000;
+	static readonly MS = 1000 * 1000;
+	static readonly S = 1000 * 1000 * 1000;
+	static readonly M = 60 * Duration.S;
+	static readonly H = 60 * Duration.M;
+
+	constructor(value: string | number) {
+		this.ns = typeof value === 'number' ? value : Duration.parse(value);
+	}
+
+	private static parse(s: string): number {
+		if (!s) throw new Error('empty duration');
+
+		const negative = s.startsWith('-');
+		if (negative) s = s.substring(1);
+
+		const units = { ns: Duration.NS, us: Duration.US, µs: Duration.US, ms: Duration.MS, s: Duration.S, m: Duration.M, h: Duration.H };
+		const regex = /(\d*\.?\d+)([a-zA-Zµ]+)/g;
+		let total = 0;
+		let match;
+
+		while ((match = regex.exec(s)) !== null) {
+			const [, value, unit] = match;
+			const multiplier = units[unit as keyof typeof units];
+			if (!multiplier) throw new Error(`unknown unit: ${unit}`);
+			total += parseFloat(value) * multiplier;
+		}
+
+		if (total === 0 && s !== '0') throw new Error('invalid duration');
+		return negative ? -total : total;
+	}
+
+	nanoseconds() { return this.ns; }
+	microseconds() { return this.ns / Duration.US; }
+	milliseconds() { return this.ns / Duration.MS; }
+	seconds() { return this.ns / Duration.S; }
+	minutes() { return this.ns / Duration.M; }
+	hours() { return this.ns / Duration.H; }
+
+	add(other: Duration) { return new Duration(this.ns + other.ns); }
+	subtract(other: Duration) { return new Duration(this.ns - other.ns); }
+	multiply(factor: number) { return new Duration(this.ns * factor); }
+	divide(divisor: number) { return new Duration(this.ns / divisor); }
+
+	equals(other: Duration) { return this.ns === other.ns; }
+	lessThan(other: Duration) { return this.ns < other.ns; }
+	greaterThan(other: Duration) { return this.ns > other.ns; }
+	abs() { return new Duration(Math.abs(this.ns)); }
+
+	toString(): string {
+		if (this.ns === 0) return '0s';
+
+		const negative = this.ns < 0;
+		let n = Math.abs(this.ns);
+		const parts: string[] = [];
+
+		for (const [unit, size] of [['h', Duration.H], ['m', Duration.M], ['s', Duration.S], ['ms', Duration.MS], ['µs', Duration.US], ['ns', Duration.NS]]) {
+			if (n >= size) {
+				parts.push(`${Math.floor(n / size)}${unit}`);
+				n %= size;
+			}
+		}
+
+		return (negative ? '-' : '') + parts.join('');
+	}
+
+	toJSON() {
+		return this.ns;
+	}
+
+	// Static factory methods
+	static nanoseconds(n: number) { return new Duration(n); }
+	static microseconds(n: number) { return new Duration(n * Duration.US); }
+	static milliseconds(n: number) { return new Duration(n * Duration.MS); }
+	static seconds(n: number) { return new Duration(n * Duration.S); }
+	static minutes(n: number) { return new Duration(n * Duration.M); }
+	static hours(n: number) { return new Duration(n * Duration.H); }
+}
