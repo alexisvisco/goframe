@@ -11,7 +11,33 @@ import (
 
 func (gen *TypescriptClientGenerator) AddSchema(prefix string, isRequest bool, objectTypes ...introspect.ObjectType) {
 	for _, objectType := range objectTypes {
-		if _, ok := gen.lookup[objectType.TypeName]; ok {
+		var schemaName string
+		var lookupKey string
+
+		if objectType.IsAnonymous {
+			// For anonymous structs, create a unique name based on context
+			if prefix != "" {
+				schemaName = str.ToCamelCase(prefix) + "Schema"
+			} else {
+				schemaName = "AnonymousSchema"
+			}
+			// Use a unique key for anonymous structs based on their structure
+			lookupKey = fmt.Sprintf("anonymous_%s", schemaName)
+		} else {
+			// For named structs, use the existing logic
+			lookupKey = objectType.TypeName
+			if _, ok := gen.lookup[lookupKey]; ok {
+				continue
+			}
+
+			schemaName = objectType.TypeName[strings.LastIndex(objectType.TypeName, ".")+1:]
+			if prefix != "" {
+				schemaName = prefix + "_" + schemaName
+			}
+			schemaName = str.ToCamelCase(schemaName) + "Schema"
+		}
+
+		if _, ok := gen.lookup[lookupKey]; ok {
 			continue
 		}
 
@@ -19,13 +45,7 @@ func (gen *TypescriptClientGenerator) AddSchema(prefix string, isRequest bool, o
 			continue
 		}
 
-		schemaName := objectType.TypeName[strings.LastIndex(objectType.TypeName, ".")+1:]
-		if prefix != "" {
-			schemaName = prefix + "_" + schemaName
-		}
-		schemaName = str.ToCamelCase(schemaName) + "Schema"
-
-		gen.lookup[objectType.TypeName] = schemaName
+		gen.lookup[lookupKey] = schemaName
 		gen.schemaCode[schemaName] = gen.generateZodSchema(schemaName, objectType, isRequest)
 		gen.objects[schemaName] = objectType
 		gen.isRequest[schemaName] = isRequest
@@ -51,7 +71,7 @@ func (gen *TypescriptClientGenerator) generateZodSchema(schemaName string, obj i
 		if field.IsNotSerializable() {
 			continue
 		}
-		zodType := gen.zodFieldType(field.Type)
+		zodType := gen.zodFieldType(field.Type, obj.TypeName, field.Name)
 		if field.Optional {
 			zodType = fmt.Sprintf("%s.optional()", zodType)
 		}
@@ -124,24 +144,40 @@ func (gen *TypescriptClientGenerator) generateZodSchema(schemaName string, obj i
 	return sb.String()
 }
 
-func (gen *TypescriptClientGenerator) zodFieldType(ft introspect.FieldType) string {
+func (gen *TypescriptClientGenerator) zodFieldType(ft introspect.FieldType, parentTypeName, fieldName string) string {
 	zodFieldStr := strings.Builder{}
 	excludedObjectPrimitive := []introspect.FieldTypePrimitive{
 		introspect.FieldTypePrimitiveFile,
 		introspect.FieldTypePrimitiveTime,
 	}
 	if ft.Array != nil {
-		zodFieldStr.WriteString(fmt.Sprintf("z.array(%s)", gen.zodFieldType(ft.Array.ItemType)))
+		zodFieldStr.WriteString(fmt.Sprintf("z.array(%s)", gen.zodFieldType(ft.Array.ItemType, parentTypeName, fieldName)))
 	} else if ft.Map != nil {
-		zodFieldStr.WriteString(fmt.Sprintf("z.record(%s, %s)", gen.zodFieldType(ft.Map.Key), gen.zodFieldType(ft.Map.Value)))
+		zodFieldStr.WriteString(fmt.Sprintf("z.record(%s, %s)", gen.zodFieldType(ft.Map.Key, parentTypeName, fieldName), gen.zodFieldType(ft.Map.Value, parentTypeName, fieldName)))
 	} else if ft.Enum != nil {
 		gen.createEnumSchema("", *ft.Enum)
 		refSchema := gen.lookup[ft.Enum.TypeName]
 		zodFieldStr.WriteString(refSchema)
 	} else if ft.Object != nil && !slices.Contains(excludedObjectPrimitive, ft.Primitive) {
-		gen.AddSchema("", false, *ft.Object)
-		refSchema := gen.lookup[ft.Object.TypeName]
-		zodFieldStr.WriteString(refSchema)
+		if ft.Object.IsAnonymous {
+			// Generate name for anonymous struct based on parent type and field name
+			var prefix string
+			if parentTypeName != "" {
+				// Extract just the type name without package path
+				typeName := parentTypeName[strings.LastIndex(parentTypeName, ".")+1:]
+				prefix = str.ToPascalCase(typeName) + str.ToPascalCase(fieldName)
+			} else {
+				prefix = str.ToPascalCase(fieldName)
+			}
+			gen.AddSchema(prefix, false, *ft.Object)
+			lookupKey := fmt.Sprintf("anonymous_%sSchema", str.ToCamelCase(prefix))
+			refSchema := gen.lookup[lookupKey]
+			zodFieldStr.WriteString(refSchema)
+		} else {
+			gen.AddSchema("", false, *ft.Object)
+			refSchema := gen.lookup[ft.Object.TypeName]
+			zodFieldStr.WriteString(refSchema)
+		}
 	} else if ft.Primitive != "" {
 		switch ft.Primitive {
 		case introspect.FieldTypePrimitiveString:
@@ -315,7 +351,7 @@ func (gen *TypescriptClientGenerator) createInterfaces() string {
 				if field.IsNotSerializable() {
 					continue
 				}
-				tsType := gen.tsFieldType(field.Type)
+				tsType := gen.tsFieldType(field.Type, obj.TypeName, field.Name)
 				optional := ""
 				if field.Optional {
 					optional = "?"
@@ -378,7 +414,7 @@ func (gen *TypescriptClientGenerator) createInterfaces() string {
 				if field.IsNotSerializable() {
 					continue
 				}
-				tsType := gen.tsFieldType(field.Type)
+				tsType := gen.tsFieldType(field.Type, obj.TypeName, field.Name)
 				optional := ""
 				if field.Optional {
 					optional = "?"
@@ -392,18 +428,34 @@ func (gen *TypescriptClientGenerator) createInterfaces() string {
 	return sb.String()
 }
 
-func (gen *TypescriptClientGenerator) tsFieldType(ft introspect.FieldType) string {
+func (gen *TypescriptClientGenerator) tsFieldType(ft introspect.FieldType, parentTypeName, fieldName string) string {
 	if ft.Array != nil {
-		return fmt.Sprintf("Array<%s>", gen.tsFieldType(ft.Array.ItemType))
+		return fmt.Sprintf("Array<%s>", gen.tsFieldType(ft.Array.ItemType, parentTypeName, fieldName))
 	} else if ft.Map != nil {
-		return fmt.Sprintf("Record<%s, %s>", gen.tsFieldType(ft.Map.Key), gen.tsFieldType(ft.Map.Value))
+		return fmt.Sprintf("Record<%s, %s>", gen.tsFieldType(ft.Map.Key, parentTypeName, fieldName), gen.tsFieldType(ft.Map.Value, parentTypeName, fieldName))
 	} else if ft.Enum != nil {
 		enumSchema := gen.lookup[ft.Enum.TypeName]
 		return gen.schemaNameToExportedType(enumSchema)
 	} else if ft.Object != nil && ft.Primitive != introspect.FieldTypePrimitiveFile && ft.Primitive != introspect.FieldTypePrimitiveTime {
-		gen.AddSchema("", false, *ft.Object)
-		refSchema := gen.lookup[ft.Object.TypeName]
-		return gen.schemaNameToExportedType(refSchema)
+		if ft.Object.IsAnonymous {
+			// Generate name for anonymous struct based on parent type and field name
+			var prefix string
+			if parentTypeName != "" {
+				// Extract just the type name without package path
+				typeName := parentTypeName[strings.LastIndex(parentTypeName, ".")+1:]
+				prefix = str.ToPascalCase(typeName) + str.ToPascalCase(fieldName)
+			} else {
+				prefix = str.ToPascalCase(fieldName)
+			}
+			gen.AddSchema(prefix, false, *ft.Object)
+			lookupKey := fmt.Sprintf("anonymous_%sSchema", str.ToCamelCase(prefix))
+			refSchema := gen.lookup[lookupKey]
+			return gen.schemaNameToExportedType(refSchema)
+		} else {
+			gen.AddSchema("", false, *ft.Object)
+			refSchema := gen.lookup[ft.Object.TypeName]
+			return gen.schemaNameToExportedType(refSchema)
+		}
 	} else if ft.Primitive != "" {
 		switch ft.Primitive {
 		case introspect.FieldTypePrimitiveString:

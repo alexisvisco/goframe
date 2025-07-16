@@ -101,8 +101,9 @@ type FieldTag struct {
 }
 
 type ObjectType struct {
-	TypeName string  `json:"type_name"`
-	Fields   []Field `json:"fields"`
+	TypeName    string  `json:"type_name"`
+	IsAnonymous bool    `json:"is_anonymous,omitempty"`
+	Fields      []Field `json:"fields"`
 }
 
 // Generic helper method to check for any field kind
@@ -272,8 +273,9 @@ func (ctx *ParseContext) parseStruct(pkg *packages.Package, structType *types.St
 	}
 
 	obj := &ObjectType{
-		TypeName: typeKey, // This will now correctly reflect the package where the struct is actually defined
-		Fields:   []Field{},
+		TypeName:    typeKey, // This will now correctly reflect the package where the struct is actually defined
+		IsAnonymous: false,   // Named structs are not anonymous
+		Fields:      []Field{},
 	}
 	ctx.Visited[typeKey] = obj
 
@@ -624,8 +626,9 @@ func (ctx *ParseContext) parseMapType(pkg *packages.Package, mapType *types.Map)
 func (ctx *ParseContext) parseStructType(pkg *packages.Package, structType *types.Struct) (*FieldType, error) {
 	// For anonymous structs, create a new ObjectType without a type name
 	obj := &ObjectType{
-		TypeName: "", // Anonymous struct has no type name
-		Fields:   []Field{},
+		TypeName:    "",   // Anonymous struct has no type name
+		IsAnonymous: true, // Mark as anonymous
+		Fields:      []Field{},
 	}
 
 	for i := 0; i < structType.NumFields(); i++ {
