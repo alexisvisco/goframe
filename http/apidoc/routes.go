@@ -12,6 +12,7 @@ import (
 
 type Route struct {
 	Name             string
+	ParentStructName *string             // Name of the parent struct (if any)
 	Paths            map[string][]string // Maps path to methods
 	Request          *introspect.ObjectType
 	StatusToResponse []StatusToResponse
@@ -27,6 +28,8 @@ type StatusToResponse struct {
 
 // ParseRoute parses a route by finding the method's godoc comments and extracting API documentation.
 // It resolves request and response types, handling package prefixes using imports.
+//
+// The function supports both methods (with structName) and pure functions (structName can be empty).
 //
 // Default behavior:
 // - If no request type is specified in comments, looks for {methodName}Request struct
@@ -49,10 +52,14 @@ func ParseRoute(rootPath, relPkgPath, structName, method string) (*Route, error)
 	// Parse enums for this package
 	ctx.ParseEnums(pkg)
 
-	// Find the method in AST and extract comments
-	methodComments, err := findMethodComments(pkg, structName, method)
+	// Find the method/function in AST and extract comments
+	methodComments, err := findFunctionComments(pkg, structName, method)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find method %s in struct %s: %w", method, structName, err)
+		if structName != "" {
+			return nil, fmt.Errorf("failed to find method %s in struct %s: %w", method, structName, err)
+		} else {
+			return nil, fmt.Errorf("failed to find function %s: %w", method, err)
+		}
 	}
 
 	fromDoc := ParseAPIDocRoute(methodComments)
@@ -157,8 +164,15 @@ func ParseRoute(rootPath, relPkgPath, structName, method string) (*Route, error)
 		pathsMap[kv.Path] = kv.Methods
 	}
 
+	// Set ParentStructName - use pointer to string so it can be nil if empty
+	var parentStructName *string
+	if structName != "" {
+		parentStructName = &structName
+	}
+
 	return &Route{
 		Name:             method,
+		ParentStructName: parentStructName,
 		Paths:            pathsMap,
 		Request:          requests,
 		StatusToResponse: statusResponses,
@@ -166,8 +180,9 @@ func ParseRoute(rootPath, relPkgPath, structName, method string) (*Route, error)
 	}, nil
 }
 
-// findMethodComments extracts the godoc comments for a specific method in a struct
-func findMethodComments(pkg *packages.Package, structName, methodName string) ([]string, error) {
+// findFunctionComments extracts the godoc comments for a specific method in a struct or a pure function
+// If structName is empty, it looks for a pure function; otherwise, it looks for a method
+func findFunctionComments(pkg *packages.Package, structName, functionName string) ([]string, error) {
 	var comments []string
 	found := false
 
@@ -178,21 +193,10 @@ func findMethodComments(pkg *packages.Package, structName, methodName string) ([
 			}
 
 			if fd, ok := n.(*ast.FuncDecl); ok {
-				// Check if this is a method
-				if fd.Recv != nil && len(fd.Recv.List) > 0 {
-					// Get receiver type
-					var recvTypeName string
-					switch typ := fd.Recv.List[0].Type.(type) {
-					case *ast.StarExpr:
-						if ident, ok := typ.X.(*ast.Ident); ok {
-							recvTypeName = ident.Name
-						}
-					case *ast.Ident:
-						recvTypeName = typ.Name
-					}
-
-					// Check if this is the method we're looking for
-					if recvTypeName == structName && fd.Name.Name == methodName {
+				// Check if we're looking for a pure function (no struct name)
+				if structName == "" {
+					// Looking for a pure function - check if it has no receiver
+					if fd.Recv == nil && fd.Name.Name == functionName {
 						// Extract comments
 						if fd.Doc != nil {
 							for _, comment := range fd.Doc.List {
@@ -201,6 +205,32 @@ func findMethodComments(pkg *packages.Package, structName, methodName string) ([
 						}
 						found = true
 						return false
+					}
+				} else {
+					// Looking for a method - check if this is a method with the right receiver
+					if fd.Recv != nil && len(fd.Recv.List) > 0 {
+						// Get receiver type
+						var recvTypeName string
+						switch typ := fd.Recv.List[0].Type.(type) {
+						case *ast.StarExpr:
+							if ident, ok := typ.X.(*ast.Ident); ok {
+								recvTypeName = ident.Name
+							}
+						case *ast.Ident:
+							recvTypeName = typ.Name
+						}
+
+						// Check if this is the method we're looking for
+						if recvTypeName == structName && fd.Name.Name == functionName {
+							// Extract comments
+							if fd.Doc != nil {
+								for _, comment := range fd.Doc.List {
+									comments = append(comments, comment.Text)
+								}
+							}
+							found = true
+							return false
+						}
 					}
 				}
 			}
@@ -213,7 +243,11 @@ func findMethodComments(pkg *packages.Package, structName, methodName string) ([
 	}
 
 	if !found {
-		return nil, fmt.Errorf("method %s not found in struct %s", methodName, structName)
+		if structName == "" {
+			return nil, fmt.Errorf("function %s not found", functionName)
+		} else {
+			return nil, fmt.Errorf("method %s not found in struct %s", functionName, structName)
+		}
 	}
 
 	return comments, nil
