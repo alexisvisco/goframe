@@ -1,6 +1,7 @@
 package gentsclient
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -19,25 +20,73 @@ func (gen *TypescriptClientGenerator) hasRequestFields(route apidoc.Route) bool 
 }
 
 func (gen *TypescriptClientGenerator) AddRoute(route apidoc.Route) {
+	js, _ := json.Marshal(route)
+	fmt.Println(string(js))
+
+	ns := "root"
+	if route.ParentStructName != nil {
+		ns = strings.TrimSuffix(*route.ParentStructName, "Handler")
+	}
+	ns = str.ToCamelCase(ns)
+
+	if _, ok := gen.routeCode[ns]; !ok {
+		gen.routeCode[ns] = make(map[string]string)
+	}
+
+	for path, methods := range route.Paths {
+		for _, method := range methods {
+			baseName := route.Name
+
+			// Check if there's a specific name for this path/method combination
+			if route.NamedRoutes != nil {
+				if methodMap, pathExists := route.NamedRoutes[path]; pathExists {
+					if namedRoute, methodExists := methodMap[method]; methodExists && namedRoute != "" {
+						baseName = namedRoute
+					}
+				}
+			}
+
+			// Generate the function name
+			fnName := str.ToCamelCase(baseName)
+
+			// Handle function name conflicts by prefixing with method
+			if _, exists := gen.routeCode[ns][fnName]; exists {
+				fnName = str.ToCamelCase(strings.ToLower(method) + "_" + baseName)
+			}
+
+			// If there's still a conflict, make it unique by adding the path
+			if _, exists := gen.routeCode[ns][fnName]; exists {
+				// Create a unique identifier from path and method
+				pathPart := strings.ReplaceAll(strings.ReplaceAll(path, "/", "_"), "{", "")
+				pathPart = strings.ReplaceAll(pathPart, "}", "")
+				pathPart = strings.Trim(pathPart, "_")
+				fnName = str.ToCamelCase(strings.ToLower(method) + "_" + pathPart + "_" + baseName)
+			}
+
+			// Generate the function code
+			code := gen.buildRouteFunction(route, path, method, fnName)
+			gen.routeCode[ns][fnName] = code
+		}
+	}
+}
+
+func (gen *TypescriptClientGenerator) buildRouteFunction(route apidoc.Route, path, method, fnName string) string {
 	sb := strings.Builder{}
 	responseType := gen.createResponseType(route)
 	hasRequest := gen.hasRequestFields(route)
 
 	if hasRequest {
 		sb.WriteString(fmt.Sprintf("export async function %s(fetcher: Fetcher, request: %s): Promise<{data: %s, status: number, headers: Headers}> {\n",
-			str.ToCamelCase(route.Name),
+			fnName,
 			gen.schemaNameToExportedType(gen.lookup[route.Request.TypeName]),
 			responseType,
 		))
 	} else {
 		sb.WriteString(fmt.Sprintf("export async function %s(fetcher: Fetcher): Promise<{data: %s, status: number, headers: Headers}> {\n",
-			str.ToCamelCase(route.Name),
+			fnName,
 			responseType,
 		))
 	}
-
-	path := gen.getFirstRoutePath(route.Paths)
-	method := route.Paths[path][0]
 
 	if hasRequest {
 		sb.WriteString(fmt.Sprintf("%sconst parseResult = %s.safeParse(request);\n", gen.indent(1), gen.lookup[route.Request.TypeName]))
@@ -76,7 +125,7 @@ func (gen *TypescriptClientGenerator) AddRoute(route apidoc.Route) {
     const response = await fetcher(options);
     return await handleResponse(response, statusesAllowedToSchema);
   } catch (error) {
-    if (error instanceof ErrorResponse || error instanceof RequestParseError || error instanceof ResponseParseError) {
+    if (error instanceof ErrorResponse || error instanceof RequestParseError ||error instanceof ResponseParseError) {
       throw error;
     } else {
       throw new FetchError(error as Error);
@@ -84,16 +133,7 @@ func (gen *TypescriptClientGenerator) AddRoute(route apidoc.Route) {
   }`
 	sb.WriteString(fmt.Sprintf("%s%s\n", gen.indent(1), constCall))
 	sb.WriteString("}")
-
-	ns := "root"
-	if route.ParentStructName != nil {
-		ns = strings.TrimSuffix(*route.ParentStructName, "Handler")
-	}
-	ns = str.ToCamelCase(ns)
-	if _, ok := gen.routeCode[ns]; !ok {
-		gen.routeCode[ns] = make(map[string]string)
-	}
-	gen.routeCode[ns][route.Name] = sb.String()
+	return sb.String()
 }
 
 func (gen *TypescriptClientGenerator) createResponseType(route apidoc.Route) string {

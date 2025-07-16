@@ -13,8 +13,9 @@ import (
 type Route struct {
 	Name             string
 	PackagePath      string
-	ParentStructName *string             // Name of the parent struct (if any)
-	Paths            map[string][]string // Maps path to methods
+	ParentStructName *string                      // Name of the parent struct (if any)
+	Paths            map[string][]string          // Maps path to methods
+	NamedRoutes      map[string]map[string]string // path -> method -> route name
 	Request          *introspect.ObjectType
 	StatusToResponse []StatusToResponse
 	RequiredHeaders  []string
@@ -159,10 +160,23 @@ func ParseRoute(rootPath, relPkgPath, structName, method string) (*Route, error)
 		// Ignore error if default type doesn't exist
 	}
 
-	// Build paths map
+	// Build paths map and named routes map from the new RouteDefinition structure
 	pathsMap := make(map[string][]string)
-	for _, kv := range fromDoc.PathMethods {
-		pathsMap[kv.Path] = kv.Methods
+	namedRoutes := make(map[string]map[string]string)
+
+	for _, routeDef := range fromDoc.Routes {
+		// Add method to path (accumulating methods for same path)
+		if !contains(pathsMap[routeDef.Path], routeDef.Method) {
+			pathsMap[routeDef.Path] = append(pathsMap[routeDef.Path], routeDef.Method)
+		}
+
+		// Add named route if it has a name
+		if routeDef.Name != "" {
+			if namedRoutes[routeDef.Path] == nil {
+				namedRoutes[routeDef.Path] = make(map[string]string)
+			}
+			namedRoutes[routeDef.Path][routeDef.Method] = routeDef.Name
+		}
 	}
 
 	// Set ParentStructName - use pointer to string so it can be nil if empty
@@ -176,10 +190,21 @@ func ParseRoute(rootPath, relPkgPath, structName, method string) (*Route, error)
 		PackagePath:      pkg.PkgPath,
 		ParentStructName: parentStructName,
 		Paths:            pathsMap,
+		NamedRoutes:      namedRoutes,
 		Request:          requests,
 		StatusToResponse: statusResponses,
 		RequiredHeaders:  fromDoc.RequiredHeaders,
 	}, nil
+}
+
+// Helper function to check if a slice contains a string
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }
 
 // findFunctionComments extracts the godoc comments for a specific method in a struct or a pure function

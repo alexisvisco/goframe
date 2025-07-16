@@ -6,22 +6,23 @@ import (
 	"unicode"
 )
 
-type FromDocPathMethod struct {
-	Path    string
-	Methods []string
+type RouteDefinition struct {
+	Path   string
+	Method string
+	Name   string // optional name for this specific route
+}
+
+type FromDoc struct {
+	Routes          []RouteDefinition
+	Requests        string
+	Responses       []string
+	RequiredHeaders []string
+	StatusResponses []FromDocStatusToResponse
 }
 
 type FromDocStatusToResponse struct {
 	StatusPattern *regexp.Regexp
 	Response      string
-}
-
-type FromDoc struct {
-	PathMethods     []FromDocPathMethod
-	Requests        string
-	Responses       []string
-	RequiredHeaders []string
-	StatusResponses []FromDocStatusToResponse
 }
 
 func ParseAPIDocRoute(lines []string) *FromDoc {
@@ -39,13 +40,25 @@ func ParseAPIDocRoute(lines []string) *FromDoc {
 
 		// Handle path-method pairs
 		if path, hasPath := pairs["path"]; hasPath {
-			pathMethod := FromDocPathMethod{Path: path}
+			methods := []string{"GET"} // default method
 			if method, hasMethod := pairs["method"]; hasMethod {
-				pathMethod.Methods = parseList(method)
-			} else {
-				pathMethod.Methods = []string{"GET"}
+				methods = parseList(method)
 			}
-			route.PathMethods = append(route.PathMethods, pathMethod)
+
+			routeName := ""
+			if name, hasName := pairs["name"]; hasName {
+				routeName = name
+			}
+
+			// Create a route definition for each method
+			for _, method := range methods {
+				routeDef := RouteDefinition{
+					Path:   path,
+					Method: method,
+					Name:   routeName, // same name applies to all methods in this line
+				}
+				route.Routes = append(route.Routes, routeDef)
+			}
 		}
 
 		// Handle other attributes

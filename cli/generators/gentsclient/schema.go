@@ -367,7 +367,7 @@ func (gen *TypescriptClientGenerator) createInterfaces() string {
 							continue
 						}
 						usedNames[fieldKind][name] = true
-						fields[fieldKind].WriteString(fmt.Sprintf("%s%s%s: %s;\n", gen.indent(2), name, optional, tsType))
+						fields[fieldKind].WriteString(fmt.Sprintf("%s%s: %s;\n", name, optional, tsType))
 					}
 				}
 			}
