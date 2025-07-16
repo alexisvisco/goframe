@@ -234,10 +234,10 @@ func (gen *TypescriptClientGenerator) createDurationSchema() {
 		return
 	}
 	sb := strings.Builder{}
-	b, _ := fs.ReadFile("templates/duration.tmpl")
+	b, _ := fs.ReadFile("templates/duration.ts.tmpl")
 	sb.Write(b)
 	sb.WriteString("\n")
-	sb.WriteString("const durationSchema = z.number().int().nonnegative().transform((value) => { new Duration(value) })")
+	sb.WriteString("const durationSchema = z.number().int().nonnegative().transform((value) => new Duration(value))\n")
 	gen.lookup["durationSchema"] = "durationSchema"
 	gen.schemaCode["durationSchema"] = sb.String()
 	gen.objects["durationSchema"] = introspect.ObjectType{}
@@ -249,7 +249,7 @@ func (gen *TypescriptClientGenerator) createDateSchema() {
 		return
 	}
 	gen.lookup["dateSchema"] = "dateSchema"
-	gen.schemaCode["dateSchema"] = "const dateSchema = z.string().datetime().transform((str) => new Date(str))"
+	gen.schemaCode["dateSchema"] = "const dateSchema = z.string().datetime({ offset: true }).transform((value) => new Date(value));\n"
 	gen.objects["dateSchema"] = introspect.ObjectType{}
 	gen.schemaOrder = append(gen.schemaOrder, "dateSchema")
 }
