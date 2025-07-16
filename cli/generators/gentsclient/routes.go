@@ -1,7 +1,6 @@
 package gentsclient
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -20,9 +19,6 @@ func (gen *TypescriptClientGenerator) hasRequestFields(route apidoc.Route) bool 
 }
 
 func (gen *TypescriptClientGenerator) AddRoute(route apidoc.Route) {
-	js, _ := json.Marshal(route)
-	fmt.Println(string(js))
-
 	ns := "root"
 	if route.ParentStructName != nil {
 		ns = strings.TrimSuffix(*route.ParentStructName, "Handler")
