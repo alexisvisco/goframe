@@ -1,3 +1,51 @@
+// Package apidoc
+// Example usage:
+//
+// Simple GET route:
+//
+// // goframe:http_route path=/users method=GET response=UserResponse
+// func GetUsers() {}
+//
+// POST route with request and response:
+//
+// // goframe:http_route path=/users method=POST request=CreateUserRequest response=CreateUserResponse
+// func CreateUser() {}
+//
+// Multiple methods and headers:
+//
+// // goframe:http_route path=/items method=[GET, POST] required_header=Authorization response=ItemResponse
+// func ManageItems() {}
+//
+// Named route example:
+//
+// // goframe:http_route path=/orders method=GET name=ListOrders response=OrderListResponse
+// func ListOrders() {}
+//
+// Status-based responses:
+//
+// // goframe:http_route path=/login method=POST request=LoginRequest response=200:LoginSuccessResponse response=401:ErrorResponse
+// func Login() {}
+//
+// Wildcard status response:
+//
+// // goframe:http_route path=/process method=POST response=2xx:SuccessResponse response=4xx:ClientErrorResponse response=5xx:ServerErrorResponse
+// func Process() {}
+//
+// Range status response:
+//
+// // goframe:http_route path=/status method=GET response=200-299:OKResponse response=400-499:ClientError response=500-599:ServerError
+// func CheckStatus() {}
+//
+// Combining headers, named routes, and status responses:
+//
+// // goframe:http_route path=/reports method=GET name=FetchReports required_header=X-Report-Auth response=2xx:ReportResponse response=401:AuthErrorResponse
+// func FetchReports() {}
+//
+// Omitting the request the request or response will try to find a type with the same name as the method suffixed with "Request" or "Response" respectively:
+//
+// type RouteResponse struct {}
+// // goframe:http_route path=/example method=GET
+// func Route() {}
 package apidoc
 
 import (
