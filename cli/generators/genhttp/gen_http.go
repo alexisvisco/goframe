@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"go/ast"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -156,6 +157,57 @@ func (p *HTTPGenerator) UpdateRouter(handlerType string) error {
 	}
 	gofile.AddLineAfterRegex(`Mux\s+\*http.ServeMux`, fmt.Sprintf("\t%s *%s", handlerType, handlerType))
 	return gofile.Save()
+}
+
+func (p *HTTPGenerator) GenerateRoute(handler, method string, newFile, noMiddleware bool) error {
+	handlerSnake := str.ToSnakeCase(handler)
+	methodSnake := str.ToSnakeCase(method)
+	methodPascal := str.ToPascalCase(method)
+	handlerPascal := str.ToPascalCase(handler)
+
+	tmpl := typeutil.Must(fs.ReadFile("templates/new_route.go.tmpl"))
+
+	gen := func(g *genhelper.GenHelper) {
+		g.WithVar("method_pascal", methodPascal).
+			WithVar("handler_pascal", handlerPascal).
+			WithVar("nomiddleware", noMiddleware).
+			WithVar("path", "").
+			WithVar("method", "").
+			WithVar("new_file", newFile)
+	}
+
+	if newFile {
+		path := filepath.Join("internal/v1handler", fmt.Sprintf("%s_handler_%s.go", handlerSnake, methodSnake))
+		return p.Gen.GenerateFile(generators.FileConfig{Path: path, Template: tmpl, Gen: gen})
+	}
+
+	path := filepath.Join("internal/v1handler", fmt.Sprintf("handler_%s.go", handlerSnake))
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return p.Gen.GenerateFile(generators.FileConfig{Path: path, Template: tmpl, Gen: gen})
+	}
+
+	gf, err := genhelper.LoadGoFile(path)
+	if err != nil {
+		return err
+	}
+	gf.AddNamedImport("", "net/http")
+	gf.AddNamedImport("", "github.com/alexisvisco/goframe/http/httpx")
+	gf.AddNamedImport("", "github.com/alexisvisco/goframe/http/params")
+
+	genHelper := genhelper.New("method", tmpl)
+	genHelper.WithVar("method_pascal", methodPascal).
+		WithVar("handler_pascal", handlerPascal).
+		WithVar("nomiddleware", noMiddleware).
+		WithVar("path", "").
+		WithVar("method", "").
+		WithVar("new_file", false)
+
+	code, err := genHelper.Generate()
+	if err != nil {
+		return err
+	}
+	gf.AddContent("\n" + code)
+	return gf.Save()
 }
 
 func (p *HTTPGenerator) listHandlers() ([]string, error) {

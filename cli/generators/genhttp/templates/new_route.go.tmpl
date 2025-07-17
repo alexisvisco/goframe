@@ -1,0 +1,39 @@
+{{- if .new_file}}
+package v1handler
+
+import (
+  "net/http"
+  "github.com/alexisvisco/goframe/http/httpx"
+  "github.com/alexisvisco/goframe/http/params"
+)
+{{- end }}
+
+type {{ .method_pascal }}Request struct {
+
+}
+
+type {{ .method_pascal }}Response struct {
+
+}
+
+// goframe:http_route path={{ .path }} method={{ .method }}
+func (h *{{ .handler_pascal }}Handler) {{ .method_pascal }}() http.HandlerFunc {
+  {{- if .nomiddleware }}
+  return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+  {{- else }}
+  return httpx.Chain(
+
+  )(func(r *http.Request) (httpx.Response, error) {
+  {{- end }}
+    var req {{ .method_pascal }}Request
+    if err := params.Bind(&req, r); err != nil {
+      return nil, err
+    }
+
+    // todo
+
+    return httpx.JSON.Ok({{ .method_pascal }}Response{
+
+    }), nil
+  })
+}
