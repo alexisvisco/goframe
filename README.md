@@ -6,6 +6,7 @@ A quick overview of what you get out of the box:
 
 - **Command line interface** to generate boilerplate and run utilities.
 - **HTTP server** powered by `net/http` with routing helpers and middleware support.
+- **Typescript client** generation for your API endpoints.
 - **Database** integration through `GORM` with migration helpers.
 - **Internationalization** using YAML translations with typed accessors.
 - **Workers** based on [Temporal](https://temporal.io) for background jobs.
