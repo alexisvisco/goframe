@@ -3,4 +3,6 @@ export default {
 	routing: "Routing",
 	requests: "Requests",
 	responses: "Responses",
+	tsclient: "TypeScript client",
+
 };

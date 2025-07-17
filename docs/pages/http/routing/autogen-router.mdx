@@ -1,0 +1,202 @@
+# Automatic Router Generation
+
+## Overview
+
+The goframe HTTP generator provides automatic router generation by scanning your handler methods for special documentation comments and generating the corresponding route registration code. This eliminates the need to manually maintain route definitions.
+
+## How It Works
+
+The system works in two main steps:
+
+1. **Annotation Scanning**: Scans Go files for methods with `goframe:http_route` comments
+2. **Code Generation**: Generates router registration code using `http.ServeMux.HandleFunc`
+
+## Handler Structure
+
+Define your handlers using the standard `http.HandlerFunc` pattern:
+
+```go
+type UserHandler struct {
+    userService *UserService
+}
+
+func (h *UserHandler) CreateUser() http.HandlerFunc {
+    return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+        // Your business logic here
+        return httpx.JSON.Created(nil), nil
+    })
+}
+```
+
+## Route Annotation Syntax
+
+Use the `goframe:http_route` comment above your handler methods to define routes:
+
+### Basic Route Definition
+
+```go
+// goframe:http_route path=/users method=GET
+func (h *UserHandler) GetUsers() http.HandlerFunc {
+    return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+        // Implementation
+    })
+}
+```
+
+### Syntax
+
+```go
+// goframe:http_route path=/path method=METHOD
+// goframe:http_route path=/path method=[GET,POST]
+```
+
+**Parameters:**
+
+- `path` - The URL path for the route (required)
+- `method` - HTTP method(s). Single: `GET` or multiple: `[GET,POST]` (default: `GET`)
+
+## Examples
+
+### Simple GET Route
+
+```go
+// goframe:http_route path=/users method=GET
+func (h *UserHandler) GetUsers() http.HandlerFunc {
+    return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+        // Implementation
+        return httpx.JSON.OK(users), nil
+    })
+}
+```
+
+### POST Route
+
+```go
+// goframe:http_route path=/users method=POST
+func (h *UserHandler) CreateUser() http.HandlerFunc {
+    return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+        // Implementation
+        return httpx.JSON.Created(user), nil
+    })
+}
+```
+
+### Multiple Methods
+
+```go
+// goframe:http_route path=/items method=[GET,POST]
+func (h *UserHandler) ManageItems() http.HandlerFunc {
+    return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+        // Handle both GET and POST
+    })
+}
+```
+
+### Path Parameters
+
+```go
+// goframe:http_route path=/users/{id} method=GET
+func (h *UserHandler) GetUser() http.HandlerFunc {
+    return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+        // Implementation
+    })
+}
+```
+
+## Generating the Router
+
+### Manual Generation
+
+```bash
+# Generate routes
+bin/goframe g router [packages...]
+```
+Note: default package is `v1handler`
+
+### Generated Router Code
+
+The system generates router registration code like:
+
+```go
+func Router(p RouterParams) {
+    p.Mux.HandleFunc("GET /users", p.UserHandler.GetUsers())
+    p.Mux.HandleFunc("POST /users", p.UserHandler.CreateUser())
+    p.Mux.HandleFunc("GET /users/{id}", p.UserHandler.GetUser())
+    p.Mux.HandleFunc("GET /items", p.UserHandler.ManageItems())
+    p.Mux.HandleFunc("POST /items", p.UserHandler.ManageItems())
+}
+```
+
+## File Structure
+
+The generator works with this file structure:
+
+```
+internal/
+├── v1handler/
+│   ├── router.go           # Generated router with route registrations
+│   ├── handler_user.go     # Your handler implementations
+│   └── handler_order.go
+```
+
+## Complete Example
+
+```go
+// handler_user.go
+package v1handler
+
+import (
+    "net/http"
+    "github.com/alexisvisco/goframe/http/httpx"
+)
+
+type UserHandler struct {
+    userService *UserService
+}
+
+// goframe:http_route path=/users method=GET
+func (h *UserHandler) GetUsers() http.HandlerFunc {
+    return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+        users, err := h.userService.GetAllUsers()
+        if err != nil {
+            return nil, err
+        }
+        return httpx.JSON.OK(users), nil
+    })
+}
+
+// goframe:http_route path=/users method=POST
+func (h *UserHandler) CreateUser() http.HandlerFunc {
+    return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+        // Parse request, create user
+        user, err := h.userService.CreateUser(name, email)
+        if err != nil {
+            return httpx.JSON.BadRequest(err), nil
+        }
+        return httpx.JSON.Created(user), nil
+    })
+}
+
+// goframe:http_route path=/users/{id} method=GET
+func (h *UserHandler) GetUser() http.HandlerFunc {
+    return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+        id := r.PathValue("id")
+        user, err := h.userService.GetUser(id)
+        if err != nil {
+            return httpx.JSON.NotFound(err), nil
+        }
+        return httpx.JSON.OK(user), nil
+    })
+}
+```
+
+After running the generator, this creates a router with:
+
+```go
+func Router(p RouterParams) {
+    p.Mux.HandleFunc("GET /users", p.UserHandler.GetUsers())
+    p.Mux.HandleFunc("POST /users", p.UserHandler.CreateUser())
+    p.Mux.HandleFunc("GET /users/{id}", p.UserHandler.GetUser())
+}
+```
+
