@@ -12,14 +12,12 @@ import (
   "github.com/alexisvisco/goframe/http/middlewares"
   "go.uber.org/fx"
 
-  {{ .imports }}
+{{ .imports }}
 )
 
 func HTTP(cfg *config.Config, lc fx.Lifecycle) (*http.ServeMux) {
   var srvConfig configuration.Server = cfg.GetServer()
   handler := http.NewServeMux()
-
-
 
   srv := &http.Server{
     Addr:              fmt.Sprintf("%s:%s", srvConfig.Host, srvConfig.Port),
@@ -32,7 +30,11 @@ func HTTP(cfg *config.Config, lc fx.Lifecycle) (*http.ServeMux) {
 
     ErrorLog: slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 
-		Handler: middlewares.LoggerMiddleware(nil)(handler),
+    Handler: middlewares.RealIP(nil)(
+      middlewares.Logger(nil)(
+        handler,
+      ),
+    ),
   }
 
   lc.Append(fx.Hook{

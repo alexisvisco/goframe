@@ -4,5 +4,4 @@ export default {
 	requests: "Requests",
 	responses: "Responses",
 	tsclient: "TypeScript client",
-
 };

@@ -1,0 +1,238 @@
+## Troubleshooting
+
+**Issue**: Rate limiting not working
+**Solution**: Verify cache is properly configured and accessible
+
+**Issue**: All requests from same IP
+**Solution**: Ensure IP middleware runs before rate limiter
+
+**Issue**: Unexpected rate limiting behavior
+**Solution**: Check if multiple rules are conflicting - remember all rules must be satisfied
+
+**Issue**: Per-path limiting not working as expected
+**Solution**: Ensure `Global: false` is set explicitly, as default is `true`
+
+**Issue**: High memory usage
+**Solution**: Consider shorter time windows, global mode instead of per-path, or fewer concurrent IPs/paths# Rate Limiter Middleware
+
+The rate limiter middleware controls request frequency per IP address using a true sliding window algorithm. It tracks exact request timestamps and supports multiple rate limiting rules that must all be satisfied.
+
+## Features
+
+- **True Sliding Window**: Tracks exact request timestamps for precise rate limiting
+- **IP-Based Limiting**: Tracks requests per client IP address
+- **Multiple Rules**: Apply multiple rate limits simultaneously (e.g., 10/second + 1000/hour)
+- **Simple API**: Intuitive `RequestsPerHour(100)` syntax
+- **Standard Headers**: Sets `X-RateLimit-*` headers for client visibility
+- **Cache Backend**: Uses any `contracts.Cache` implementation
+
+## Basic Usage
+
+```go filename="middleware.go"
+httpx.Chain(
+    middlewares.RateLimiter(&middlewares.RateLimiterOptions{
+        Cache: cache,
+        Rules: []middlewares.RateRule{
+            middlewares.RequestsPerHour(100),
+        },
+    }),
+)
+```
+
+## Configuration
+
+### RateLimiterOptions Fields
+
+| Field             | Type              | Default                   | Description                                                       |
+|-------------------|-------------------|---------------------------|-------------------------------------------------------------------|
+| `Cache`           | `contracts.Cache` | **Required**              | Cache backend for storing request timestamps                      |
+| `Rules`           | `[]RateRule`      | `[]RateRule{Per60Minute}` | List of rate limiting rules (all must be satisfied)               |
+| `Global`          | `bool`            | `false`                   | If true, rate limits apply per IP globally. If false, per IP+path |
+| `HeaderLimit`     | `string`          | `"X-RateLimit-Limit"`     | Header name for request limit                                     |
+| `HeaderRemaining` | `string`          | `"X-RateLimit-Remaining"` | Header name for remaining requests                                |
+| `HeaderReset`     | `string`          | `"X-RateLimit-Reset"`     | Header name for reset time                                        |
+
+### RateRule Fields
+
+| Field      | Type            | Description                |
+|------------|-----------------|----------------------------|
+| `Requests` | `int`           | Number of requests allowed |
+| `Per`      | `time.Duration` | Time window for the limit  |
+
+## Helper Functions
+
+Available presets and constructors:
+
+### Constructor Functions
+- `RequestsPer(requests, duration)` - Custom rate limit
+- `RequestsPerSecond(requests)` - Requests per second
+- `RequestsPerMinute(requests)` - Requests per minute
+- `RequestsPerHour(requests)` - Requests per hour
+- `RequestsPerDay(requests)` - Requests per day
+
+### Usage Examples
+```go
+// Using constructors
+Rules: []middlewares.RateRule{middlewares.RequestsPerHour(500)}
+
+// Custom duration
+Rules: []middlewares.RateRule{middlewares.RequestsPer(50, 30*time.Minute)}
+```
+
+## Common Configurations
+
+### Global Rate Limiting (Default)
+```go
+middlewares.RateLimiter(&middlewares.RateLimiterOptions{
+    Cache: cache,
+    Global: true, // or omit - defaults to false
+    Rules: []middlewares.RateRule{
+        middlewares.RequestsPerHour(1000),
+    },
+})
+```
+
+### Per-Path Rate Limiting
+```go
+middlewares.RateLimiter(&middlewares.RateLimiterOptions{
+    Cache: cache,
+    Global: false,
+    Rules: []middlewares.RateRule{
+        middlewares.RequestsPerMinute(10),
+    },
+})
+```
+
+### Multiple Rate Limits (All Must Be Satisfied)
+```go
+middlewares.RateLimiter(&middlewares.RateLimiterOptions{
+    Cache: cache,
+    Global: true,
+    Rules: []middlewares.RateRule{
+        middlewares.RequestsPerSecond(10),   // Burst protection
+        middlewares.RequestsPerHour(1000),   // Hourly limit
+        middlewares.RequestsPerDay(10000),   // Daily limit
+    },
+})
+```
+
+### API with Per-Endpoint Limits
+```go
+middlewares.RateLimiter(&middlewares.RateLimiterOptions{
+    Cache: cache,
+    Global: false, // Each endpoint has its own limits
+    Rules: []middlewares.RateRule{
+        middlewares.RequestsPerMinute(100),
+        middlewares.RequestsPerHour(5000),
+    },
+})
+```
+
+## How It Works
+
+1. **Timestamp Tracking**: Stores exact request timestamps for each IP in the cache
+2. **Sliding Window**: Filters out timestamps older than the rule's time window
+3. **Multiple Rules**: Checks all rules - if any rule is violated, the request is blocked
+4. **Precise Limiting**: If you make 100 requests at 2:00 PM, you can't make another until 3:00 PM (for 1-hour limit)
+5. **Response Headers**: Sets rate limit headers showing the most restrictive rule's status
+
+## Response Headers
+
+The middleware sets these headers on every response:
+
+- `X-RateLimit-Limit`: Maximum requests allowed per window
+- `X-RateLimit-Remaining`: Requests remaining in current window
+- `X-RateLimit-Reset`: Unix timestamp when the rate limit resets
+
+## Usage with Other Middlewares
+
+Place rate limiter after IP middleware but before expensive operations:
+
+```go
+httpx.Chain(
+    middlewares.RealIP(nil),           // Get real client IP
+    middlewares.RateLimiter(&middlewares.RateLimiterOptions{
+        Cache: cache,
+        Rules: []middlewares.RateRule{
+            middlewares.RequestsPerHour(100),
+        },
+    }),
+    middlewares.Logger(nil),       // Log after rate limiting
+)
+```
+
+## Multiple Rules Behavior
+
+When multiple rules are specified, **all rules must be satisfied**:
+
+```go
+Rules: []middlewares.RateRule{
+    middlewares.RequestsPerSecond(10),   // Max 10 per second
+    middlewares.RequestsPerHour(1000),   // Max 1000 per hour
+}
+```
+
+- A request is blocked if it would violate **any** rule
+- Headers reflect the **most restrictive** rule (lowest remaining count)
+- Each rule maintains its own sliding window independently
+- Works with both global and per-path modes
+
+## Global vs Per-Path Rate Limiting
+
+### Global Rate Limiting (`Global: true` - Default)
+- **Scope**: Rate limits apply per IP across all endpoints
+- **Use Case**: Prevent abuse of your entire API by a single IP
+- **Example**: IP `192.168.1.1` gets 1000 requests/hour total across all endpoints
+
+```go
+middlewares.RateLimiter(&middlewares.RateLimiterOptions{
+    Cache: cache,
+    Global: true,
+    Rules: []middlewares.RateRule{middlewares.RequestsPerHour(1000)},
+})
+```
+
+### Per-Path Rate Limiting (`Global: false`)
+- **Scope**: Each endpoint has its own rate limit per IP
+- **Use Case**: Different endpoints have different resource costs
+- **Example**: IP `192.168.1.1` gets 1000 requests/hour to `/api/users` AND 1000 requests/hour to `/api/posts`
+
+```go
+middlewares.RateLimiter(&middlewares.RateLimiterOptions{
+    Cache: cache,
+    Global: false,
+    Rules: []middlewares.RateRule{middlewares.RequestsPerHour(1000)},
+})
+```
+
+### Cache Key Differences
+- **Global**: `ratelimit:192.168.1.1:1h0m0s`
+- **Per-Path**: `ratelimit:/api/users.192.168.1.1:1h0m0s`
+
+## Cache Requirements
+
+The rate limiter requires a cache that implements `contracts.Cache`:
+
+```go
+// Example with Redis cache
+cache := redis.New(&redis.Options{
+    Addr: "localhost:6379",
+})
+
+middlewares.RateLimiter(&middlewares.RateLimiterOptions{
+    Cache: cache,
+    Rules: []middlewares.RateRule{
+        middlewares.RequestsPerHour(100),
+    },
+})
+```
+
+## Important Notes
+
+- **Cache Dependency**: Middleware panics if cache is nil
+- **Default Rules**: If no rules provided, defaults to 60 requests per minute
+- **IP Address**: Uses `r.RemoteAddr` - ensure IP middleware runs first
+- **True Sliding Window**: Tracks exact request timestamps, not approximate buckets
+- **Usage**: Stores timestamps for each discriminant (IP or IP+path), automatically cleaned up after window expires
+- **Precision**: More accurate than bucket-based systems, prevents burst attacks
+- **Global vs Per-Path**: Choose based on your API's resource allocation needs
