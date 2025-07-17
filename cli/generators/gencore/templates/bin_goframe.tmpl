@@ -12,13 +12,13 @@
 #   3. Creates a cache directory at ~/.goframe/<module_name_hash>/
 #   4. Builds the CLI binary from cmd/cli/main.go if:
 #      - No cached binary exists
-#      - The main.go file has changed (checksum comparison)
+#      - Any relevant source files have changed (checksum comparison)
 #   5. Executes the cached binary with all provided arguments
 #
 # CACHE STRUCTURE:
 #   ~/.goframe/<module_name_hash>/
 #   ├── bin/goframe              # Compiled binary
-#   └── cli_main_checksum        # SHA256 checksum of the previous main.go
+#   └── sources_checksum         # SHA256 checksum of all relevant source files
 #
 # BUILD PROCESS:
 #   - Attempts to build with 'go build'
@@ -59,6 +59,41 @@ get_go_root() {
     return 1
 }
 
+# Calculate checksum of all relevant source files
+calculate_sources_checksum() {
+    local go_root="$1"
+    local temp_file=$(mktemp)
+
+    # Find all relevant files that could affect the CLI generation
+    find "$go_root" -type f \( \
+        -name "*.go" -o \
+        -name "*.yml" -o \
+        -name "*.yaml" -o \
+        -name "*.sql" -o \
+        -name "go.mod" -o \
+        -name "go.sum" \
+    \) \
+    -not -path "*/.*" \
+    -not -path "*/node_modules/*" \
+    -not -path "*/vendor/*" \
+    -not -path "*/tmp/*" \
+    -not -path "*/temp/*" \
+    -not -path "*/_build/*" \
+    -not -path "*/dist/*" \
+    -not -path "*/docs/.next/*" \
+    -not -path "*/docs/node_modules/*" \
+    | sort | while read -r file; do
+        # Get relative path and file hash
+        rel_path=$(realpath --relative-to="$go_root" "$file")
+        file_hash=$(sha256sum "$file" | awk '{print $1}')
+        echo "$rel_path:$file_hash"
+    done > "$temp_file"
+
+    # Calculate final checksum of all file hashes
+    sha256sum "$temp_file" | awk '{print $1}'
+    rm "$temp_file"
+}
+
 GOMOD=$(find_go_mod | awk '/^module / {print $2; exit}')
 SHA256_GOMOD=$(echo -n "$GOMOD" | sha256sum | awk '{print $1}')
 GO_ROOT=$(get_go_root)
@@ -68,7 +103,7 @@ mkdir -p "$HOME/.goframe/$SHA256_GOMOD"
 
 # Path to the CLI main file and checksum file
 CLI_MAIN_FILE="$GO_ROOT/cmd/cli/main.go"
-CHECKSUM_FILE="$HOME/.goframe/$SHA256_GOMOD/cli_main_checksum"
+CHECKSUM_FILE="$HOME/.goframe/$SHA256_GOMOD/sources_checksum"
 
 # Function to build the binary
 build_binary() {
@@ -76,7 +111,6 @@ build_binary() {
 
     # Try to build first
     if ! go build -o "$HOME/.goframe/$SHA256_GOMOD/bin/goframe" "$CLI_MAIN_FILE"; then
-        echo "Build failed, trying go mod tidy..."
         go mod tidy
         if ! go build -o "$HOME/.goframe/$SHA256_GOMOD/bin/goframe" "$CLI_MAIN_FILE"; then
             echo "Build failed even after go mod tidy"
@@ -85,29 +119,40 @@ build_binary() {
     fi
 
     # Update the checksum after successful build
-    if [[ -f "$CLI_MAIN_FILE" ]]; then
-        sha256sum "$CLI_MAIN_FILE" | awk '{print $1}' > "$CHECKSUM_FILE"
-    fi
+    calculate_sources_checksum "$GO_ROOT" > "$CHECKSUM_FILE"
+    echo "CLI binary built successfully"
 }
 
-# Check if cmd/cli/main.go exists and get its checksum
-if [[ -f "$CLI_MAIN_FILE" ]]; then
-    CURRENT_CHECKSUM=$(sha256sum "$CLI_MAIN_FILE" | awk '{print $1}')
-
-    # Check if checksum file exists and compare
-    if [[ -f "$CHECKSUM_FILE" ]]; then
-        STORED_CHECKSUM=$(cat "$CHECKSUM_FILE")
-        if [[ "$CURRENT_CHECKSUM" != "$STORED_CHECKSUM" || "${NOCACHE:-}" == "true" ]]; then
-            build_binary
-        fi
-    else
-        build_binary
-    fi
-else
+# Check if cmd/cli/main.go exists
+if [[ ! -f "$CLI_MAIN_FILE" ]]; then
     echo "Warning: cmd/cli/main.go not found at $CLI_MAIN_FILE"
+    exit 1
 fi
 
-# Check if there is a bin file and execute it
+# Calculate current sources checksum
+CURRENT_CHECKSUM=$(calculate_sources_checksum "$GO_ROOT")
+
+# Check if we need to rebuild
+NEED_REBUILD=false
+
+if [[ ! -f "$HOME/.goframe/$SHA256_GOMOD/bin/goframe" ]]; then
+    NEED_REBUILD=true
+elif [[ ! -f "$CHECKSUM_FILE" ]]; then
+    NEED_REBUILD=true
+elif [[ "${NOCACHE:-}" == "true" ]]; then
+    NEED_REBUILD=true
+else
+    STORED_CHECKSUM=$(cat "$CHECKSUM_FILE")
+    if [[ "$CURRENT_CHECKSUM" != "$STORED_CHECKSUM" ]]; then
+        NEED_REBUILD=true
+    fi
+fi
+
+if [[ "$NEED_REBUILD" == "true" ]]; then
+    build_binary
+fi
+
+# Execute the CLI binary
 if [[ -f "$HOME/.goframe/$SHA256_GOMOD/bin/goframe" ]]; then
     exec "$HOME/.goframe/$SHA256_GOMOD/bin/goframe" "$@"
 else
