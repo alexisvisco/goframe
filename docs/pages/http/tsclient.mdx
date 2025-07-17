@@ -516,3 +516,10 @@ await UserClient.uploadAvatar(fetcher, {
 ```
 
 This generator provides complete type safety from Go backend to TypeScript frontend, with automatic validation and comprehensive error handling.
+
+### Why no OpenAPI?
+
+The `tsclient` generator is designed to provide a more tailored and type-safe client generation experience compared to OpenAPI.
+It focuses on leveraging Go's type system and Zod for runtime validation, ensuring that the generated TypeScript clients are tightly coupled with the Go backend's types and structures convention.
+
+I will deliver an openapi generator in the future, but for now, the `tsclient` generator is optimized for Go developers who want a seamless integration between their Go HTTP handlers and TypeScript clients without the overhead of OpenAPI specifications.
