@@ -1,21 +1,4 @@
-## Troubleshooting
-
-**Issue**: Rate limiting not working
-**Solution**: Verify cache is properly configured and accessible
-
-**Issue**: All requests from same IP
-**Solution**: Ensure IP middleware runs before rate limiter
-
-**Issue**: Unexpected rate limiting behavior
-**Solution**: Check if multiple rules are conflicting - remember all rules must be satisfied
-
-**Issue**: Per-path limiting not working as expected
-**Solution**: Ensure `Global: false` is set explicitly, as default is `true`
-
-**Issue**: High memory usage
-**Solution**: Consider shorter time windows, global mode instead of per-path, or fewer concurrent IPs/paths# Rate Limiter Middleware
-
-The rate limiter middleware controls request frequency per IP address using a true sliding window algorithm. It tracks exact request timestamps and supports multiple rate limiting rules that must all be satisfied.
+# Rate Limiter Middleware
 
 ## Features
 
