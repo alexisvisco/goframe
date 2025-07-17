@@ -1,0 +1,261 @@
+# URL Helper Generation Documentation
+
+## Overview
+
+The goframe URL helper generator automatically creates type-safe URL building functions based on your route definitions. It analyzes your handlers and their request types to generate functions that help you construct URLs with proper path parameters and query strings.
+
+## How It Works
+
+The system works in three main steps:
+
+1. **Route Analysis**: Scans existing routes from `goframe:http_route` annotations
+2. **Request Type Introspection**: Analyzes request structs for `path` and `query` field tags
+3. **Code Generation**: Generates organized URL helper functions
+
+## Request Type Tags
+
+Define request structs with field tags to specify path and query parameters:
+
+```go
+type GetUserRequest struct {
+    ID     string `path:"id"`           // Path parameter
+    Format string `query:"format"`      // Query parameter
+    Filter string `query:"filter"`      // Query parameter
+}
+
+// goframe:http_route path=/users/{id} method=GET request=GetUserRequest
+func (h *UserHandler) GetUser() http.HandlerFunc {
+    return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
+        id := r.PathValue("id")
+        format := r.URL.Query().Get("format")
+        // Implementation
+    })
+}
+```
+
+## Generated URL Helper Structure
+
+The generator creates a structured URL helper with namespaces based on handler names:
+
+```go
+package urlhelper
+
+import (
+    "fmt"
+    "net/url"
+    "strings"
+    "your-app/config"
+)
+
+type URLs struct {
+    baseURL string
+}
+
+func NewURLs(c *config.Config) URLs {
+    return URLs{
+        baseURL: c.GetServer().URL,
+    }
+}
+
+// Namespace accessors
+func (u URLs) User() UserURL {
+    return UserURL{baseURL: u.baseURL}
+}
+
+func (u URLs) Order() OrderURL {
+    return OrderURL{baseURL: u.baseURL}
+}
+```
+
+## Generated URL Functions
+
+### Simple Routes (No Parameters)
+
+```go
+// From: goframe:http_route path=/users method=GET
+func (u UserURL) GetUsers() string {
+    path := "/users"
+    return u.baseURL + path
+}
+```
+
+### Routes with Path Parameters
+
+```go
+// From: goframe:http_route path=/users/{id} method=GET
+// Request type has: ID string `path:"id"`
+func (u UserURL) GetUser(id string) string {
+    path := "/users/{id}"
+    path = strings.ReplaceAll(path, "{id}", url.PathEscape(fmt.Sprint(id)))
+    return u.baseURL + path
+}
+```
+
+### Routes with Query Parameters
+
+```go
+// Request type has: Format string `query:"format"`, Page string `query:"page"`
+func (u UserURL) SearchUsers(format string, page string) string {
+    path := "/users/search"
+    q := url.Values{}
+    if format != "" { q.Set("format", fmt.Sprint(format)) }
+    if page != "" { q.Set("page", fmt.Sprint(page)) }
+    if enc := q.Encode(); enc != "" { path += "?" + enc }
+    return u.baseURL + path
+}
+```
+
+### Routes with Both Path and Query Parameters
+
+```go
+// Request type has: ID string `path:"id"`, Include string `query:"include"`
+func (u UserURL) GetUserDetails(id string, include string) string {
+    path := "/users/{id}/details"
+    path = strings.ReplaceAll(path, "{id}", url.PathEscape(fmt.Sprint(id)))
+    q := url.Values{}
+    if include != "" { q.Set("include", fmt.Sprint(include)) }
+    if enc := q.Encode(); enc != "" { path += "?" + enc }
+    return u.baseURL + path
+}
+```
+
+## Complete Example
+
+### Handler Definitions
+
+```go
+// handler_user.go
+package v1handler
+
+type UserHandler struct {
+    userService *UserService
+}
+
+type GetUserRequest struct {
+    ID string `path:"id"`
+}
+
+type SearchUsersRequest struct {
+    Query  string `query:"q"`
+    Limit  string `query:"limit"`
+    Offset string `query:"offset"`
+}
+
+type UpdateUserRequest struct {
+    ID   string `path:"id"`
+    Name string `json:"name"`
+}
+
+// goframe:http_route path=/users method=GET request=SearchUsersRequest
+func (h *UserHandler) GetUsers() http.HandlerFunc { /* ... */ }
+
+// goframe:http_route path=/users/{id} method=GET request=GetUserRequest
+func (h *UserHandler) GetUser() http.HandlerFunc { /* ... */ }
+
+// goframe:http_route path=/users/{id} method=PUT request=UpdateUserRequest
+func (h *UserHandler) UpdateUser() http.HandlerFunc { /* ... */ }
+```
+
+### Generated URL Helper
+
+```go
+// internal/v1handler/urlhelper/urlhelper.go
+package urlhelper
+
+import (
+    "fmt"
+    "net/url"
+    "strings"
+    "your-app/config"
+)
+
+type URLs struct {
+    baseURL string
+}
+
+func NewURLs(c *config.Config) URLs {
+    return URLs{
+        baseURL: c.GetServer().URL,
+    }
+}
+
+func (u URLs) User() UserURL {
+    return UserURL{baseURL: u.baseURL}
+}
+
+type UserURL struct {
+    baseURL string
+}
+
+func (u UserURL) GetUsers(query string, limit string, offset string) string {
+    path := "/users"
+    q := url.Values{}
+    if query != "" { q.Set("q", fmt.Sprint(query)) }
+    if limit != "" { q.Set("limit", fmt.Sprint(limit)) }
+    if offset != "" { q.Set("offset", fmt.Sprint(offset)) }
+    if enc := q.Encode(); enc != "" { path += "?" + enc }
+    return u.baseURL + path
+}
+
+func (u UserURL) GetUser(id string) string {
+    path := "/users/{id}"
+    path = strings.ReplaceAll(path, "{id}", url.PathEscape(fmt.Sprint(id)))
+    return u.baseURL + path
+}
+
+func (u UserURL) UpdateUser(id string) string {
+    path := "/users/{id}"
+    path = strings.ReplaceAll(path, "{id}", url.PathEscape(fmt.Sprint(id)))
+    return u.baseURL + path
+}
+```
+
+## Usage in Application Code
+
+### Initialize URL Helper
+
+```go
+func main() {
+    ...
+    urls := urlhelper.NewURLs(cfg)
+
+    // Use the URL helper
+    userListURL := urls.User().GetUsers("john", "10", "0")
+    // Returns: "https://api.example.com/users?q=john&limit=10&offset=0"
+
+    userURL := urls.User().GetUser("123")
+    // Returns: "https://api.example.com/users/123"
+}
+```
+
+## Function Name Resolution
+
+The generator handles naming conflicts intelligently:
+
+1. **Base name**: Uses the method name (e.g., `GetUser`)
+2. **Method conflict**: Adds HTTP method prefix (e.g., `GetGetUser`, `PostGetUser`)
+3. **Path conflict**: Adds path segments (e.g., `GetUsersIdGetUser`)
+
+## Namespace Organization
+
+Functions are organized by handler name:
+
+- `UserHandler` → `UserURL` namespace → `urls.User().MethodName()`
+- `OrderHandler` → `OrderURL` namespace → `urls.Order().MethodName()`
+- Functions without handlers → `RootURL` namespace → `urls.Root().MethodName()`
+
+## Generate URL Helpers
+
+```bash
+# Generate URL helpers from existing routes
+bin/goframe g url-helper [packages...]
+```
+
+## Benefits
+
+1. **Type Safety**: Compile-time checking of URL parameters
+2. **DRY Principle**: Single source of truth for URL patterns
+3. **Refactoring Safe**: URL changes automatically update helper functions
+4. **IDE Support**: Auto-completion and parameter hints
+5. **URL Encoding**: Automatic proper encoding of path and query parameters
+6. **Base URL Management**: Centralized base URL configuration
