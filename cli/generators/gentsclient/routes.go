@@ -23,6 +23,20 @@ func (gen *TypescriptClientGenerator) AddRoute(route apidoc.Route) {
 	if route.ParentStructName != nil {
 		ns = strings.TrimSuffix(*route.ParentStructName, "Handler")
 	}
+
+	if strings.HasPrefix(route.PackagePath, gen.rootImportPath) {
+		sub := strings.TrimPrefix(route.PackagePath, gen.rootImportPath)
+		sub = strings.TrimPrefix(sub, "/")
+		if sub != "" {
+			parts := strings.Split(sub, "/")
+			prefix := strings.Builder{}
+			for _, p := range parts {
+				prefix.WriteString(str.ToPascalCase(p))
+			}
+			ns = prefix.String() + ns
+		}
+	}
+
 	ns = str.ToCamelCase(ns)
 
 	if _, ok := gen.routeCode[ns]; !ok {

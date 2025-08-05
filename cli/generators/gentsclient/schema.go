@@ -14,10 +14,17 @@ func (gen *TypescriptClientGenerator) AddSchema(prefix string, isRequest bool, o
 		var schemaName string
 		var lookupKey string
 
+		effectivePrefix := prefix
+		if !objectType.IsAnonymous {
+			if p, ok := gen.typeNamePrefix[objectType.TypeName]; ok {
+				effectivePrefix = p
+			}
+		}
+
 		if objectType.IsAnonymous {
 			// For anonymous structs, create a unique name based on context
-			if prefix != "" {
-				schemaName = str.ToCamelCase(prefix) + "Schema"
+			if effectivePrefix != "" {
+				schemaName = str.ToCamelCase(effectivePrefix) + "Schema"
 			} else {
 				schemaName = "AnonymousSchema"
 			}
@@ -31,8 +38,8 @@ func (gen *TypescriptClientGenerator) AddSchema(prefix string, isRequest bool, o
 			}
 
 			schemaName = objectType.TypeName[strings.LastIndex(objectType.TypeName, ".")+1:]
-			if prefix != "" {
-				schemaName = prefix + "_" + schemaName
+			if effectivePrefix != "" {
+				schemaName = effectivePrefix + "_" + schemaName
 			}
 			schemaName = str.ToCamelCase(schemaName) + "Schema"
 		}

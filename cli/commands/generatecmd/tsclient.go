@@ -3,9 +3,14 @@ package generatecmd
 import (
 	"fmt"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/alexisvisco/goframe/cli/generators/genhelper"
 	"github.com/alexisvisco/goframe/cli/generators/gentsclient"
+	"github.com/alexisvisco/goframe/core/helpers/introspect"
+	"github.com/alexisvisco/goframe/core/helpers/str"
+	"github.com/alexisvisco/goframe/http/apidoc"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +44,20 @@ func tsclientCmd() *cobra.Command {
 				return err
 			}
 
-			generator := gentsclient.NewTypescriptClientGenerator()
+			var rootImportPath string
+			for _, r := range routes {
+				if strings.HasSuffix(r.PackagePath, flagPkg) {
+					rootImportPath = r.PackagePath
+					break
+				}
+			}
+			if rootImportPath == "" {
+				return fmt.Errorf("failed to resolve root package import path")
+			}
+
+			prefixMap := collectTypePrefixes(routes, rootImportPath)
+
+			generator := gentsclient.NewTypescriptClientGenerator(rootImportPath, prefixMap)
 
 			for _, r := range routes {
 				if r.Request != nil {
@@ -75,4 +93,84 @@ func tsclientCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&flagPkg, "pkg", "p", "internal/v1handler", "Package name where routes are defined")
 
 	return cmd
+}
+
+func collectTypePrefixes(routes []*apidoc.Route, rootImportPath string) map[string]string {
+	type info struct {
+		typeName string
+		pkgPath  string
+		baseName string
+	}
+
+	baseMap := make(map[string][]info)
+
+	var visitField func(ft introspect.FieldType)
+	var visitObject func(obj *introspect.ObjectType)
+
+	visitObject = func(obj *introspect.ObjectType) {
+		if obj == nil {
+			return
+		}
+		if !obj.IsAnonymous {
+			pkgPath := obj.TypeName[:strings.LastIndex(obj.TypeName, ".")]
+			base := obj.TypeName[strings.LastIndex(obj.TypeName, ".")+1:]
+			baseMap[base] = append(baseMap[base], info{obj.TypeName, pkgPath, base})
+		}
+		for _, f := range obj.Fields {
+			visitField(f.Type)
+		}
+	}
+
+	visitField = func(ft introspect.FieldType) {
+		if ft.Array != nil {
+			visitField(ft.Array.ItemType)
+		}
+		if ft.Map != nil {
+			visitField(ft.Map.Key)
+			visitField(ft.Map.Value)
+		}
+		if ft.Object != nil {
+			visitObject(ft.Object)
+		}
+	}
+
+	for _, r := range routes {
+		if r.Request != nil {
+			visitObject(r.Request)
+		}
+		for _, resp := range r.StatusToResponse {
+			if resp.Response != nil {
+				visitObject(resp.Response)
+			}
+		}
+	}
+
+	prefixMap := make(map[string]string)
+	for _, infos := range baseMap {
+		if len(infos) == 1 {
+			prefixMap[infos[0].typeName] = ""
+			continue
+		}
+		for _, inf := range infos {
+			if strings.HasPrefix(inf.pkgPath, rootImportPath) {
+				rel := strings.TrimPrefix(inf.pkgPath, rootImportPath)
+				rel = strings.TrimPrefix(rel, "/")
+				if rel == "" {
+					prefixMap[inf.typeName] = ""
+				} else {
+					segs := strings.Split(rel, "/")
+					var prefix strings.Builder
+					for _, s := range segs {
+						prefix.WriteString(str.ToPascalCase(s))
+					}
+					prefixMap[inf.typeName] = prefix.String()
+				}
+			} else {
+				pkgName := path.Base(inf.pkgPath)
+				prefixMap[inf.typeName] = str.ToPascalCase(pkgName)
+			}
+		}
+	}
+
+	return prefixMap
 }

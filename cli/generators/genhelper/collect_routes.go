@@ -177,20 +177,27 @@ func containsGoFiles(dir string) (bool, error) {
 	return false, nil
 }
 
-// isRootHandlerDir checks if a directory contains router.go file
+// isRootHandlerDir checks if a directory contains both router.go and registry.go files
 func isRootHandlerDir(dir string) (bool, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return false, err
 	}
 
+	var hasRouter, hasRegistry bool
 	for _, entry := range entries {
-		if !entry.IsDir() && entry.Name() == "router.go" {
-			return true, nil
+		if entry.IsDir() {
+			continue
+		}
+		switch entry.Name() {
+		case "router.go":
+			hasRouter = true
+		case "registry.go":
+			hasRegistry = true
 		}
 	}
 
-	return false, nil
+	return hasRouter && hasRegistry, nil
 }
 
 // isSubfolder checks if childPath is a direct or indirect subfolder of parentPath

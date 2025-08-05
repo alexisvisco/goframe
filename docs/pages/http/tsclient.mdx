@@ -29,6 +29,22 @@ The generated file exports:
 - Type-safe client functions (one per route)
 - Error handling classes
 
+## Package-aware naming
+
+The generator resolves naming conflicts across handler packages. Types from sub-packages are automatically prefixed when a root package defines a type with the same name. Namespaces always include the full package path to keep the hierarchy clear.
+
+```ts
+export namespace UserClient {
+  export async function getCompanies(request: GetCompaniesRequest){}
+}
+
+export namespace DashboardUserClient {
+  export async function getCompanies(request: DashboardGetCompaniesRequest){}
+}
+```
+
+Nested packages concatenate their segments (`admin/reports` → `AdminReports`), and external packages receive a prefix only when their type names clash with local ones.
+
 ## Route Declaration Syntax
 
 Routes are declared using `goframe:http_route` comments above handler functions.

@@ -12,12 +12,14 @@ import (
 )
 
 type TypescriptClientGenerator struct {
-	schemaCode  map[string]string                // schemaName -> Zod schema
-	schemaOrder []string                         // Keep insertion order of schemas
-	routeCode   map[string]map[string]string     // namespace -> routeName -> function code
-	lookup      map[string]string                // TypeName -> schemaName
-	objects     map[string]introspect.ObjectType // schemaName -> object
-	isRequest   map[string]bool                  // schemaName -> true if request
+	schemaCode     map[string]string                // schemaName -> Zod schema
+	schemaOrder    []string                         // Keep insertion order of schemas
+	routeCode      map[string]map[string]string     // namespace -> routeName -> function code
+	lookup         map[string]string                // TypeName -> schemaName
+	objects        map[string]introspect.ObjectType // schemaName -> object
+	isRequest      map[string]bool                  // schemaName -> true if request
+	rootImportPath string                           // import path of the root handler package
+	typeNamePrefix map[string]string                // TypeName -> prefix to apply when exporting
 }
 
 const indentStr = "  "
@@ -25,14 +27,16 @@ const indentStr = "  "
 //go:embed templates
 var fs embed.FS
 
-func NewTypescriptClientGenerator() *TypescriptClientGenerator {
+func NewTypescriptClientGenerator(rootImportPath string, typeNamePrefix map[string]string) *TypescriptClientGenerator {
 	t := &TypescriptClientGenerator{
-		schemaCode:  make(map[string]string),
-		schemaOrder: []string{},
-		routeCode:   make(map[string]map[string]string),
-		lookup:      make(map[string]string),
-		objects:     make(map[string]introspect.ObjectType),
-		isRequest:   make(map[string]bool),
+		schemaCode:     make(map[string]string),
+		schemaOrder:    []string{},
+		routeCode:      make(map[string]map[string]string),
+		lookup:         make(map[string]string),
+		objects:        make(map[string]introspect.ObjectType),
+		isRequest:      make(map[string]bool),
+		rootImportPath: rootImportPath,
+		typeNamePrefix: typeNamePrefix,
 	}
 
 	t.createErrorSchema()
