@@ -23,12 +23,8 @@ func migrationCmd() *cobra.Command {
 
 			name := args[0]
 
-			g := generators.Generator{
-				GoModuleName: cmd.Context().Value("module").(string),
-				ORMType:      "gorm",
-			}
-
-			genDB := &gendb.DatabaseGenerator{Gen: &g}
+			g := cmd.Context().Value("generator").(*generators.Generator)
+			genDB := &gendb.DatabaseGenerator{Gen: g}
 
 			return genDB.GenerateMigration(gendb.CreateMigrationParams{
 				Sql:  flagSql,

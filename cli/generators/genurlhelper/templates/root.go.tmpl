@@ -1,0 +1,89 @@
+{{- /*gotype: github.com/alexisvisco/goframe/cli/generators/genurlhelper.RootTemplateData*/}}
+package {{ .Pkg }}
+
+import (
+  "net/url"
+  "strings"
+  "fmt"
+  {{ .Imports }}
+)
+
+type URLs struct {
+  baseURL string
+  {{- range .Handlers }}
+  {{ .Name }} {{ .Type }}
+  {{- end }}
+}
+
+func NewURLs(c *config.Config) URLs {
+  baseURL := c.GetServer().URL
+  return URLs{
+    baseURL: baseURL,
+    {{- range .Handlers }}
+    {{ .Name }}: {{ .Type }}{baseURL: baseURL},
+    {{- end }}
+  }
+}
+
+func prepareUrls(baseUrl, path string, pathsToReplace map[string]string, searchParams url.Values) string {
+  for search, replace := range pathsToReplace {
+    path = strings.ReplaceAll(path, search, replace)
+  }
+
+  rawUrl, _ := url.JoinPath(baseUrl, path)
+  parsedUrl, _ := url.Parse(rawUrl)
+  parsedUrl.RawQuery = searchParams.Encode()
+
+  return parsedUrl.String()
+}
+
+func mergeSearchParams(first url.Values, extraSearchParams ...url.Values) url.Values {
+  merged := first
+  for _, params := range extraSearchParams {
+    if params != nil {
+      for key, values := range params {
+        for _, value := range values {
+          merged.Add(key, value)
+        }
+      }
+    }
+  }
+  return merged
+}
+
+func addToSearchParams(params url.Values, key string, value interface{}) {
+  if value == nil {
+    return
+  }
+  // if ptr dereference it
+  if ptr, ok := value.(*interface{}); ok && ptr != nil {
+    value = *ptr
+  }
+
+  switch v := value.(type) {
+  case string:
+    params.Add(key, v)
+  case []string:
+    for _, val := range v {
+      params.Add(key+"[]", val)
+    }
+  case int, float64:
+    params.Add(key, fmt.Sprint(v))
+  case []int:
+    for _, val := range v {
+      params.Add(key+"[]", fmt.Sprint(val))
+    }
+  case []float64:
+    for _, val := range v {
+      params.Add(key+"[]", fmt.Sprint(val))
+    }
+  case bool:
+    params.Add(key, fmt.Sprint(v))
+  case []bool:
+    for _, val := range v {
+      params.Add(key+"[]", fmt.Sprint(val))
+    }
+  default:
+    params.Add(key, fmt.Sprint(value))
+  }
+}

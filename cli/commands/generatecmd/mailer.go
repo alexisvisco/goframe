@@ -19,7 +19,7 @@ func mailerCmd() *cobra.Command {
 			}
 			name := args[0]
 			action := args[1]
-			g := &generators.Generator{GoModuleName: cmd.Context().Value("module").(string)}
+			g := cmd.Context().Value("generator").(*generators.Generator)
 			genMailer := genmailer.MailerGenerator{Gen: g}
 			if err := genMailer.GenerateMailer(name, action); err != nil {
 				return fmt.Errorf("failed to create mailer: %w", err)

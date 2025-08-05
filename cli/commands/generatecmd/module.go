@@ -24,10 +24,7 @@ func moduleCmd() *cobra.Command {
 		Use:   "auth",
 		Short: "Generate authentication module",
 		RunE: genhelper.WithFileDiff(func(cmd *cobra.Command, args []string) error {
-			g := &generators.Generator{
-				GoModuleName: cmd.Context().Value("module").(string),
-				ORMType:      "gorm",
-			}
+			g := cmd.Context().Value("generator").(*generators.Generator)
 
 			svcGen := &genservice.ServiceGenerator{Gen: g}
 			dbGen := &gendb.DatabaseGenerator{Gen: g}
@@ -51,10 +48,7 @@ func moduleCmd() *cobra.Command {
 		Use:   "image-variant",
 		Short: "Generate image variant module",
 		RunE: genhelper.WithFileDiff(func(cmd *cobra.Command, args []string) error {
-			g := &generators.Generator{
-				GoModuleName: cmd.Context().Value("module").(string),
-				ORMType:      "gorm",
-			}
+			g := cmd.Context().Value("generator").(*generators.Generator)
 
 			svcGen := &genservice.ServiceGenerator{Gen: g}
 			dbGen := &gendb.DatabaseGenerator{Gen: g}

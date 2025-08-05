@@ -1,0 +1,33 @@
+{{- /*gotype: github.com/alexisvisco/goframe/cli/generators/genurlhelper.RouteTemplateData */}}
+{{- if .HasParams }}
+type {{ .ParamsName }}Params struct {
+{{- range $param := .Fields }}
+  {{ $param.Name }} {{ $param.Type }}
+{{- end }}
+}
+
+func (u {{ .NamespaceName}}) {{.RouteName}}(params {{ .ParamsName }}Params, extraSearchParams ...url.Values) string {
+	path := "{{ .RoutePath }}"
+  searchParams := url.Values{}
+
+	{{- if .HasParamsPath }}
+  pathsToReplace := map[string]string{
+    {{- range $param := .ParamsPath }}
+    "{{ $param.PathName }}": url.PathEscape(fmt.Sprint(params.{{ $param.Name }})),
+		{{- end }}
+  }
+	{{- end}}
+	{{- if .HasParamsQuery }}
+  {{- range $param := .ParamsQuery }}
+  addToSearchParams(searchParams, "{{ $param.QueryName }}", params.{{ $param.Name }})
+  {{- end }}
+  {{- end }}
+
+	return prepareUrls(u.baseURL, path, pathsToReplace, mergeSearchParams(searchParams, extraSearchParams...))
+}
+{{- else }}
+func (u {{ .NamespaceName }}) {{.RouteName}}(extraSearchParams ...url.Values) string {
+  path := "{{ .RoutePath }}"
+  return prepareUrls(u.baseURL, path, nil, mergeSearchParams(url.Values{}, extraSearchParams...))
+}
+{{- end}}

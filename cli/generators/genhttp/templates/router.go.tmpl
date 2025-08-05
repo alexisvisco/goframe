@@ -1,4 +1,4 @@
-package v1handler
+package {{ .pkgname }}
 
 import (
   "net/http"
@@ -9,14 +9,8 @@ type RouterParams struct {
   fx.In
 
 	Mux *http.ServeMux
-  {{if .example }}NoteHandler *NoteHandler{{end}}
 }
 
 func Router(p RouterParams) {
-  {{- if .example}}
-  p.Mux.HandleFunc("POST /v1/example", p.NoteHandler.CreateNote())
-  p.Mux.HandleFunc("PATCH /v1/example/{id}", p.NoteHandler.UpdateNote())
-  p.Mux.HandleFunc("DELETE /v1/example/{id}", p.NoteHandler.DeleteNote())
-  p.Mux.HandleFunc("GET /v1/example", p.NoteHandler.ListNotes())
-  {{- end}}
+
 }

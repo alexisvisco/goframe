@@ -1,4 +1,4 @@
-package mailcmd
+package synccmd
 
 import (
 	"fmt"
@@ -10,21 +10,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewCmdMail(subCommands ...*cobra.Command) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "mails <subcommand>",
-		Short: "Mail utilities",
-	}
-	cmd.AddCommand(syncCmd())
-	for _, sc := range subCommands {
-		cmd.AddCommand(sc)
-	}
-	return cmd
-}
-
-func syncCmd() *cobra.Command {
+func syncMails() *cobra.Command {
 	return &cobra.Command{
-		Use:   "sync",
+		Use:   "mails",
 		Short: "Compile MJML templates to HTML",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			htmlDir := filepath.Join("views", "mails", "html")

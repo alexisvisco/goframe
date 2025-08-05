@@ -68,6 +68,24 @@ func (f Field) IsNotSerializable() bool {
 	return hasJSONTag && !hasOtherTags
 }
 
+func (f Field) PathParam() (*FieldTag, bool) {
+	for _, tag := range f.Tags {
+		if tag.Key == FieldKindPath {
+			return &tag, true
+		}
+	}
+	return nil, false
+}
+
+func (f Field) QueryParam() (*FieldTag, bool) {
+	for _, tag := range f.Tags {
+		if tag.Key == FieldKindQuery {
+			return &tag, true
+		}
+	}
+	return nil, false
+}
+
 type FieldKind = string
 
 const (

@@ -11,13 +11,11 @@ import (
 )
 
 type Generator struct {
-	GoModuleName     string
-	DatabaseType     configuration.DatabaseType
-	ORMType          string
-	Maintainer       bool
-	HTTPServer       bool
-	ExampleHTTPFiles bool
-	WorkerType       string
+	GoModuleName string
+	WorkDir      string // where thhe go module is located
+	DatabaseType configuration.DatabaseType
+	Maintainer   bool
+	WorkerType   string
 }
 
 type FilesGenerator interface {
@@ -98,9 +96,9 @@ func (g *Generator) CreateDirectory(path string) error {
 
 func (g *Generator) SkipDirectoryIfExists(path string) bool {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return false // Directory does not exist, so we can create it
+		return false // Path does not exist, so we can create it
 	}
-	return true // Directory exists, so we skip creating it
+	return true // Path exists, so we skip creating it
 }
 
 func (g *Generator) SkipFileIfExists(path string) bool {

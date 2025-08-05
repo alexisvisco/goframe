@@ -19,8 +19,8 @@ func serviceCmd() *cobra.Command {
 				return fmt.Errorf("service name is required")
 			}
 			name := args[0]
-			g := generators.Generator{GoModuleName: cmd.Context().Value("module").(string)}
-			genSvc := genservice.ServiceGenerator{Gen: &g}
+			g := cmd.Context().Value("generator").(*generators.Generator)
+			genSvc := genservice.ServiceGenerator{Gen: g}
 			if err := genSvc.GenerateService(name, withRepo); err != nil {
 				return fmt.Errorf("failed to create service: %w", err)
 			}

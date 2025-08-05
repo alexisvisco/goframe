@@ -23,12 +23,9 @@ func seedCmd() *cobra.Command {
 
 			name := args[0]
 
-			g := generators.Generator{
-				GoModuleName: cmd.Context().Value("module").(string),
-				ORMType:      "gorm",
-			}
+			g := cmd.Context().Value("generator").(*generators.Generator)
 
-			genDB := &gendb.DatabaseGenerator{Gen: &g}
+			genDB := &gendb.DatabaseGenerator{Gen: g}
 
 			return genDB.GenerateSeed(gendb.CreateSeedParams{
 				Sql:  flagSql,

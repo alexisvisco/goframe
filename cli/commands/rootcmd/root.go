@@ -9,10 +9,11 @@ import (
 	"github.com/alexisvisco/goframe/cli/commands/dbcmd"
 	"github.com/alexisvisco/goframe/cli/commands/generatecmd"
 	"github.com/alexisvisco/goframe/cli/commands/i18ncmd"
-	"github.com/alexisvisco/goframe/cli/commands/mailcmd"
 	"github.com/alexisvisco/goframe/cli/commands/refactorcmd"
 	"github.com/alexisvisco/goframe/cli/commands/routescmd"
+	"github.com/alexisvisco/goframe/cli/commands/synccmd"
 	"github.com/alexisvisco/goframe/cli/commands/taskcmd"
+	"github.com/alexisvisco/goframe/cli/generators"
 	"github.com/alexisvisco/goframe/core/configuration"
 	"github.com/alexisvisco/goframe/db/migrate"
 	"github.com/alexisvisco/goframe/db/seed"
@@ -116,6 +117,10 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 			ctx = context.WithValue(ctx, "migrations", defaultOpts.Migrations)
 			ctx = context.WithValue(ctx, "seeds", defaultOpts.Seeds)
 			ctx = context.WithValue(ctx, "db", defaultOpts.DB)
+			ctx = context.WithValue(ctx, "generator", &generators.Generator{
+				GoModuleName: moduleName,
+				WorkDir:      workdir,
+			})
 			ctx = applyConfigs(ctx, defaultOpts.Config)
 
 			// ensure subcommands inherit the context
@@ -133,7 +138,7 @@ func NewCmdRoot(opts ...OptionFunc) *cobra.Command {
 	cmd.AddCommand(taskCommand)
 	cmd.AddCommand(generateCommand)
 	cmd.AddCommand(routescmd.NewCmdRoutes())
-	cmd.AddCommand(mailcmd.NewCmdMail())
+	cmd.AddCommand(synccmd.NewCmdSync())
 	cmd.AddCommand(i18ncmd.NewCmdI18n())
 	cmd.AddCommand(refactorcmd.NewCmdRefactor())
 

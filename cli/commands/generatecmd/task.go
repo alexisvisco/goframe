@@ -20,8 +20,8 @@ func taskCmd() *cobra.Command {
 				return fmt.Errorf("task name is required")
 			}
 			name := args[0]
-			g := generators.Generator{GoModuleName: cmd.Context().Value("module").(string)}
-			taskGen := gentask.TaskGenerator{Gen: &g}
+			g := cmd.Context().Value("generator").(*generators.Generator)
+			taskGen := gentask.TaskGenerator{Gen: g}
 			if err := taskGen.GenerateTask(name, flagDescription); err != nil {
 				return fmt.Errorf("failed to create task: %w", err)
 			}

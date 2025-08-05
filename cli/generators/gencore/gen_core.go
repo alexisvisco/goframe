@@ -64,14 +64,12 @@ func (g *CoreGenerator) generateGoMod() error {
 	dependencies := goframeDeps
 
 	// Add ORM dependencies
-	if g.Gen.ORMType == "gorm" {
-		dependencies = append(dependencies, "gorm.io/gorm")
-		switch g.Gen.DatabaseType {
-		case "postgres":
-			dependencies = append(dependencies, "gorm.io/driver/postgres")
-		case "sqlite":
-			dependencies = append(dependencies, "gorm.io/driver/sqlite")
-		}
+	dependencies = append(dependencies, "gorm.io/gorm")
+	switch g.Gen.DatabaseType {
+	case "postgres":
+		dependencies = append(dependencies, "gorm.io/driver/postgres")
+	case "sqlite":
+		dependencies = append(dependencies, "gorm.io/driver/sqlite")
 	}
 
 	// Write dependencies
@@ -126,9 +124,7 @@ func (g *CoreGenerator) createAppModule(path string) generators.FileConfig {
 				"fxutil.As(storage.NewRepository, new(contracts.StorageRepository))",
 				"provide.Storage",
 				"provide.Worker",
-			}
-			if g.Gen.HTTPServer {
-				providers = append(providers, "provide.HTTP")
+				"provide.HTTP",
 			}
 			genh.WithImport("github.com/alexisvisco/goframe/storage", "storage").
 				WithImport("github.com/alexisvisco/goframe/core/contracts", "contracts").
@@ -145,10 +141,9 @@ func (g *CoreGenerator) createAppMain(path string) generators.FileConfig {
 		Template: typeutil.Must(fs.ReadFile("templates/app_main.go.tmpl")),
 		Gen: func(genh *genhelper.GenHelper) {
 			var invokes []string
-			if g.Gen.HTTPServer {
-				invokes = append(invokes, "v1handler.Router")
-				genh.WithImport(filepath.Join(g.Gen.GoModuleName, "internal/v1handler"), "v1handler")
-			}
+
+			invokes = append(invokes, "v1handler.Router")
+			genh.WithImport(filepath.Join(g.Gen.GoModuleName, "internal/v1handler"), "v1handler")
 			genh.WithImport(filepath.Join(g.Gen.GoModuleName, "internal/app"), "app").
 				WithImport(filepath.Join(g.Gen.GoModuleName, "config"), "config").
 				WithVar("invokes", invokes)

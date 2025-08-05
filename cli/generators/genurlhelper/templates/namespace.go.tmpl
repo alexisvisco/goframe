@@ -1,0 +1,15 @@
+{{- /*gotype: github.com/alexisvisco/goframe/cli/generators/genurlhelper.NamespaceTemplateData */}}
+package {{ .Pkg }}
+
+import (
+  "net/url"
+	"fmt"
+)
+
+type {{ .Name }} struct {
+	baseURL string
+}
+
+{{- range .Routes }}
+{{.}}
+{{- end }}

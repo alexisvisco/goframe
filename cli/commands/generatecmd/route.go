@@ -10,8 +10,9 @@ import (
 )
 
 func routeCmd() *cobra.Command {
-	var generateFile bool
-	var noMiddleware bool
+	var flagFile bool
+	var flagNoMiddleware bool
+	var flagPkg string
 	cmd := &cobra.Command{
 		Use:   "route <handler> <method>",
 		Short: "Add a route method to an existing handler",
@@ -21,15 +22,16 @@ func routeCmd() *cobra.Command {
 			}
 			handler := args[0]
 			method := args[1]
-			g := &generators.Generator{GoModuleName: cmd.Context().Value("module").(string)}
-			genHandler := &genhttp.HTTPGenerator{Gen: g}
-			if err := genHandler.GenerateRoute(handler, method, generateFile, noMiddleware); err != nil {
+			g := cmd.Context().Value("generator").(*generators.Generator)
+			genHandler := &genhttp.HTTPGenerator{Gen: g, BasePath: flagPkg}
+			if err := genHandler.GenerateRoute(handler, method, flagFile, flagNoMiddleware); err != nil {
 				return fmt.Errorf("failed to create route: %w", err)
 			}
 			return nil
 		}),
 	}
-	cmd.Flags().BoolVar(&generateFile, "file", false, "generate route in a separate file")
-	cmd.Flags().BoolVar(&noMiddleware, "nomiddleware", false, "use httpx.Wrap instead of middleware chain")
+	cmd.Flags().BoolVar(&flagFile, "file", false, "generate route in a separate file")
+	cmd.Flags().BoolVar(&flagNoMiddleware, "no-middleware", false, "use httpx.Wrap instead of middleware chain")
+	cmd.Flags().StringVar(&flagPkg, "pkg", "internal/v1handler", "Package name for the generated route")
 	return cmd
 }

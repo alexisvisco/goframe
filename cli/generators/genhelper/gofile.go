@@ -2,6 +2,7 @@ package genhelper
 
 import (
 	"bytes"
+	"fmt"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -21,7 +22,7 @@ type GoFile struct {
 	lines []string // Keep track of actual file lines
 }
 
-// LoadGoFile parses a Go file.
+// LoadGoFile parses a Go file using AST only - no type checking bullshit
 func LoadGoFile(path string) (*GoFile, error) {
 	src, err := os.ReadFile(path)
 	if err != nil {
@@ -117,7 +118,6 @@ func (g *GoFile) AddNamedImport(name, path string) {
 		return
 	}
 	astutil.AddNamedImport(g.fset, g.File, name, path)
-
 	g.syncLinesFromAST()
 }
 
@@ -261,6 +261,216 @@ func (g *GoFile) hasConsecutiveLines(linesToCheck []string) bool {
 	}
 
 	return false
+}
+
+// FieldInfo contains field name and its type info
+type FieldInfo struct {
+	FieldName    string
+	TypeName     string // Le nom du type (ex: "string", "User", "*User")
+	PackagePath  string // Le path du package (ex: "time", "github.com/user/pkg") - vide si type local
+	IsPointer    bool
+	IsSlice      bool
+	IsMap        bool
+	MapKeyType   string // Si c'est une map, le type de la clé
+	MapValueType string // Si c'est une map, le type de la valeur
+}
+
+// GetFieldsFromStruct parse les champs d'une struct depuis l'AST
+func (g *GoFile) GetFieldsFromStruct(structName string) []FieldInfo {
+	var fields []FieldInfo
+
+	// Créer une map des imports pour résoudre les packages
+	imports := g.getImportsMap()
+
+	ast.Inspect(g.File, func(n ast.Node) bool {
+		typeSpec, ok := n.(*ast.TypeSpec)
+		if !ok {
+			return true
+		}
+
+		if typeSpec.Name.Name != structName {
+			return true
+		}
+
+		structType, ok := typeSpec.Type.(*ast.StructType)
+		if !ok {
+			return true
+		}
+
+		// Parser chaque champ
+		for _, field := range structType.Fields.List {
+			fieldInfos := g.parseField(field, imports)
+			fields = append(fields, fieldInfos...)
+		}
+
+		return false // Trouvé la struct, stop
+	})
+
+	return fields
+}
+
+// getImportsMap crée une map alias -> package path
+func (g *GoFile) getImportsMap() map[string]string {
+	imports := make(map[string]string)
+
+	for _, imp := range g.File.Imports {
+		path := strings.Trim(imp.Path.Value, `"`)
+
+		var alias string
+		if imp.Name != nil {
+			// Import avec alias explicite
+			alias = imp.Name.Name
+		} else {
+			// Pas d'alias, utiliser le dernier segment du path
+			parts := strings.Split(path, "/")
+			alias = parts[len(parts)-1]
+		}
+
+		imports[alias] = path
+	}
+
+	return imports
+}
+
+// parseField parse un champ et retourne les infos
+func (g *GoFile) parseField(field *ast.Field, imports map[string]string) []FieldInfo {
+	var fieldInfos []FieldInfo
+
+	// Récupérer les noms des champs
+	var fieldNames []string
+	if len(field.Names) > 0 {
+		// Champs nommés
+		for _, name := range field.Names {
+			fieldNames = append(fieldNames, name.Name)
+		}
+	} else {
+		// Champ embedded (anonymous)
+		typeName := g.getTypeString(field.Type)
+		fieldNames = append(fieldNames, typeName)
+	}
+
+	// Parser le type
+	for _, fieldName := range fieldNames {
+		fieldInfo := FieldInfo{
+			FieldName: fieldName,
+		}
+
+		g.parseTypeInfo(field.Type, &fieldInfo, imports)
+		fieldInfos = append(fieldInfos, fieldInfo)
+	}
+
+	return fieldInfos
+}
+
+// parseTypeInfo parse les infos de type récursivement
+func (g *GoFile) parseTypeInfo(typeExpr ast.Expr, info *FieldInfo, imports map[string]string) {
+	switch t := typeExpr.(type) {
+	case *ast.Ident:
+		// Type simple (int, string, User, etc.)
+		info.TypeName = t.Name
+
+	case *ast.StarExpr:
+		// Pointeur
+		info.IsPointer = true
+		g.parseTypeInfo(t.X, info, imports)
+
+	case *ast.ArrayType:
+		if t.Len == nil {
+			// Slice
+			info.IsSlice = true
+		}
+		g.parseTypeInfo(t.Elt, info, imports)
+
+	case *ast.MapType:
+		// Map
+		info.IsMap = true
+		info.MapKeyType = g.getTypeString(t.Key)
+		info.MapValueType = g.getTypeString(t.Value)
+		info.TypeName = fmt.Sprintf("map[%s]%s", info.MapKeyType, info.MapValueType)
+
+	case *ast.SelectorExpr:
+		// Type avec package (ex: time.Time)
+		if ident, ok := t.X.(*ast.Ident); ok {
+			info.TypeName = t.Sel.Name
+
+			// Résoudre le vrai path du package si possible
+			if fullPath, exists := imports[ident.Name]; exists {
+				info.PackagePath = fullPath
+			} else {
+				// Fallback sur le nom de l'alias si pas trouvé dans les imports
+				info.PackagePath = ident.Name
+			}
+		}
+
+	case *ast.InterfaceType:
+		// Interface
+		info.TypeName = "interface{}"
+
+	case *ast.StructType:
+		// Struct anonyme
+		info.TypeName = "struct{}"
+
+	case *ast.FuncType:
+		// Function type
+		info.TypeName = g.getTypeString(typeExpr)
+
+	case *ast.ChanType:
+		// Channel
+		info.TypeName = g.getTypeString(typeExpr)
+
+	default:
+		// Fallback
+		info.TypeName = g.getTypeString(typeExpr)
+	}
+}
+
+// getTypeString convertit un ast.Expr en string
+func (g *GoFile) getTypeString(expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.Ident:
+		return t.Name
+
+	case *ast.SelectorExpr:
+		return g.getTypeString(t.X) + "." + t.Sel.Name
+
+	case *ast.StarExpr:
+		return "*" + g.getTypeString(t.X)
+
+	case *ast.ArrayType:
+		if t.Len == nil {
+			return "[]" + g.getTypeString(t.Elt)
+		}
+		return "[" + g.getTypeString(t.Len) + "]" + g.getTypeString(t.Elt)
+
+	case *ast.MapType:
+		return "map[" + g.getTypeString(t.Key) + "]" + g.getTypeString(t.Value)
+
+	case *ast.InterfaceType:
+		return "interface{}"
+
+	case *ast.StructType:
+		return "struct{}"
+
+	case *ast.FuncType:
+		// Pour les fonctions, c'est plus complexe mais on fait simple
+		return "func(...)"
+
+	case *ast.ChanType:
+		switch t.Dir {
+		case ast.SEND:
+			return "chan<- " + g.getTypeString(t.Value)
+		case ast.RECV:
+			return "<-chan " + g.getTypeString(t.Value)
+		default:
+			return "chan " + g.getTypeString(t.Value)
+		}
+
+	case *ast.Ellipsis:
+		return "..." + g.getTypeString(t.Elt)
+
+	default:
+		return "unknown"
+	}
 }
 
 func (g *GoFile) AddLineBeforeString(pattern, line string) {
