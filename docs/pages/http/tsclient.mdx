@@ -5,7 +5,7 @@ description: Generate type-safe TypeScript clients for your HTTP APIs with autom
 
 # TypeScript Client Generator
 
-The `tsclient` generator produces a typed client for your HTTP API. It scans your handler packages, reads route declarations and builds functions that validate requests and responses using [Zod](https://github.com/colinhacks/zod).
+The `tsclient` generator produces a typed client for your HTTP API. It automatically discovers all handler packages in a hierarchical structure, reads route declarations and builds functions that validate requests and responses using [Zod](https://github.com/colinhacks/zod).
 
 ## Usage
 
@@ -14,8 +14,10 @@ bin/goframe generate client [packages...] --file <output>
 ```
 
 **Parameters:**
-- `packages` - Handler packages under `internal`. If none provided, defaults to `v1handler`
+- `packages` - Root handler packages under `internal`. If none provided, automatically discovers all root packages
 - `--file` - Output file path. Without this flag, results print to console
+
+The generator automatically discovers root handler packages (containing `router.go` and `registry.go`) and all their subfolders.
 
 ## Quick Start
 
@@ -29,21 +31,49 @@ The generated file exports:
 - Type-safe client functions (one per route)
 - Error handling classes
 
-## Package-aware naming
+## Hierarchical Package Organization
 
-The generator resolves naming conflicts across handler packages. Types from sub-packages are automatically prefixed when a root package defines a type with the same name. Namespaces always include the full package path to keep the hierarchy clear.
+The generator organizes handlers into namespaces based on their package hierarchy. It automatically resolves naming conflicts and creates clear namespace structures.
 
-```ts
-export namespace UserClient {
-  export async function getCompanies(request: GetCompaniesRequest){}
-}
+### Namespace Rules
 
-export namespace DashboardUserClient {
-  export async function getCompanies(request: DashboardGetCompaniesRequest){}
-}
-```
+1. **Root Package Handlers**: Use handler name directly
+   ```ts
+   // internal/v1handler/handler_user.go → UserHandler
+   export namespace UserClient {
+     export async function getUsers(request: GetUsersRequest){}
+   }
+   ```
 
-Nested packages concatenate their segments (`admin/reports` → `AdminReports`), and external packages receive a prefix only when their type names clash with local ones.
+2. **Subpackage Handlers**: Include package path as prefix
+   ```ts
+   // internal/v1handler/dashboard/handler_stats.go → StatsHandler
+   export namespace DashboardStatsClient {
+     export async function getStats(request: GetStatsRequest){}
+   }
+
+   // internal/v1handler/admin/reports/handler_reports.go → ReportsHandler
+   export namespace AdminReportsReportsClient {
+     export async function getReports(request: GetReportsRequest){}
+   }
+   ```
+
+3. **Multiple Root Packages**: Separate files generated
+   ```ts
+   // internal/v1handler generates one file
+   // internal/v2handler generates another file
+   ```
+
+4. **Type Prefixing**: Types are prefixed when conflicts occur between packages
+   ```ts
+   export namespace UserClient {
+     export async function getCompanies(request: GetCompaniesRequest){}
+   }
+
+   export namespace DashboardUserClient {
+     export async function getCompanies(request: DashboardGetCompaniesRequest){}
+   }
+   ```
 
 ## Route Declaration Syntax
 
@@ -338,7 +368,7 @@ export const createFetcher = (baseUrl: string, withToken: string | null = null):
 ### Using the Client
 
 ```typescript
-// Usage example
+// Root package handler usage
 try {
   const result = await UserClient.createUser(fetcher, {
     pathParams: { id: 123 },
@@ -366,6 +396,22 @@ try {
     console.error('Network error:', error.message);
   }
 }
+
+// Subpackage handler usage
+const dashboardStats = await DashboardStatsClient.getStats(fetcher, {
+  pathParams: { period: "monthly" },
+  searchParams: { include: "charts" }
+});
+
+// Admin reports from nested package
+const reports = await AdminReportsReportsClient.generateReport(fetcher, {
+  body: {
+    json: {
+      type: "financial",
+      period: "2024-Q1"
+    }
+  }
+});
 ```
 
 ## Error Handling
@@ -494,6 +540,26 @@ Generates a `UserRequestProfile` interface and schema automatically.
 
 ## Advanced Examples
 
+### Hierarchical Package Structure Example
+
+```
+internal/
+├── v1handler/              # Root package
+│   ├── router.go
+│   ├── registry.go
+│   ├── handler_user.go     # → UserClient namespace
+│   ├── admin/              # Subpackage
+│   │   └── handler_admin.go # → AdminAdminClient namespace
+│   └── dashboard/          # Subpackage
+│       ├── handler_stats.go # → DashboardStatsClient namespace
+│       └── reports/        # Nested subpackage
+│           └── handler_reports.go # → DashboardReportsReportsClient namespace
+└── v2handler/              # Another root package (generates separate file)
+    ├── router.go
+    ├── registry.go
+    └── handler_user.go     # → UserClient namespace (in separate file)
+```
+
 ### Complex Route with Multiple Features
 
 ```go
@@ -533,9 +599,35 @@ await UserClient.uploadAvatar(fetcher, {
 
 This generator provides complete type safety from Go backend to TypeScript frontend, with automatic validation and comprehensive error handling.
 
+## Package Discovery and File Generation
+
+The generator automatically discovers handler packages using these rules:
+
+1. **Root Package Detection**: Packages containing both `router.go` and `registry.go` files
+2. **Subpackage Discovery**: Recursively finds all subfolders with Go handler files
+3. **Separate File Generation**: Each root package generates its own TypeScript client file
+4. **Import Organization**: Handlers from subpackages are properly namespaced and imported
+
+### Multi-Package Generation
+
+```bash
+# Generate clients for all discovered root packages
+bin/goframe g client --file ./web/v1-api.ts --package internal/v1handler
+bin/goframe g client --file ./web/v2-api.ts --package internal/v2handler
+bin/goframe g client --file ./web/admin-api.ts --package internal/adminhandler
+```
+
+Each generated file contains:
+- All handlers from the root package and its subfolders
+- Properly namespaced client functions
+- Type-safe interfaces and schemas
+- Comprehensive error handling
+
 ### Why no OpenAPI?
 
 The `tsclient` generator is designed to provide a more tailored and type-safe client generation experience compared to OpenAPI.
-It focuses on leveraging Go's type system and Zod for runtime validation, ensuring that the generated TypeScript clients are tightly coupled with the Go backend's types and structures convention.
+It focuses on leveraging Go's type system and Zod for runtime validation, ensuring that the generated TypeScript clients are tightly coupled with the Go backend's types and hierarchical package structure.
 
-I will deliver an openapi generator in the future, but for now, the `tsclient` generator is optimized for Go developers who want a seamless integration between their Go HTTP handlers and TypeScript clients without the overhead of OpenAPI specifications.
+The hierarchical package support allows for better code organization and separation of concerns, making it ideal for large applications with multiple API versions or domains.
+
+I will deliver an openapi generator in the future, but for now, the `tsclient` generator is optimized for Go developers who want a seamless integration between their Go HTTP handlers and TypeScript clients without the overhead of OpenAPI specifications and poor typescript codegen.

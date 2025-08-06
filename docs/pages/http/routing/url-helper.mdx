@@ -2,15 +2,16 @@
 
 ## Overview
 
-The goframe URL helper generator automatically creates type-safe URL building functions based on your route definitions. It analyzes your handlers and their request types to generate functions that help you construct URLs with proper path parameters and query strings.
+The goframe URL helper generator automatically creates type-safe URL building functions based on your route definitions. It analyzes your handlers and their request types across all handler packages to generate functions that help you construct URLs with proper path parameters and query strings.
 
 ## How It Works
 
-The system works in three main steps:
+The system works in four main steps:
 
-1. **Route Analysis**: Scans existing routes from `goframe:http_route` annotations
-2. **Request Type Introspection**: Analyzes request structs for `path` and `query` field tags
-3. **Code Generation**: Generates organized URL helper functions
+1. **Package Discovery**: Automatically discovers root handler packages and their subfolders
+2. **Route Analysis**: Scans existing routes from `goframe:http_route` annotations across all packages
+3. **Request Type Introspection**: Analyzes request structs for `path` and `query` field tags
+4. **Code Generation**: Generates organized URL helper functions with proper namespacing
 
 ## Request Type Tags
 
@@ -238,24 +239,73 @@ The generator handles naming conflicts intelligently:
 
 ## Namespace Organization
 
-Functions are organized by handler name:
+Functions are organized by handler name with automatic package prefixing:
 
-- `UserHandler` → `UserURL` namespace → `urls.User().MethodName()`
-- `OrderHandler` → `OrderURL` namespace → `urls.Order().MethodName()`
+### Root Package Handlers
+- `UserHandler` in `internal/v1handler` → `UserURL` namespace → `urls.User().MethodName()`
+- `OrderHandler` in `internal/v1handler` → `OrderURL` namespace → `urls.Order().MethodName()`
+
+### Subpackage Handlers
+- `UserHandler` in `internal/v1handler/admin` → `AdminUserURL` namespace → `urls.AdminUser().MethodName()`
+- `StatsHandler` in `internal/v1handler/dashboard` → `DashboardStatsURL` namespace → `urls.DashboardStats().MethodName()`
+
+### Multiple Root Packages
+- `UserHandler` in `internal/v2handler` → `UserURL` namespace (separate URL helper file)
 - Functions without handlers → `RootURL` namespace → `urls.Root().MethodName()`
+
+The namespace automatically includes the package hierarchy to prevent conflicts between handlers with the same name in different packages.
 
 ## Generate URL Helpers
 
 ```bash
-# Generate URL helpers from existing routes
+# Generate URL helpers for all discovered handler packages
+bin/goframe g url-helper
+
+# Generate URL helpers for specific packages
 bin/goframe g url-helper [packages...]
+```
+
+The generator automatically discovers all root handler packages (containing `router.go` and `registry.go`) and their subfolders.
+
+## Hierarchical Package Example
+
+```
+internal/
+├── v1handler/              # Root package
+│   ├── router.go
+│   ├── registry.go
+│   ├── urlhelper/
+│   │   └── urlhelper.go    # Generated URL helpers
+│   ├── handler_user.go     # → UserURL namespace
+│   ├── handler_order.go    # → OrderURL namespace
+│   ├── admin/              # Subpackage
+│   │   └── handler_admin.go # → AdminAdminURL namespace
+│   └── dashboard/          # Subpackage
+│       └── handler_stats.go # → DashboardStatsURL namespace
+└── v2handler/              # Another root package
+    ├── router.go
+    ├── registry.go
+    ├── urlhelper/
+    │   └── urlhelper.go    # Separate URL helpers for v2
+    └── handler_user.go     # → UserURL namespace (in v2 context)
+```
+
+Generated URL helper structure:
+```go
+// internal/v1handler/urlhelper/urlhelper.go
+func (u URLs) User() UserURL { ... }           // v1handler/handler_user.go
+func (u URLs) Order() OrderURL { ... }         // v1handler/handler_order.go  
+func (u URLs) AdminAdmin() AdminAdminURL { ... } // v1handler/admin/handler_admin.go
+func (u URLs) DashboardStats() DashboardStatsURL { ... } // v1handler/dashboard/handler_stats.go
 ```
 
 ## Benefits
 
 1. **Type Safety**: Compile-time checking of URL parameters
-2. **DRY Principle**: Single source of truth for URL patterns
+2. **DRY Principle**: Single source of truth for URL patterns  
 3. **Refactoring Safe**: URL changes automatically update helper functions
 4. **IDE Support**: Auto-completion and parameter hints
 5. **URL Encoding**: Automatic proper encoding of path and query parameters
 6. **Base URL Management**: Centralized base URL configuration
+7. **Package Organization**: Clear namespace separation for different packages
+8. **Conflict Resolution**: Automatic prefixing prevents naming conflicts
