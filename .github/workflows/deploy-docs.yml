@@ -51,7 +51,9 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Build with Next.js
-        run: NEXT_DEBUG=1 npm run build
+        run: |
+          set -x
+          NEXT_DEBUG=1 npm run build
         env:
           PAGES_BASE_PATH: ${{ steps.setup_pages.outputs.base_path }}
           NODE_ENV: production
