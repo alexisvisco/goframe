@@ -1,0 +1,110 @@
+---
+title: GoFrame Documentation
+description: GoFrame is an opinionated Go framework for building web applications through code generation and modular architecture.
+---
+
+import { Callout } from 'nextra/components'
+
+# GoFrame Documentation
+
+Welcome to the GoFrame documentation! GoFrame is an opinionated framework for building web applications in Go. It provides a powerful command-line interface that scaffolds your project and manages common tasks so you can focus on business logic.
+
+<Callout type="info">
+  GoFrame is based on **file generation** - everything is generated from your code, making it easy to maintain and extend your applications.
+</Callout>
+
+## Key Features
+
+- **🚀 Code Generation**: Automatic scaffolding and code generation based on your specifications
+- **📦 Modular Architecture**: Pick only the modules you need for your project
+- **🛠️ Powerful CLI**: Comprehensive command-line tools for project management
+- **🎯 Developer Experience**: Focus on business logic rather than boilerplate
+- **🔧 Highly Customizable**: Easy to extend and adapt to your specific needs
+- **📝 TypeScript Integration**: Automatic TypeScript client generation for APIs
+
+## What's Included
+
+GoFrame is divided into modules to allow users to pick only what they need:
+
+### Core Modules
+
+- **🏗️ Core Module**: Essential contracts, basic types, and helper functions
+- **🗄️ Database Module**: Database integration with GORM, migrations, and seeds
+- **🌐 HTTP Module**: HTTP server, routing, middleware, and client utilities
+- **⚡ Worker Module**: Background job processing with Temporal workflows
+- **📧 Mail Module**: Email sending with MJML and text templates
+- **📁 Storage Module**: File storage abstraction for disk and S3
+- **⚡ Cache Module**: Caching with optional TTL and event notifications
+- **🔧 CLI Module**: Code generation and project management tools
+
+### Built-in Features
+
+- **HTTP Server** powered by `net/http` with routing helpers
+- **Middleware Support** for logging, CORS, IP detection, and rate limiting
+- **Database Integration** through GORM with migration helpers
+- **Internationalization** using YAML translations with typed accessors
+- **Background Jobs** based on [Temporal](https://temporal.io)
+- **Structured Logging** via canonical log helper built on `slog`
+- **Task Runner** for reusable CLI commands
+- **Authentication** helpers and utilities
+
+## Quick Start
+
+Ready to build with GoFrame? Here's how to get started:
+
+### 1. Install the CLI
+
+```bash
+go install github.com/alexisvisco/goframe/cli/goframe@latest
+```
+
+### 2. Create a New Project
+
+```bash
+goframe init <go-module-name> [flags]
+```
+
+### 3. Start Development Services
+
+```bash
+docker compose up -d
+```
+
+### 4. Run Your Application
+
+```bash
+go run cmd/app/main.go
+```
+
+For detailed setup instructions, check out our [Installation Guide](/getting-started/installation).
+
+## Architecture Overview
+
+GoFrame follows a modular, dependency injection-based architecture:
+
+- **Dependency Injection**: Built on [Uber FX](https://uber-go.github.io/fx/) for clean dependency management
+- **Code Generation**: Generators create boilerplate code based on your specifications
+- **Separation of Concerns**: Clear separation between HTTP handlers, services, and data layers
+- **Configuration Management**: YAML-based configuration with environment variable support
+
+Learn more about the [Architecture](/getting-started/architecture) and [Dependency Injection](/getting-started/di).
+
+## Community & Support
+
+- **GitHub**: [alexisvisco/goframe](https://github.com/alexisvisco/goframe)
+- **Website**: [goframe.alexisvis.co](https://goframe.alexisvis.co)
+
+## Why GoFrame?
+
+GoFrame is designed for developers who want to build robust web applications quickly without sacrificing code quality. By combining code generation, modular architecture, and proven patterns, GoFrame helps you:
+
+- **Move Fast**: Get from idea to production quickly with generated boilerplate
+- **Stay Organized**: Maintain clean, testable code with clear architectural patterns
+- **Scale Confidently**: Add features without technical debt through modular design
+- **Focus on Business Logic**: Spend time on what matters most to your application
+
+Ready to get started? Head over to our [Installation Guide](/getting-started/installation) and build your first GoFrame application!
+
+---
+
+*GoFrame - Build powerful Go web applications with ease*
