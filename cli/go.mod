@@ -3,8 +3,8 @@ module github.com/alexisvisco/goframe/cli
 go 1.24
 
 require (
-	github.com/alexisvisco/goframe/core v0.0.0-20241022120000-abcdef123456
-	github.com/alexisvisco/goframe/db v0.0.0-00010101000000-000000000000
+	github.com/alexisvisco/goframe/core v0.0.0-20250807165130-a40d8d39823e
+	github.com/alexisvisco/goframe/db v0.0.0-20250807165130-a40d8d39823e
 	github.com/alexisvisco/goframe/http v0.0.0-20250807165130-a40d8d39823e
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
@@ -29,9 +29,4 @@ require (
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
-)
-
-replace (
-	github.com/alexisvisco/goframe/core => ../core
-	github.com/alexisvisco/goframe/db => ../db
 )
