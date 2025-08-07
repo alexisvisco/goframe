@@ -32,20 +32,63 @@ jobs:
           cache: "npm"
           cache-dependency-path: "docs/package-lock.json"
 
+      - name: Debug environment
+        run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Working directory: $(pwd)"
+          echo "Available memory: $(free -h)"
+          echo "Disk space: $(df -h)"
+
       - name: Install dependencies
         working-directory: ./docs
-        run: npm ci
+        run: |
+          echo "Installing dependencies..."
+          npm ci --verbose
+          echo "Dependencies installed successfully"
 
-      - name: Build documentation
+      - name: Build documentation with verbose logging
         working-directory: ./docs
-        run: npm run build
+        run: |
+          echo "Starting Next.js build..."
+          echo "Current directory: $(pwd)"
+          echo "Files in directory:"
+          ls -la
+          echo "Package.json content:"
+          cat package.json
+          echo "Next config:"
+          cat next.config.js
+          echo "Running build command with debug..."
+          DEBUG=* npm run build 2>&1 | tee build.log || {
+            echo "Build failed! Exit code: $?"
+            echo "Last 50 lines of build output:"
+            tail -50 build.log
+            echo "Full build log:"
+            cat build.log
+            exit 1
+          }
         env:
           NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: 1
+          CI: true
+
+      - name: Check build output
+        working-directory: ./docs
+        run: |
+          echo "Build completed successfully"
+          echo "Checking out directory:"
+          ls -la out/ || echo "No out directory found"
+          echo "Build artifacts:"
+          find . -name "*.log" -exec echo "Log file: {}" \; -exec cat {} \;
 
       - name: Run postbuild (pagefind)
         working-directory: ./docs
-        run: npm run postbuild
+        run: |
+          echo "Running pagefind..."
+          npm run postbuild --verbose
+          echo "Pagefind completed"
+          echo "Checking pagefind output:"
+          ls -la out/_pagefind/ || echo "No pagefind directory found"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
