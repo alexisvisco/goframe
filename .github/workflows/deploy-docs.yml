@@ -1,17 +1,24 @@
 name: Deploy Documentation to GitHub Pages
 
 on:
+  # Runs on pushes targeting the main branch
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - "docs/**"
+
+  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -19,84 +26,54 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docs
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: 20
           cache: "npm"
           cache-dependency-path: "docs/package-lock.json"
 
-      - name: Debug environment
-        run: |
-          echo "Node version: $(node --version)"
-          echo "NPM version: $(npm --version)"
-          echo "Working directory: $(pwd)"
-          echo "Available memory: $(free -h)"
-          echo "Disk space: $(df -h)"
-
       - name: Install dependencies
-        working-directory: ./docs
-        run: |
-          echo "Installing dependencies..."
-          npm ci --verbose
-          echo "Dependencies installed successfully"
-
-      - name: Build documentation with verbose logging
-        working-directory: ./docs
-        run: |
-          echo "Starting Next.js build..."
-          echo "Current directory: $(pwd)"
-          echo "Files in directory:"
-          ls -la
-          echo "Package.json content:"
-          cat package.json
-          echo "Next config:"
-          cat next.config.js
-          echo "Running build command with debug..."
-          DEBUG=* npm run build 2>&1 | tee build.log || {
-            echo "Build failed! Exit code: $?"
-            echo "Last 50 lines of build output:"
-            tail -50 build.log
-            echo "Full build log:"
-            cat build.log
-            exit 1
-          }
-        env:
-          NODE_ENV: production
-          NEXT_TELEMETRY_DISABLED: 1
-          CI: true
-
-      - name: Check build output
-        working-directory: ./docs
-        run: |
-          echo "Build completed successfully"
-          echo "Checking out directory:"
-          ls -la out/ || echo "No out directory found"
-          echo "Build artifacts:"
-          find . -name "*.log" -exec echo "Log file: {}" \; -exec cat {} \;
-
-      - name: Run postbuild (pagefind)
-        working-directory: ./docs
-        run: |
-          echo "Running pagefind..."
-          npm run postbuild --verbose
-          echo "Pagefind completed"
-          echo "Checking pagefind output:"
-          ls -la out/_pagefind/ || echo "No pagefind directory found"
+        run: npm ci
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        id: setup_pages
+        uses: actions/configure-pages@v5
+
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            docs/.next/cache
+          # Generate a new cache whenever packages or source files change.
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('docs/package-lock.json') }}-${{ hashFiles('docs/**.[jt]s', 'docs/**.[jt]sx', 'docs/**/*.mdx') }}
+          # If source files changed but packages didn't, rebuild from a prior cache.
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('docs/package-lock.json') }}-
+
+      - name: Build with Next.js
+        run: npm run build
+        env:
+          PAGES_BASE_PATH: ${{ steps.setup_pages.outputs.base_path }}
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: Run postbuild (pagefind)
+        run: npm run postbuild
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "./docs/out"
+          path: ./docs/out
 
   deploy:
     environment:
