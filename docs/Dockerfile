@@ -16,8 +16,8 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Build the static site (skip postbuild step that fails on ARM64)
-RUN npx next build
+# Build the static site and run postbuild (includes pagefind generation)
+RUN npm run build
 
 # Production stage - serve static files
 FROM nginx:alpine
@@ -32,6 +32,13 @@ RUN echo 'server { \
     server_name localhost; \
     root /usr/share/nginx/html; \
     index index.html; \
+    \
+    # Handle pagefind search assets \
+    location /_pagefind/ { \
+    try_files $uri =404; \
+    expires 1h; \
+    add_header Cache-Control "public"; \
+    } \
     \
     # Handle static assets \
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ { \
