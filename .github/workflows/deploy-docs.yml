@@ -52,7 +52,7 @@ jobs:
         run: |
           NEXT_DEBUG=1 PAGES_BASE_PATH="${{ steps.setup_pages.outputs.base_path }}" npm run build
         env:
-          NODE_ENV: development
+          NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: 1
 
       - name: Run Pagefind (optional)
