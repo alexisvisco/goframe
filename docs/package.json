@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "export": "next export",
-    "postbuild": "pagefind --site out --output-path out/_pagefind || echo 'Pagefind failed'",
+    "pagefind": "pagefind --site out --output-path out/_pagefind || echo 'Pagefind failed'",
     "start": "next start"
   },
   "repository": {

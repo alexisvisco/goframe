@@ -26,73 +26,47 @@ jobs:
         working-directory: ./docs
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: "npm"
           cache-dependency-path: "docs/package-lock.json"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (including dev)
+        run: npm ci --include=dev
 
-      - name: Setup GitHub Pages
+      - name: Setup Pages
         id: setup_pages
         uses: actions/configure-pages@v5
 
-      - name: Dump environment variables
+      - name: Log env
         run: printenv
 
-      - name: Show working directory & file tree
+      - name: Build Next.js
         run: |
-          echo "== PWD =="
-          pwd
-          echo "== LS -la =="
-          ls -la
-          echo "== FILES IN DOCS =="
-          find . -type f
-
-      - name: Show next.config.js
-        run: cat next.config.js || echo "no next.config.js"
-
-      - name: Patch Next.js to log build failure
-        run: |
-          if [ -f node_modules/next/dist/build/index.js ]; then
-            sed -i 's/process.exit(1)/console.error("❌ Forced exit from build"); process.exit(1)/g' node_modules/next/dist/build/index.js
-          fi
-
-      - name: Build with Next.js (full debug)
-        run: |
-          echo "== START BUILD =="
-          echo "Using basePath: ${{ steps.setup_pages.outputs.base_path }}"
-          NEXT_DEBUG=1 PAGES_BASE_PATH="${{ steps.setup_pages.outputs.base_path }}" npx next build --no-lint --no-types || (echo '❌ next build failed' && exit 1)
-          echo "== END BUILD =="
+          NEXT_DEBUG=1 PAGES_BASE_PATH="${{ steps.setup_pages.outputs.base_path }}" npm run build
         env:
           NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: 1
 
-      - name: Dump .next folder
+      - name: Export Next.js
         run: |
-          echo "== .next folder =="
-          ls -R .next || echo "no .next directory"
-
-      - name: Export static site
-        run: |
-          NEXT_DEBUG=1 PAGES_BASE_PATH="${{ steps.setup_pages.outputs.base_path }}" npx next export --debug || (echo '❌ next export failed' && exit 1)
+          NEXT_DEBUG=1 PAGES_BASE_PATH="${{ steps.setup_pages.outputs.base_path }}" npm run export
         env:
           NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: 1
 
-      - name: Run Pagefind (non-blocking)
+      - name: Run Pagefind (optional)
         run: |
-          npx pagefind --site out --output-path out/_pagefind || echo "⚠️ Pagefind failed (non-blocking)"
+          NEXT_DEBUG=1 PAGES_BASE_PATH="${{ steps.setup_pages.outputs.base_path }}" npm run pagefind
 
-      - name: Upload artifact to GitHub Pages
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./docs/out
