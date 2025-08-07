@@ -4,9 +4,9 @@ on:
   # Déclenche le workflow sur push vers la branche main
   push:
     branches: ["main"]
-    # Optionnel : déclencher seulement si des changements dans docs2
+    # Optionnel : déclencher seulement si des changements dans docs
     paths:
-      - "docs2/**"
+      - "docs/**"
       - ".github/workflows/**"
 
   # Permet de lancer ce workflow manuellement depuis l'onglet Actions
@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./docs2
+        working-directory: ./docs
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,8 +38,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: ./docs2/package-lock.json
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -58,7 +56,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs2/out
+          path: ./docs/out
 
   # Job de déploiement
   deploy:
