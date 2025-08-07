@@ -48,9 +48,16 @@ jobs:
       - name: Log env
         run: printenv
 
-      - name: Build and Export with Next.js
+      - name: Build Next.js
         run: |
           NEXT_DEBUG=1 PAGES_BASE_PATH="${{ steps.setup_pages.outputs.base_path }}" npm run build
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: Export Next.js
+        run: |
+          NEXT_DEBUG=1 PAGES_BASE_PATH="${{ steps.setup_pages.outputs.base_path }}" npm run export
         env:
           NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: 1
