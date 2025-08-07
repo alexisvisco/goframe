@@ -1,12 +1,12 @@
 # Dependencies stage
-FROM node:20 AS deps
+FROM --platform=linux/amd64 node:20 AS deps
 WORKDIR /app
 COPY package.json ./
 RUN rm -f package-lock.json
 RUN npm install
 
 # Build stage
-FROM node:20 AS builder
+FROM --platform=linux/amd64 node:20 AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package-lock.json ./package-lock.json
@@ -20,7 +20,7 @@ ENV NODE_ENV=production
 RUN npm run build
 
 # Production stage - serve static files
-FROM nginx:alpine
+FROM --platform=linux/amd64 nginx:alpine
 WORKDIR /usr/share/nginx/html
 
 # Copy the built static files
