@@ -1,35 +1,33 @@
 {
-  "name": "goframe-docs",
-  "type": "module",
-  "version": "0.0.1",
-  "description": "Goframe docs",
+  "name": "goframe-doc",
+  "version": "1.0.0",
+  "description": "Goframe Documentation",
+  "main": "index.js",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next",
     "build": "next build",
-    "export": "next export",
-    "pagefind": "pagefind --site out --output-path out/_pagefind || echo 'Pagefind failed'",
+    "postbuild": "pagefind --site .next/server/app --output-path out/_pagefind",
     "start": "next start"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/alexisvisco/goframe.git"
+    "url": "github.com/alexisvisco/goframe"
   },
-  "author": "Shu Ding <g@shud.in>",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/alexisvisco/goframe/issues"
-  },
-  "homepage": "https://github.com/alexisvisco/goframe#readme",
+  "keywords": [
+    "golang",
+    "framework",
+    "documentation"
+  ],
+  "author": "alexisvisco",
+  "license": "ISC",
   "dependencies": {
-    "next": "15.4.6",
+    "next": "^15.4.6",
     "nextra": "^4.3.0",
     "nextra-theme-docs": "^4.3.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
   },
   "devDependencies": {
-    "@types/node": "22.10.7",
-    "pagefind": "^1.3.0",
-    "typescript": "^5.6.0"
+    "pagefind": "^1.3.0"
   }
 }

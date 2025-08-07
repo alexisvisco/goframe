@@ -1,9 +1,0 @@
-# Database
-
-GoFrame now fully relies on [Gorm](https://gorm.io) for database access. The generated provider exposes a `*gorm.DB` as the main entry point and also returns the underlying `*sql.DB` handle when you really need it.
-
-See [Connection](./connection.mdx) for how the provider is wired, [Migrations](./migrations.mdx) for schema updates and [Seeds](./seeds.mdx) for populating data.
-
-## Identifier generation
-
-Models typically use string primary keys generated with a short prefix followed by a [cuid2](https://github.com/nrednav/cuid2) value. Prefixes help distinguish record types while cuid2 provides globally unique, sortable identifiers without coordination.
