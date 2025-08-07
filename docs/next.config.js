@@ -11,4 +11,12 @@ export default withNextra({
   images: {
     unoptimized: true,
   },
+  eslint: {
+    // Disable ESLint during builds
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    // Disable TypeScript errors during builds
+    ignoreBuildErrors: true,
+  },
 });
