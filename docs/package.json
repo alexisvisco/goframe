@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "pagefind --site out --output-path out/_pagefind",
+    "_postbuild": "pagefind --site out --output-path out/_pagefind",
     "start": "next start"
   },
   "repository": {
