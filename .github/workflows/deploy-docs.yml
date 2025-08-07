@@ -38,8 +38,8 @@ jobs:
           cache: "npm"
           cache-dependency-path: "docs/package-lock.json"
 
-      - name: Install dependencies (including dev)
-        run: npm ci --include=dev
+      - name: Install dependencies
+        run: npm ci
 
       - name: Setup Pages
         id: setup_pages
@@ -52,14 +52,12 @@ jobs:
         run: |
           NEXT_DEBUG=1 npm run build
         env:
-          NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: 1
 
       - name: Export Next.js
         run: |
           NEXT_DEBUG=1 npm run export
         env:
-          NODE_ENV: production
           NEXT_TELEMETRY_DISABLED: 1
 
       - name: Run Pagefind
