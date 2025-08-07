@@ -1,8 +1,14 @@
-import nextra from 'nextra'
+import nextra from "nextra";
 
 const withNextra = nextra({
-  theme: 'nextra-theme-docs',
-  themeConfig: './theme.config.tsx'
-})
+  // Nextra 4 configuration options
+});
 
-export default withNextra()
+export default withNextra({
+  // Next.js configuration options
+  output: "export",
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
+});

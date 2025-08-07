@@ -1,0 +1,117 @@
+---
+title: Tasks
+description: Learn how to create and manage background tasks in GoFrame applications
+---
+
+import { Callout } from 'nextra/components';
+
+# Tasks
+
+Tasks are simple commands executed from the CLI. They are handy for one‑off scripts or common scriptable operations.
+
+Generate a new task with:
+
+```bash
+bin/goframe generate task <task name> --description "what the task does"
+```
+
+This creates `internal/task/task_<task name>.go` and registers it with the CLI so you can run it directly.
+
+
+
+Run the task using:
+
+```bash
+bin/goframe task <task name> [<args>...] [<flags>...]
+```
+
+## Dependencies
+
+In a task you may want to use dependencies like repositories or services.
+By default we added a little helper called cobradi (command dependency injection) that allows you to inject dependencies into your task.
+
+```go filename="internal/task/task_chocolate.go"
+func NewChocolateTask(options []fx.Option) *cobra.Command {
+  opts := ChocolateTaskOptions{}
+  cmd := &cobra.Command{
+    Use:   "chocolate",
+    Short: "",
+    RunE:  cobradi.RunE(func(task *ChocolateTask, cmd *cobra.Command, args []string) error {
+      cli := &chocolateTaskCli{task: task}
+      return cli.run(cmd.Context(), &opts)
+    }, append(options, fx.Provide(NewChocolateTaskOptions))...),
+  }
+
+  return cmd
+}
+```
+
+```go filename="cmd/cli/main.go"
+rootcmd.WithCommand("task", task.NewChocolateTask(app.Module(cfg))),
+```
+
+By default the task will use all dependencies from the app module so you can use everything from your code.
+
+## Adding flags
+
+```go filename="internal/task/task_chocolate.go"
+type (
+  ChocolateTask struct {
+		// any dependencies can be added here
+  }
+
+  ChocolateTaskParams struct {
+    fx.In
+    // any dependencies can be added here
+  }
+
+  ChocolateTaskOptions struct {
+    verbose       bool
+    chocolateType string
+  }
+
+  chocolateTaskCli struct {
+    task *ChocolateTask
+  }
+)
+
+func NewChocolateTask(params ChocolateTaskParams) *ChocolateTask {
+  return &ChocolateTask{}
+}
+
+func (t ChocolateTask) Run(ctx context.Context, opts *ChocolateTaskOptions) error {
+  fmt.Println("Running chocolate task with options:", opts)
+  return nil
+}
+
+func (t chocolateTaskCli) run(ctx context.Context, opts *ChocolateTaskOptions) error {
+  return t.task.Run(ctx, opts)
+}
+
+func NewChocolateTaskCommand(options []fx.Option) *cobra.Command {
+  opts := ChocolateTaskOptions{}
+  cmd := &cobra.Command{
+    Use:   "chocolate",
+    Short: "",
+    RunE:  cobradi.RunE(func(task *ChocolateTask, cmd *cobra.Command, args []string) error {
+      cli := &chocolateTaskCli{task: task}
+      return cli.run(cmd.Context(), &opts)
+    }, append(options, fx.Provide(NewChocolateTask))...),
+  }
+
+	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", false, "Enable verbose output")
+	cmd.Flags().StringVarP(&opts.chocolateType, "type", "t", "dark", "Type of chocolate to use")
+
+  return cmd
+}
+```
+
+## Usage without the CLI
+
+As you can see above the task is abstracted from the CLI so you can use it in your code by adding `NewChocolateTask` constructor in the app.Module function and referencing it in other places.
+
+<Callout type="info">
+
+	If you do that remove the line on the cli that append it in the task file ` }, append(options, fx.Provide(NewChocolateTask))...),` otherwise FX will report an error since there is two constructors for the same command.
+
+</Callout>
