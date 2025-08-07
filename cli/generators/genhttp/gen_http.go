@@ -367,7 +367,7 @@ func (p *HTTPGenerator) listHandlers() ([]handlerInfo, error) {
 func (p *HTTPGenerator) GenerateRoutes() error {
 	packages, err := genhelper.CollectRootHandlerPackages(p.Gen.WorkDir)
 	if err != nil {
-		return fmt.Errorf("failed to collect root handler packages: %w", err)
+		return nil
 	}
 
 	for _, pkg := range packages {
