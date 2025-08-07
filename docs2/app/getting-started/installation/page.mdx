@@ -1,0 +1,93 @@
+---
+title: Installation
+description: How to install GoFrame CLI and set up your first project
+---
+
+import { Callout } from 'nextra/components'
+
+# Installation
+
+<Callout type={"info"}>GoFrame requires you to have at least **Docker** working and **Golang** installed</Callout>
+
+
+Install the CLI to generate a new project and run common tasks.
+
+```bash
+go install github.com/alexisvisco/goframe/cli@latest
+```
+
+
+
+Create a project in a new directory:
+
+```bash
+goframe init --gomod <go module name> [flags]
+```
+
+There are several options you can pass:
+
+| flag          | description                                  | default  |
+|---------------|----------------------------------------------|----------|
+| --gomod, -g   | Go module name (required)                    | -        |
+| --folder, -f  | Project folder name                          | `.`      |
+| --db-name, -d | Set the database (postgres, sqlite)         | postgres |
+| --worker      | Worker type to use (only temporal supported) | temporal |
+| --maintainer, -m | Add maintainer-specific testing features | false    |
+
+This command scaffolds the folder structure, downloads dependencies and prepares a working `cmd/app/main.go` entry point.
+
+**Example:**
+```bash
+goframe init --gomod github.com/myuser/myproject
+```
+
+## Setup external services
+
+After the installation successful, you can setup the docker-compose file:
+
+```bash
+docker compose up -d
+```
+
+Will setup the following services:
+- **PostgreSQL** (if you selected `postgres` as database) - localhost:7894
+- **Mailpit** - SMTP server for email testing at http://localhost:8025
+- **Temporal** - workflow engine at localhost:7233
+- **Temporal UI** - web interface at http://localhost:8233
+- **MinIO** - object storage at http://localhost:9000 (UI at http://localhost:9001)
+
+## Run the application
+
+You can run the application using the following command:
+
+```bash
+go run cmd/app/main.go
+```
+
+## Run the CLI
+
+GoFrame generates a CLI for you which is located in your application at `cmd/cli/main.go`. After building it, you can run it using:
+
+```bash
+bin/goframe --help
+```
+The generated CLI includes commands for:
+- **Database operations**: migrations, seeds, cleanup
+- **Code generation**: handlers, services, migrations, mailers, workers
+- **Development tools**: route listing, sync operations, i18n management
+- **Tasks**: custom task management
+
+You can extend the CLI with your own commands. See the [CLI documentation](/docs/cli) for more details.
+
+## Available CLI Commands
+
+Once your project is set up, the generated CLI provides these main command groups:
+
+- `db` - Database operations (migrate, rollback, seeds, clean)
+- `generate` - Code generators (handler, service, migration, mailer, etc.)
+- `task` - Task management if any
+- `routes` - List application routes
+- `sync` - Synchronization operations
+- `i18n` - Internationalization management
+- `refactor` - Code refactoring utilities
+- `sync` - Synchronization operations (router, registries, mails ...)

@@ -1,0 +1,30 @@
+---
+title: Workers
+description: Learn how to use Temporal workers for background job processing and workflow orchestration in GoFrame
+---
+
+# Workers
+
+GoFrame chooses [Temporal](https://temporal.io) as the worker engine. A worker listens on a task queue and executes *workflows* and *activities*.
+
+A **workflow** defines the orchestration of long running business logic, you can see that as job. It is durable and can pause or resume across process restarts.
+
+An **activity** performs the actual side effects like sending emails or writing to a database. Activities are invoked from workflows and automatically retried by Temporal if they fail.
+
+The CLI can bootstrap them for you:
+
+```bash
+bin/goframe generate worker workflow ImageCleaner CleamImage SendNotification
+```
+
+This command create a ImageCleanerWorkflow and two activities: CleanImageActivity and SendNotificationActivity.
+
+Temporal brings several benefits:
+
+- State persistence so workflows survive process crashes
+- Automatic retries for activities
+- Built‑in tooling for versioning and scheduling
+
+So for instance image you run a workflow to clean images, an crash right after the CleanImageActivity, Temporal will process the remaining activity so for instance the SendNotificationActivity.
+
+Check the [Temporal documentation](https://docs.temporal.io/develop/go/core-application) for more details on how to write workflows and activities.

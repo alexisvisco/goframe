@@ -1,0 +1,15 @@
+export default {
+  index: "Introduction",
+  "getting-started": "Getting Started",
+  http: "HTTP",
+  database: "Database",
+  worker: "Worker",
+  cache: "Cache",
+  storage: "Storage",
+  mails: "Mail",
+  tasks: "Tasks",
+  logger: "Logger",
+  cli: "CLI",
+  i18n: "Internationalization",
+  auth: "Authentication",
+};

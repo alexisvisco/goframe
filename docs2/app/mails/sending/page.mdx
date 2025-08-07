@@ -1,0 +1,12 @@
+# Sending emails
+
+Mailer methods start the `SendEmailWorkflow` in the background. The generated code resembles:
+
+```go filename="mailer_welcome.go"
+func (m *WelcomeMailer) SendWelcome(ctx context.Context, vars types.WelcomeMailerSendWelcomeParams) error {
+    return triggerWorkflow(ctx, m.client, vars, vars.To, "SendWelcome", "welcome_send_welcome")
+}
+```
+
+Calling `SendWelcome` returns as soon as the workflow has been scheduled. The actual SMTP transaction happens inside the workflow which retries on failure.
+Inside the workflow, the `SendEmailActivity` is executed with a retry policy of three attempts.

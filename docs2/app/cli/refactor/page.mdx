@@ -1,0 +1,26 @@
+# Refactor utilities
+
+The `refactor` command helps doing framework idiomatic refactor based on convention.
+
+## split-handler
+
+```bash
+bin/goframe refactor split-handler <handler name> <file> [-y]
+```
+
+The command inspects all methods on the given struct and offers to extract each one into a new file along with any related request or response structs. Use `-y` to automatically confirm all prompts.
+
+```go
+type LoginWithPasswordRequest struct {
+
+}
+type LoginWithPasswordResponse struct {
+
+}
+
+func (h *UserHandler) LoginWithPassword() http.HandlerFunc {
+ // ...
+}
+```
+
+As an example LoginWithPassword, LoginWithPasswordRequest LoginWithPasswordResponse are extracted to `handler_user_login_with_password.go`:

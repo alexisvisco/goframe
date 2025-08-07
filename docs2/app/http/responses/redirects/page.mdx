@@ -1,0 +1,9 @@
+# Redirects
+
+Use `httpx.NewRedirectResponse` to send an HTTP redirect.
+
+```go
+return httpx.NewRedirectResponse(http.StatusFound, "/login")
+```
+
+The helper ensures the status code is valid and sets the `Location` header for you.

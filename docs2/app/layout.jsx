@@ -1,49 +1,58 @@
-import { Footer, Layout, Navbar } from "nextra-theme-docs";
-import { Banner, Head } from "nextra/components";
-import { getPageMap } from "nextra/page-map";
-import "nextra-theme-docs/style.css";
+import { Footer, Layout, Navbar } from 'nextra-theme-docs'
+import { Banner, Head, Search } from 'nextra/components'
+import { getPageMap } from 'nextra/page-map'
+import 'nextra-theme-docs/style.css'
 
 export const metadata = {
-  // Define your metadata here
-  // For more information on metadata API, see: https://nextjs.org/docs/app/building-your-application/optimizing/metadata
-};
+  title: {
+    default: 'Goframe',
+    template: '%s – Goframe'
+  },
+  description: 'GoFrame is a framework that is based on file generation.',
+  openGraph: {
+    title: 'Goframe',
+    description: 'GoFrame is a framework that is based on file generation.',
+    siteName: 'Goframe',
+    locale: 'en_US',
+    type: 'website'
+  }
+}
 
-const banner = <Banner storageKey="some-key">Nextra 4.0 is released 🎉</Banner>;
 const navbar = (
   <Navbar
-    logo={<b>Nextra</b>}
-    // ... Your additional navbar options
+    logo={<span>Goframe</span>}
+    projectLink="https://github.com/alexisvisco/goframe"
+    chatLink="https://discord.com"
   />
-);
-const footer = <Footer>MIT {new Date().getFullYear()} © Nextra.</Footer>;
+)
+
+const footer = (
+  <Footer className="flex-col items-center md:items-start">
+    Goframe Documentation
+  </Footer>
+)
 
 export default async function RootLayout({ children }) {
   return (
     <html
-      // Not required, but good for SEO
       lang="en"
-      // Required to be set
       dir="ltr"
-      // Suggested by `next-themes` package https://github.com/pacocoursey/next-themes#with-app
       suppressHydrationWarning
     >
-      <Head
-      // ... Your additional head options
-      >
-        {/* Your additional tags should be passed as `children` of `<Head>` element */}
-      </Head>
+      <Head />
       <body>
         <Layout
-          banner={banner}
           navbar={navbar}
           pageMap={await getPageMap()}
-          docsRepositoryBase="https://github.com/shuding/nextra/tree/main/docs"
+          docsRepositoryBase="https://github.com/alexisvisco/goframe/tree/main/docs"
+          editLink="Edit this page on GitHub"
+          sidebar={{ defaultMenuCollapseLevel: 1 }}
           footer={footer}
-          // ... Your additional layout options
+          search={<Search />}
         >
           {children}
         </Layout>
       </body>
     </html>
-  );
+  )
 }
