@@ -1,3 +1,5 @@
+github.com/alexisvisco/goframe/core v0.0.0-20250807165130-a40d8d39823e h1:m9REsvuKI+8H3BEA/saOyw0fWC0uXIYH5kNuIICM3RA=
+github.com/alexisvisco/goframe/core v0.0.0-20250807165130-a40d8d39823e/go.mod h1:B/L7kLg5UOkFzlcS9UB4M9HMsyoTzfFG+AU4gdN8VWs=
 github.com/wneessen/go-mail v0.3.0 h1:deMOckwamWEHAgfP5HsH5O0EX450ZYYchlN93HpFCLc=
 github.com/wneessen/go-mail v0.3.0/go.mod h1:m25lkU2GYQnlVr6tdwK533/UXxo57V0kLOjaFYmub0E=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=

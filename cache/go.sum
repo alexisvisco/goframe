@@ -1,7 +1,11 @@
 github.com/Oudwins/zog v0.21.3 h1:xqOiDQjC1DGVfoCSPfcT1eJcvTmInnnaDZGBz+mcohk=
 github.com/Oudwins/zog v0.21.3/go.mod h1:c4ADJ2zNkJp37ZViNy1o3ZZoeMvO7UQVO7BaPtRoocg=
+github.com/alexisvisco/goframe/core v0.0.0-20250807165130-a40d8d39823e h1:m9REsvuKI+8H3BEA/saOyw0fWC0uXIYH5kNuIICM3RA=
+github.com/alexisvisco/goframe/core v0.0.0-20250807165130-a40d8d39823e/go.mod h1:B/L7kLg5UOkFzlcS9UB4M9HMsyoTzfFG+AU4gdN8VWs=
 github.com/alexisvisco/goframe/db v0.0.0-20250703071310-7ec00ae0bf76 h1:lkMrEFlK7AzUY/2eIu7S6tOJvT+6ePFADSQ6fQDxQvA=
 github.com/alexisvisco/goframe/db v0.0.0-20250703071310-7ec00ae0bf76/go.mod h1:XwQLopFORrv7FHRYL5pI5jXfd8Wu2rZSLwvUAjcK1Bw=
+github.com/alexisvisco/goframe/db v0.0.0-20250807165130-a40d8d39823e h1:pfyaONGVEKbS1SY0wBisVhINX9pJf9HTQpbzlxnVGpA=
+github.com/alexisvisco/goframe/db v0.0.0-20250807165130-a40d8d39823e/go.mod h1:XwQLopFORrv7FHRYL5pI5jXfd8Wu2rZSLwvUAjcK1Bw=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=

@@ -4,12 +4,14 @@ go 1.24
 
 require (
 	github.com/alexisvisco/goframe/core v0.0.0-20241022120000-abcdef123456
-	github.com/alexisvisco/goframe/db v0.0.0-20241022120000-abcdef123456
+	github.com/alexisvisco/goframe/db v0.0.0-00010101000000-000000000000
+	github.com/alexisvisco/goframe/http v0.0.0-20250807165130-a40d8d39823e
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/fx v1.24.0
-	golang.org/x/mod v0.17.0
-	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d
+	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792
+	golang.org/x/mod v0.26.0
+	golang.org/x/tools v0.35.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.25.5
 )
@@ -24,7 +26,8 @@ require (
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 )
 

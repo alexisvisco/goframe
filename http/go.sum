@@ -1,5 +1,7 @@
 github.com/Oudwins/zog v0.21.1 h1:y6Ix9vNkDF8crLzOTU0A6kjT+uv5pgkHer9CBjYp93A=
 github.com/Oudwins/zog v0.21.1/go.mod h1:c4ADJ2zNkJp37ZViNy1o3ZZoeMvO7UQVO7BaPtRoocg=
+github.com/alexisvisco/goframe/core v0.0.0-20250807165130-a40d8d39823e h1:m9REsvuKI+8H3BEA/saOyw0fWC0uXIYH5kNuIICM3RA=
+github.com/alexisvisco/goframe/core v0.0.0-20250807165130-a40d8d39823e/go.mod h1:B/L7kLg5UOkFzlcS9UB4M9HMsyoTzfFG+AU4gdN8VWs=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
