@@ -5,8 +5,8 @@
   "description": "Goframe docs",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "ignorepostbuild": "pagefind --site .next/server/app --output-path out/_pagefind",
+    "build": "next build && next export",
+    "postbuild": "pagefind --site out --output-path out/_pagefind || echo 'Pagefind failed'",
     "start": "next start"
   },
   "repository": {
