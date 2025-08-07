@@ -6,10 +6,6 @@ const withNextra = nextra({
 
 export default withNextra({
   output: "export",
-  basePath:
-    process.env.PAGES_BASE_PATH && process.env.PAGES_BASE_PATH !== ""
-      ? process.env.PAGES_BASE_PATH
-      : undefined,
   trailingSlash: true,
   images: {
     unoptimized: true,
