@@ -50,7 +50,7 @@ jobs:
 
       - name: Build Next.js
         run: |
-          NEXT_DEBUG=1 npm run build
+          NEXT_DEBUG=1 npm run build -- -d
         env:
           NEXT_TELEMETRY_DISABLED: 1
 
