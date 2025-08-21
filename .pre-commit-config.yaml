@@ -1,0 +1,41 @@
+repos:
+  - repo: local
+    hooks:
+      - id: go-work-sync
+        name: Go workspace sync
+        entry: go work sync
+        language: system
+        files: '(go\.mod|go\.sum|go\.work)$'
+        pass_filenames: false
+        description: "Synchronize Go workspace modules"
+
+      - id: go-mod-tidy
+        name: Go mod tidy
+        entry: bash -c 'for dir in $(find . -name "go.mod" -exec dirname {} \;); do echo "Tidying $dir"; (cd "$dir" && go mod tidy); done'
+        language: system
+        files: '(go\.mod|go\.sum)$'
+        pass_filenames: false
+        description: "Run go mod tidy on all modules"
+
+      - id: go-fmt
+        name: Go format
+        entry: gofmt
+        language: system
+        args: [-w]
+        files: '\.go$'
+        description: "Format Go code"
+
+      - id: go-vet
+        name: Go vet
+        entry: go vet
+        language: system
+        args: [./...]
+        files: '\.go$'
+        pass_filenames: false
+        description: "Run go vet static analysis"
+
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-imports
+        args: [-w]

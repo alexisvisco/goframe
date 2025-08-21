@@ -10,6 +10,7 @@ go run cmd/cli/main.go generate <type> <name> [options]
 
 ### Application Components
 
+- **`scaffold <name> <field:type>...`** – Generate complete CRUD scaffold with model, service, handler, and migration
 - **`handler <name> [services...]`** – Create HTTP request handlers with optional service dependencies
 - **`service <name> [--with-repo]`** – Generate service layer components with optional repository integration
 - **`route <handler> <method>`** – Add route methods to existing handlers
@@ -42,14 +43,77 @@ go run cmd/cli/main.go generate <type> <name> [options]
 - Generated code follows GoFrame conventions and patterns
 - Most generators support additional flags for customization
 
+## Scaffold Generator
+
+The scaffold generator creates a complete CRUD setup for a model, including:
+
+- **Model type** with fields and validation tags
+- **Service interface and implementation** with CRUD operations
+- **HTTP handler**
+- **Database migration** with proper table structure
+
+### Usage
+
+```bash
+go run cmd/cli/main.go generate scaffold <name> <field:type>... [flags]
+```
+
+### Supported Field Types
+
+- `string` – VARCHAR(255)
+- `text` – TEXT
+- `integer`/`int` – INTEGER
+- `bigint` – BIGINT
+- `float` – FLOAT
+- `decimal` – DECIMAL(10,2)
+- `boolean` – BOOLEAN
+- `binary` – BYTEA
+- `date` – DATE
+- `time` – TIME
+- `datetime`/`timestamp` – TIMESTAMP
+- `timestampz` – TIMESTAMPTZ
+
+### Flags
+
+- `--no-service` – Skip service generation
+- `--no-handler` – Skip handler generation
+- `--no-migration` – Skip migration generation
+
+### Generated Files
+
+For a model named `User`:
+
+```
+internal/types/user.go           # Model and service interface
+internal/service/service_user.go # Service implementation
+internal/handler/user.go         # HTTP handlers
+db/migrations/YYYYMMDD_create_users.sql # Migration
+```
+
+### Default Behavior
+
+- Automatically adds `id`, `created_at`, and `updated_at` fields
+- Uses CUID2 for string IDs, auto-increment for integer IDs
+- Pluralizes table names (User → users)
+- Updates service registry automatically
+
 ## Examples
 
 ```bash
+# Generate complete user scaffold
+go run cmd/cli/main.go generate scaffold user name:string email:string age:int
+
+# Generate post with custom ID type
+go run cmd/cli/main.go generate scaffold post id:int title:string content:text published:boolean
+
+# Generate product without handler
+go run cmd/cli/main.go generate scaffold product name:string price:decimal --no-handler
+
 # Generate a user handler with user service dependency
 go run cmd/cli/main.go generate handler user UserService
 
-# Create a service with repository integration
-go run cmd/cli/main.go generate service user --with-repo
+# Create a service
+go run cmd/cli/main.go generate service user
 
 # Add a route method to existing handler
 go run cmd/cli/main.go generate route user GetProfile

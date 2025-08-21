@@ -1,0 +1,98 @@
+package service
+
+{{- if .imports }}
+import (
+  {{ .imports }}
+)
+{{- end }}
+
+type {{ .name_pascal }}Service struct {
+	db *gorm.DB
+}
+
+var _ types.{{ .name_pascal }}Service = (*{{ .name_pascal }}Service)(nil)
+
+func New{{ .name_pascal }}Service(db *gorm.DB) *{{ .name_pascal }}Service {
+	return &{{ .name_pascal }}Service{db: db}
+}
+
+func (s *{{ .name_pascal }}Service) Create(ctx context.Context, {{ .name_camel }} *types.{{ .name_pascal }}) (*types.{{ .name_pascal }}, error) {
+	{{- if eq .id_type "string" }}
+	// Generate CUID2 for string ID
+	if {{ .name_camel }}.ID == "" {
+		{{ .name_camel }}.ID = cuid2.Generate()
+	}
+	{{- end }}
+	db := dbutil.DB(ctx, s.db)
+	if err := db.Create({{ .name_camel }}).Error; err != nil {
+		return nil, err
+	}
+	return {{ .name_camel }}, nil
+}
+
+func (s *{{ .name_pascal }}Service) FindAll(ctx context.Context) ([]*types.{{ .name_pascal }}, error) {
+	var {{ .name_camel }}s []*types.{{ .name_pascal }}
+	db := dbutil.DB(ctx, s.db)
+	if err := db.Find(&{{ .name_camel }}s).Error; err != nil {
+		return nil, err
+	}
+	return {{ .name_camel }}s, nil
+}
+
+func (s *{{ .name_pascal }}Service) FindByID(ctx context.Context, id {{ .id_type }}) (*types.{{ .name_pascal }}, error) {
+	var {{ .name_camel }} types.{{ .name_pascal }}
+	db := dbutil.DB(ctx, s.db)
+	if err := db.First(&{{ .name_camel }}, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &{{ .name_camel }}, nil
+}
+
+func (s *{{ .name_pascal }}Service) Update(ctx context.Context, {{ .name_camel }} *types.{{ .name_pascal }}, columnsToUpdate []string) (*types.{{ .name_pascal }}, error) {
+	var existing types.{{ .name_pascal }}
+	db := dbutil.DB(ctx, s.db)
+
+	// First find the record
+	if err := db.First(&existing, "id = ?", {{ .name_camel }}.ID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	// Update the record with specific columns
+	if len(columnsToUpdate) > 0 {
+		if err := db.Model(&existing).Where("id = ?", {{ .name_camel }}.ID).Select(columnsToUpdate).Updates({{ .name_camel }}).Error; err != nil {
+			return nil, err
+		}
+	} else {
+		if err := db.Model(&existing).Where("id = ?", {{ .name_camel }}.ID).Updates({{ .name_camel }}).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// Return updated record
+	if err := db.First(&existing, "id = ?", {{ .name_camel }}.ID).Error; err != nil {
+		return nil, err
+	}
+
+	return &existing, nil
+}
+
+func (s *{{ .name_pascal }}Service) FindAllPaginated(ctx context.Context, params pagination.Params) (*pagination.Paginated[*types.{{ .name_pascal }}], error) {
+	var values []*types.{{ .name_pascal }}
+	db := dbutil.DB(ctx, s.db)
+	return pagination.Paginate(db, params, &values)
+}
+
+func (s *{{ .name_pascal }}Service) Delete(ctx context.Context, id {{ .id_type }}) error {
+	db := dbutil.DB(ctx, s.db)
+	result := db.Delete(&types.{{ .name_pascal }}{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}

@@ -5,19 +5,24 @@ import (
   "net/http"
   "github.com/alexisvisco/goframe/http/httpx"
   "github.com/alexisvisco/goframe/http/params"
+  {{.imports}}
 )
 {{- end }}
 
-type {{ .method_pascal }}Request struct {
-
+type {{ .route_name_pascal }}Request struct {
+{{- if .request_body }}
+  {{ .request_body }}
+{{- end }}
 }
 
-type {{ .method_pascal }}Response struct {
-
+type {{ .route_name_pascal }}Response struct {
+{{- if .response_body }}
+  {{ .response_body }}
+{{- end }}
 }
 
 // goframe:http_route path={{ .path }} method={{ .method }}
-func (h *{{ .handler_pascal }}Handler) {{ .method_pascal }}() http.HandlerFunc {
+func (h *{{ .handler_pascal }}Handler) {{ .route_name_pascal }}() http.HandlerFunc {
   {{- if .nomiddleware }}
   return httpx.Wrap(func(r *http.Request) (httpx.Response, error) {
   {{- else }}
@@ -25,15 +30,21 @@ func (h *{{ .handler_pascal }}Handler) {{ .method_pascal }}() http.HandlerFunc {
 
   )(func(r *http.Request) (httpx.Response, error) {
   {{- end }}
-    var req {{ .method_pascal }}Request
+    var req {{ .route_name_pascal }}Request
     if err := params.Bind(&req, r); err != nil {
       return nil, err
     }
 
-    // todo
+    {{- if .route_body }}
+    {{.route_body}}
+    {{- end }}
 
-    return httpx.JSON.Ok({{ .method_pascal }}Response{
+    {{- if .route_response }}
+    {{.route_response}}
+    {{- else }}
+    return httpx.JSON.Ok({{ .route_name_pascal }}Response{
 
     }), nil
+    {{- end }}
   })
 }

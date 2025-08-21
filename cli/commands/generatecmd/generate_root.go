@@ -20,6 +20,7 @@ func NewCmdRootGenerate(subCommands ...*cobra.Command) *cobra.Command {
 	cmd.AddCommand(mailerCmd())
 	cmd.AddCommand(seedCmd())
 	cmd.AddCommand(moduleCmd())
+	cmd.AddCommand(scaffoldCmd())
 	cmd.AddCommand(urlHelperCmd())
 	cmd.AddCommand(tsclientCmd())
 	for _, subCmd := range subCommands {

@@ -63,6 +63,21 @@ func (p *HTTPGenerator) GetRootPkgName() string {
 //go:embed templates
 var fs embed.FS
 
+// RouteConfig contains all configuration for generating a route
+type RouteConfig struct {
+	Handler       string
+	Name          string
+	Method        string
+	Path          string
+	NewFile       bool
+	NoMiddleware  bool
+	RequestBody   string
+	ResponseBody  string
+	RouteBody     string
+	RouteResponse string
+	Imports       map[string]bool
+}
+
 func (p *HTTPGenerator) Generate() error {
 	files := []generators.FileConfig{
 		p.createProvider("internal/provide/provide_http.go"),
@@ -120,8 +135,8 @@ func (p *HTTPGenerator) createHandler(name string, services []string) generators
 			var svcs []dep
 			for _, s := range services {
 				p := str.ToPascalCase(s)
-				if !strings.HasSuffix(p, "CreateService") {
-					p += "CreateService"
+				if !strings.HasSuffix(p, "Service") {
+					p += "Service"
 				}
 				svcs = append(svcs, dep{ServiceName: p, VarName: str.ToCamelCase(p)})
 			}
@@ -268,30 +283,40 @@ func (p *HTTPGenerator) UpdateRouter(handlerType string, externalImport ...strin
 	return gofile.Save()
 }
 
-func (p *HTTPGenerator) GenerateRoute(handler, method string, newFile, noMiddleware bool) error {
-	handlerSnake := str.ToSnakeCase(handler)
-	methodSnake := str.ToSnakeCase(method)
-	methodPascal := str.ToPascalCase(method)
-	handlerPascal := str.ToPascalCase(handler)
+func (p *HTTPGenerator) GenerateRoute(config RouteConfig) error {
+	handlerSnake := str.ToSnakeCase(config.Handler)
+	routeNameSnake := str.ToSnakeCase(config.Name)
+	routeNamePascal := str.ToPascalCase(config.Name)
+	handlerPascal := str.ToPascalCase(config.Handler)
 
 	tmpl := typeutil.Must(fs.ReadFile("templates/new_route.go.tmpl"))
 
 	// Common generator configuration
 	configureGen := func(g *genhelper.GenHelper) {
-		g.WithVar("method_pascal", methodPascal).
+		g.WithVar("route_name_pascal", routeNamePascal).
 			WithVar("handler_pascal", handlerPascal).
-			WithVar("nomiddleware", noMiddleware).
-			WithVar("path", "").
-			WithVar("method", "").
+			WithVar("nomiddleware", config.NoMiddleware).
+			WithVar("path", config.Path).
+			WithVar("method", config.Method).
 			WithVar("pkgname", p.GetBasePkgName()).
-			WithVar("new_file", newFile)
+			WithVar("new_file", config.NewFile).
+			WithVar("request_body", config.RequestBody).
+			WithVar("response_body", config.ResponseBody).
+			WithVar("route_body", config.RouteBody).
+			WithVar("route_response", config.RouteResponse)
+
+		if config.Imports != nil {
+			for pkg, _ := range config.Imports {
+				g.WithImport(pkg, "")
+			}
+		}
 	}
 
-	if newFile {
+	if config.NewFile {
 		gen := func(g *genhelper.GenHelper) {
 			configureGen(g)
 		}
-		x := filepath.Join(p.GetBasePath(), fmt.Sprintf("%s_handler_%s.go", handlerSnake, methodSnake))
+		x := filepath.Join(p.GetBasePath(), fmt.Sprintf("%s_handler_%s.go", handlerSnake, routeNameSnake))
 		return p.Gen.GenerateFile(generators.FileConfig{Path: x, Template: tmpl, Gen: gen})
 	}
 
@@ -363,7 +388,6 @@ func (p *HTTPGenerator) listHandlers() ([]handlerInfo, error) {
 
 	return nil, nil
 }
-
 func (p *HTTPGenerator) GenerateRoutes() error {
 	packages, err := genhelper.CollectRootHandlerPackages(p.Gen.WorkDir)
 	if err != nil {
@@ -411,6 +435,7 @@ func (p *HTTPGenerator) GenerateRoutes() error {
 		if err := gf.Save(); err != nil {
 			return err
 		}
+
 	}
 
 	return nil

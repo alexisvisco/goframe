@@ -1,6 +1,7 @@
 package genhelper
 
 import (
+	"errors"
 	"go/ast"
 	"os"
 	"path/filepath"
@@ -18,6 +19,7 @@ func CollectRoutesDocumentation(workdir string, packagePaths []string) ([]*apido
 			return nil, err
 		}
 
+		var errs error
 		for _, file := range gopkg.Files {
 			ast.Inspect(file.File, func(n ast.Node) bool {
 				fd, ok := n.(*ast.FuncDecl)
@@ -51,9 +53,15 @@ func CollectRoutesDocumentation(workdir string, packagePaths []string) ([]*apido
 				r, err := apidoc.ParseRoute(workdir, file.ImportPath, structName, fd.Name.Name)
 				if err == nil {
 					routes = append(routes, r)
+				} else {
+					errs = errors.Join(errs, err)
 				}
 				return true
 			})
+		}
+
+		if errs != nil {
+			return nil, errs
 		}
 	}
 

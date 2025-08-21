@@ -6,6 +6,7 @@ require (
 	github.com/alexisvisco/goframe/core v0.0.0-20250807165130-a40d8d39823e
 	github.com/alexisvisco/goframe/db v0.0.0-20250807165130-a40d8d39823e
 	github.com/alexisvisco/goframe/http v0.0.0-20250807165130-a40d8d39823e
+	github.com/gertd/go-pluralize v0.2.1
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/fx v1.24.0

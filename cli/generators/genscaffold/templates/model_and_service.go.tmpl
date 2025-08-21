@@ -1,0 +1,29 @@
+package types
+
+{{- if .imports }}
+import (
+  {{ .imports }}
+)
+{{- end }}
+
+type {{ .name_pascal }} struct {
+  {{- range .fields }}
+  {{ .NamePascal }} {{ .GoType }} `json:"{{ .NameSnake }}"`
+  {{- end }}
+}
+
+func ({{ .name_pascal }}) TableName() string {
+  return "{{ .table_name }}"
+}
+
+{{- if not .no_service }}
+
+type {{ .name_pascal }}Service interface {
+	Create(ctx context.Context, {{ .name_camel }} *{{ .name_pascal }}) (*{{ .name_pascal }}, error)
+	FindAll(ctx context.Context) ([]*{{ .name_pascal }}, error)
+	FindAllPaginated(ctx context.Context, params pagination.Params) (*pagination.Paginated[*{{ .name_pascal }}], error)
+	FindByID(ctx context.Context, id {{ .id_type }}) (*{{ .name_pascal }}, error)
+	Update(ctx context.Context, {{ .name_camel }} *{{ .name_pascal }}, columnsToUpdate []string) (*{{ .name_pascal }}, error)
+	Delete(ctx context.Context, id {{ .id_type }}) error
+}
+{{- end }}
