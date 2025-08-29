@@ -82,7 +82,7 @@ func (s *{{ .name_pascal }}Service) Update(ctx context.Context, {{ .name_camel }
 	return &existing, nil
 }
 
-func (s *{{ .name_pascal }}Service) FindAllPaginated(ctx context.Context, params pagination.Params) (*pagination.Paginated[*types.{{ .name_pascal }}], error) {
+func (s *{{ .name_pascal }}Service) FindAllPaginated(ctx context.Context, params pagination.Params) (*pagination.Pagination, []*types.{{ .name_pascal }}, error) {
 	var values []*types.{{ .name_pascal }}
 	db := dbutil.DB(ctx, s.db)
 	return pagination.Paginate(db, params, &values)

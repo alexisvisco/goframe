@@ -9,14 +9,13 @@
 //  2. Cursor-based pagination: High-performance pagination using cursors, ideal for
 //     large datasets and real-time data where consistent performance is required.
 //
-// Both methods are implemented with Go generics for full type safety and work seamlessly
-// with existing GORM query chains and GoFrame's dbutil package.
+// Both methods work seamlessly with existing GORM query chains and GoFrame's dbutil package.
 //
 // # Offset-based Pagination Example
 //
 //	params := pagination.NewParams(1, 20) // page 1, 20 items per page
 //	var users []User
-//	result, err := pagination.Paginate(db, params, &users)
+//	result, users, err := pagination.Paginate(db, params, &users)
 //	if err != nil {
 //		return err
 //	}
@@ -26,7 +25,7 @@
 //
 //	params := pagination.NewCursorParams("", 20, "next") // first page, 20 items
 //	var users []User
-//	result, err := pagination.PaginateCursor(db, params, &users, "id")
+//	result, users, err := pagination.PaginateCursor(db, params, &users, "id")
 //	if err != nil {
 //		return err
 //	}
@@ -91,11 +90,10 @@ type Params struct {
 	PageSize int `json:"page_size" query:"page_size"` // Number of items per page
 }
 
-// Paginated represents a paginated response with offset-based pagination.
+// Pagination represents pagination metadata for offset-based pagination.
 // It includes all necessary metadata for implementing pagination controls
 // in user interfaces.
-type Paginated[T any] struct {
-	Data       []T   `json:"data"`        // The paginated data items
+type Pagination struct {
 	Page       int   `json:"page"`        // Current page number
 	PageSize   int   `json:"page_size"`   // Items per page
 	Total      int64 `json:"total"`       // Total number of items across all pages
@@ -143,20 +141,20 @@ func (p Params) Limit() int {
 //
 //	// Basic pagination
 //	var users []User
-//	result, err := pagination.Paginate(db, params, &users)
+//	pagination, users, err := pagination.Paginate(db, params, &users)
 //
 //	// With filtering
 //	query := db.Where("active = ?", true).Order("created_at DESC")
-//	result, err := pagination.Paginate(query, params, &users)
+//	pagination, users, err := pagination.Paginate(query, params, &users)
 //
 // Note: This method performs two queries - one for counting and one for data.
 // For large datasets, consider using cursor-based pagination instead.
-func Paginate[T any](db *gorm.DB, params Params, dest *[]T) (*Paginated[T], error) {
+func Paginate[T any](db *gorm.DB, params Params, dest *[]T) (*Pagination, []T, error) {
 	var total int64
 
 	// Count total records
 	if err := db.Model(new(T)).Count(&total).Error; err != nil {
-		return nil, fmt.Errorf("failed to count records: %w", err)
+		return nil, nil, fmt.Errorf("failed to count records: %w", err)
 	}
 
 	// Calculate pagination metadata
@@ -166,18 +164,19 @@ func Paginate[T any](db *gorm.DB, params Params, dest *[]T) (*Paginated[T], erro
 
 	// Fetch paginated data
 	if err := db.Offset(params.Offset()).Limit(params.Limit()).Find(dest).Error; err != nil {
-		return nil, fmt.Errorf("failed to fetch paginated data: %w", err)
+		return nil, nil, fmt.Errorf("failed to fetch paginated data: %w", err)
 	}
 
-	return &Paginated[T]{
-		Data:       *dest,
+	pagination := &Pagination{
 		Page:       params.Page,
 		PageSize:   params.PageSize,
 		Total:      total,
 		TotalPages: totalPages,
 		HasNext:    hasNext,
 		HasPrev:    hasPrev,
-	}, nil
+	}
+
+	return pagination, *dest, nil
 }
 
 // ParseParams parses offset pagination parameters from query strings.

@@ -243,19 +243,19 @@ func TestPaginate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var users []User
-			result, err := Paginate(db, tt.params, &users)
+			pagination, results, err := Paginate(db, tt.params, &users)
 			require.NoError(t, err)
 
-			assert.Len(t, result.Data, tt.expectedCount)
-			assert.Equal(t, tt.expectedPage, result.Page)
-			assert.Equal(t, tt.expectedTotal, result.Total)
-			assert.Equal(t, tt.expectedHasNext, result.HasNext)
-			assert.Equal(t, tt.expectedHasPrev, result.HasPrev)
-			assert.Equal(t, tt.params.PageSize, result.PageSize)
+			assert.Len(t, results, tt.expectedCount)
+			assert.Equal(t, tt.expectedPage, pagination.Page)
+			assert.Equal(t, tt.expectedTotal, pagination.Total)
+			assert.Equal(t, tt.expectedHasNext, pagination.HasNext)
+			assert.Equal(t, tt.expectedHasPrev, pagination.HasPrev)
+			assert.Equal(t, tt.params.PageSize, pagination.PageSize)
 
 			// Calculate expected total pages
 			expectedTotalPages := int((tt.expectedTotal + int64(tt.params.PageSize) - 1) / int64(tt.params.PageSize))
-			assert.Equal(t, expectedTotalPages, result.TotalPages)
+			assert.Equal(t, expectedTotalPages, pagination.TotalPages)
 		})
 	}
 }
@@ -270,13 +270,13 @@ func TestPaginateWithFilters(t *testing.T) {
 		params := NewParams(1, 10)
 
 		var users []User
-		result, err := Paginate(filteredQuery, params, &users)
+		pagination, results, err := Paginate(filteredQuery, params, &users)
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 1) // Only UserA
-		assert.Equal(t, int64(1), result.Total)
-		assert.False(t, result.HasNext)
-		assert.False(t, result.HasPrev)
+		assert.Len(t, results, 1) // Only UserA
+		assert.Equal(t, int64(1), pagination.Total)
+		assert.False(t, pagination.HasNext)
+		assert.False(t, pagination.HasPrev)
 	})
 
 	t.Run("filtered query with multiple results", func(t *testing.T) {
@@ -285,13 +285,13 @@ func TestPaginateWithFilters(t *testing.T) {
 		params := NewParams(1, 5)
 
 		var users []User
-		result, err := Paginate(filteredQuery, params, &users)
+		pagination, results, err := Paginate(filteredQuery, params, &users)
 		require.NoError(t, err)
 
-		assert.Equal(t, int64(2), result.Total) // user0 and user1
-		assert.Len(t, result.Data, 2)
-		assert.False(t, result.HasNext)
-		assert.False(t, result.HasPrev)
+		assert.Equal(t, int64(2), pagination.Total) // user0 and user1
+		assert.Len(t, results, 2)
+		assert.False(t, pagination.HasNext)
+		assert.False(t, pagination.HasPrev)
 	})
 }
 
@@ -304,15 +304,15 @@ func TestPaginateWithOrdering(t *testing.T) {
 		params := NewParams(1, 3)
 
 		var users []User
-		result, err := Paginate(query, params, &users)
+		pagination, results, err := Paginate(query, params, &users)
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 3)
-		assert.Equal(t, int64(5), result.Total)
+		assert.Len(t, results, 3)
+		assert.Equal(t, int64(5), pagination.Total)
 
 		// Verify ordering (UserE, UserD, UserC should be first three)
-		assert.True(t, result.Data[0].Name >= result.Data[1].Name)
-		assert.True(t, result.Data[1].Name >= result.Data[2].Name)
+		assert.True(t, results[0].Name >= results[1].Name)
+		assert.True(t, results[1].Name >= results[2].Name)
 	})
 
 	t.Run("ordered by created_at ascending", func(t *testing.T) {
@@ -320,12 +320,12 @@ func TestPaginateWithOrdering(t *testing.T) {
 		params := NewParams(1, 2)
 
 		var users []User
-		result, err := Paginate(query, params, &users)
+		_, results, err := Paginate(query, params, &users)
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 2)
+		assert.Len(t, results, 2)
 		// Verify ordering
-		assert.True(t, result.Data[0].CreatedAt <= result.Data[1].CreatedAt)
+		assert.True(t, results[0].CreatedAt <= results[1].CreatedAt)
 	})
 }
 
@@ -412,15 +412,15 @@ func TestPaginateEmptyTable(t *testing.T) {
 
 	params := NewParams(1, 10)
 	var users []User
-	result, err := Paginate(db, params, &users)
+	pagination, results, err := Paginate(db, params, &users)
 	require.NoError(t, err)
 
-	assert.Empty(t, result.Data)
-	assert.Equal(t, 1, result.Page)
-	assert.Equal(t, int64(0), result.Total)
-	assert.Equal(t, 0, result.TotalPages)
-	assert.False(t, result.HasNext)
-	assert.False(t, result.HasPrev)
+	assert.Empty(t, results)
+	assert.Equal(t, 1, pagination.Page)
+	assert.Equal(t, int64(0), pagination.Total)
+	assert.Equal(t, 0, pagination.TotalPages)
+	assert.False(t, pagination.HasNext)
+	assert.False(t, pagination.HasPrev)
 }
 
 func TestPaginateWithDifferentModels(t *testing.T) {
@@ -439,27 +439,27 @@ func TestPaginateWithDifferentModels(t *testing.T) {
 	t.Run("paginate products", func(t *testing.T) {
 		params := NewParams(1, 2)
 		var productResults []Product
-		result, err := Paginate(db, params, &productResults)
+		pagination, results, err := Paginate(db, params, &productResults)
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 2)
-		assert.Equal(t, int64(3), result.Total)
-		assert.True(t, result.HasNext)
-		assert.False(t, result.HasPrev)
+		assert.Len(t, results, 2)
+		assert.Equal(t, int64(3), pagination.Total)
+		assert.True(t, pagination.HasNext)
+		assert.False(t, pagination.HasPrev)
 	})
 
 	t.Run("paginate with price filter", func(t *testing.T) {
 		query := db.Where("price > ?", 50)
 		params := NewParams(1, 10)
 		var productResults []Product
-		result, err := Paginate(query, params, &productResults)
+		pagination, results, err := Paginate(query, params, &productResults)
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 2) // Laptop and Keyboard
-		assert.Equal(t, int64(2), result.Total)
+		assert.Len(t, results, 2) // Laptop and Keyboard
+		assert.Equal(t, int64(2), pagination.Total)
 
 		// Verify all results have price > 50
-		for _, product := range result.Data {
+		for _, product := range results {
 			assert.Greater(t, product.Price, 50)
 		}
 	})
@@ -478,9 +478,10 @@ func TestPaginateDatabaseError(t *testing.T) {
 
 	params := NewParams(1, 10)
 	var users []User
-	result, err := Paginate(db, params, &users)
+	pagination, results, err := Paginate(db, params, &users)
 
 	assert.Error(t, err)
-	assert.Nil(t, result)
+	assert.Nil(t, pagination)
+	assert.Nil(t, results)
 	assert.Contains(t, err.Error(), "failed to count records")
 }

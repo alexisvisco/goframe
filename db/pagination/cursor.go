@@ -20,10 +20,9 @@ type CursorParams struct {
 	Direction string `json:"direction" query:"direction"` // "next" or "prev" for navigation direction
 }
 
-// CursorPaginated represents a paginated response with cursor-based pagination.
+// CursorPagination represents pagination metadata for cursor-based pagination.
 // It provides cursors for navigation without exposing internal record positions.
-type CursorPaginated[T any] struct {
-	Data       []T    `json:"data"`                  // The paginated data items
+type CursorPagination struct {
 	NextCursor string `json:"next_cursor,omitempty"` // Cursor for the next page (if available)
 	PrevCursor string `json:"prev_cursor,omitempty"` // Cursor for the previous page (if available)
 	HasNext    bool   `json:"has_next"`              // Whether there is a next page
@@ -66,23 +65,23 @@ func NewCursorParams(cursor string, pageSize int, direction string) CursorParams
 //	// First page
 //	params := pagination.NewCursorParams("", 20, "next")
 //	var users []User
-//	result, err := pagination.PaginateCursor(db, params, &users, "id")
+//	pagination, users, err := pagination.PaginateCursor(db, params, &users, "id")
 //
 //	// Navigate to next page
-//	if result.HasNext {
-//		nextParams := pagination.NewCursorParams(result.NextCursor, 20, "next")
-//		nextResult, err := pagination.PaginateCursor(db, nextParams, &users, "id")
+//	if pagination.HasNext {
+//		nextParams := pagination.NewCursorParams(pagination.NextCursor, 20, "next")
+//		nextPagination, nextUsers, err := pagination.PaginateCursor(db, nextParams, &users, "id")
 //	}
 //
 //	// Navigate backwards
-//	if result.HasPrev {
-//		prevParams := pagination.NewCursorParams(result.PrevCursor, 20, "prev")
-//		prevResult, err := pagination.PaginateCursor(db, prevParams, &users, "id")
+//	if pagination.HasPrev {
+//		prevParams := pagination.NewCursorParams(pagination.PrevCursor, 20, "prev")
+//		prevPagination, prevUsers, err := pagination.PaginateCursor(db, prevParams, &users, "id")
 //	}
 //
 // The function supports ordering by any comparable field. Ensure the orderField
 // is properly indexed in your database for optimal performance.
-func PaginateCursor[T any](db *gorm.DB, params CursorParams, dest *[]T, orderField string) (*CursorPaginated[T], error) {
+func PaginateCursor[T any](db *gorm.DB, params CursorParams, dest *[]T, orderField string) (*CursorPagination, []T, error) {
 	query := db
 
 	// Parse cursor if provided
@@ -91,7 +90,7 @@ func PaginateCursor[T any](db *gorm.DB, params CursorParams, dest *[]T, orderFie
 		var err error
 		cursorData, err = decodeCursor(params.Cursor)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode cursor: %w", err)
+			return nil, nil, fmt.Errorf("failed to decode cursor: %w", err)
 		}
 	}
 
@@ -118,47 +117,49 @@ func PaginateCursor[T any](db *gorm.DB, params CursorParams, dest *[]T, orderFie
 	query = query.Limit(params.PageSize + 1)
 
 	if err := query.Find(dest).Error; err != nil {
-		return nil, fmt.Errorf("failed to fetch cursor paginated data: %w", err)
+		return nil, nil, fmt.Errorf("failed to fetch cursor paginated data: %w", err)
 	}
 
 	hasNext := len(*dest) > params.PageSize
 	hasPrev := cursorData != nil
 
 	// Remove the extra record if present
+	var data []T
 	if hasNext {
-		*dest = (*dest)[:params.PageSize]
+		data = (*dest)[:params.PageSize]
+	} else {
+		data = *dest
 	}
 
 	// If we're going backwards, reverse the results
 	if params.Direction == "prev" {
-		reverseSlice(dest)
+		reverseSlice(&data)
 	}
 
-	result := &CursorPaginated[T]{
-		Data:     *dest,
+	pagination := &CursorPagination{
 		HasNext:  hasNext,
 		HasPrev:  hasPrev,
 		PageSize: params.PageSize,
 	}
 
 	// Generate cursors
-	if len(*dest) > 0 {
+	if len(data) > 0 {
 		if hasNext || params.Direction == "prev" {
-			nextCursor, err := encodeCursor(getFieldValue((*dest)[len(*dest)-1], orderField), orderField)
+			nextCursor, err := encodeCursor(getFieldValue(data[len(data)-1], orderField), orderField)
 			if err == nil {
-				result.NextCursor = nextCursor
+				pagination.NextCursor = nextCursor
 			}
 		}
 
 		if hasPrev || params.Direction == "next" {
-			prevCursor, err := encodeCursor(getFieldValue((*dest)[0], orderField), orderField)
+			prevCursor, err := encodeCursor(getFieldValue(data[0], orderField), orderField)
 			if err == nil {
-				result.PrevCursor = prevCursor
+				pagination.PrevCursor = prevCursor
 			}
 		}
 	}
 
-	return result, nil
+	return pagination, data, nil
 }
 
 // ParseCursorParams parses cursor pagination parameters from query strings.

@@ -21,7 +21,7 @@ func ({{ .name_pascal }}) TableName() string {
 type {{ .name_pascal }}Service interface {
 	Create(ctx context.Context, {{ .name_camel }} *{{ .name_pascal }}) (*{{ .name_pascal }}, error)
 	FindAll(ctx context.Context) ([]*{{ .name_pascal }}, error)
-	FindAllPaginated(ctx context.Context, params pagination.Params) (*pagination.Paginated[*{{ .name_pascal }}], error)
+	FindAllPaginated(ctx context.Context, params pagination.Params) (*pagination.Pagination, []*{{ .name_pascal }}, error)
 	FindByID(ctx context.Context, id {{ .id_type }}) (*{{ .name_pascal }}, error)
 	Update(ctx context.Context, {{ .name_camel }} *{{ .name_pascal }}, columnsToUpdate []string) (*{{ .name_pascal }}, error)
 	Delete(ctx context.Context, id {{ .id_type }}) error

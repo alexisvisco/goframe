@@ -158,19 +158,19 @@ func TestPaginateCursorFirstPage(t *testing.T) {
 
 	params := NewCursorParams("", 3, "next")
 	var users []UserWithCUID
-	result, err := PaginateCursor(db, params, &users, "created_at")
+	pagination, results, err := PaginateCursor(db, params, &users, "created_at")
 	require.NoError(t, err)
 
-	assert.Len(t, result.Data, 3)
-	assert.True(t, result.HasNext)
-	assert.False(t, result.HasPrev)
-	assert.NotEmpty(t, result.NextCursor)
-	assert.NotEmpty(t, result.PrevCursor) // PrevCursor is generated when direction is "next"
-	assert.Equal(t, 3, result.PageSize)
+	assert.Len(t, results, 3)
+	assert.True(t, pagination.HasNext)
+	assert.False(t, pagination.HasPrev)
+	assert.NotEmpty(t, pagination.NextCursor)
+	assert.NotEmpty(t, pagination.PrevCursor) // PrevCursor is generated when direction is "next"
+	assert.Equal(t, 3, pagination.PageSize)
 
 	// Verify ordering by created_at
-	for i := 1; i < len(result.Data); i++ {
-		assert.LessOrEqual(t, result.Data[i-1].CreatedAt, result.Data[i].CreatedAt)
+	for i := 1; i < len(results); i++ {
+		assert.LessOrEqual(t, results[i-1].CreatedAt, results[i].CreatedAt)
 	}
 }
 
@@ -181,16 +181,16 @@ func TestPaginateCursorWithCUID(t *testing.T) {
 	t.Run("first page ordered by CUID", func(t *testing.T) {
 		params := NewCursorParams("", 4, "next")
 		var users []UserWithCUID
-		result, err := PaginateCursor(db, params, &users, "id")
+		pagination, results, err := PaginateCursor(db, params, &users, "id")
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 4)
-		assert.True(t, result.HasNext)
-		assert.False(t, result.HasPrev)
-		assert.NotEmpty(t, result.NextCursor)
+		assert.Len(t, results, 4)
+		assert.True(t, pagination.HasNext)
+		assert.False(t, pagination.HasPrev)
+		assert.NotEmpty(t, pagination.NextCursor)
 
 		// Verify all IDs are valid CUIDs
-		for _, user := range result.Data {
+		for _, user := range results {
 			assert.NotEmpty(t, user.ID)
 			assert.True(t, len(user.ID) > 20) // CUIDs are typically longer than 20 chars
 		}
@@ -200,26 +200,26 @@ func TestPaginateCursorWithCUID(t *testing.T) {
 		// Get first page
 		params := NewCursorParams("", 3, "next")
 		var users []UserWithCUID
-		firstPage, err := PaginateCursor(db, params, &users, "id")
+		firstPagination, firstResults, err := PaginateCursor(db, params, &users, "id")
 		require.NoError(t, err)
-		require.True(t, firstPage.HasNext)
+		require.True(t, firstPagination.HasNext)
 
 		// Use cursor for next page
 		var nextUsers []UserWithCUID
-		nextParams := NewCursorParams(firstPage.NextCursor, 3, "next")
-		nextPage, err := PaginateCursor(db, nextParams, &nextUsers, "id")
+		nextParams := NewCursorParams(firstPagination.NextCursor, 3, "next")
+		nextPagination, nextResults, err := PaginateCursor(db, nextParams, &nextUsers, "id")
 		require.NoError(t, err)
 
-		assert.Len(t, nextPage.Data, 3)
-		assert.True(t, nextPage.HasPrev)
+		assert.Len(t, nextResults, 3)
+		assert.True(t, nextPagination.HasPrev)
 
 		// Ensure no overlap between pages by checking IDs
 		firstPageIDs := make(map[string]bool)
-		for _, user := range firstPage.Data {
+		for _, user := range firstResults {
 			firstPageIDs[user.ID] = true
 		}
 
-		for _, user := range nextPage.Data {
+		for _, user := range nextResults {
 			assert.False(t, firstPageIDs[user.ID], "Found duplicate ID between pages: %s", user.ID)
 		}
 	})
@@ -232,30 +232,30 @@ func TestPaginateCursorWithNumericOrdering(t *testing.T) {
 	t.Run("order by integer price", func(t *testing.T) {
 		params := NewCursorParams("", 3, "next")
 		var products []ProductWithScore
-		result, err := PaginateCursor(db, params, &products, "price")
+		pagination, results, err := PaginateCursor(db, params, &products, "price")
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 3)
-		assert.True(t, result.HasNext)
+		assert.Len(t, results, 3)
+		assert.True(t, pagination.HasNext)
 
 		// Verify ordering by price
-		for i := 1; i < len(result.Data); i++ {
-			assert.LessOrEqual(t, result.Data[i-1].Price, result.Data[i].Price)
+		for i := 1; i < len(results); i++ {
+			assert.LessOrEqual(t, results[i-1].Price, results[i].Price)
 		}
 	})
 
 	t.Run("order by float score", func(t *testing.T) {
 		params := NewCursorParams("", 3, "next")
 		var products []ProductWithScore
-		result, err := PaginateCursor(db, params, &products, "score")
+		pagination, results, err := PaginateCursor(db, params, &products, "score")
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 3)
-		assert.True(t, result.HasNext)
+		assert.Len(t, results, 3)
+		assert.True(t, pagination.HasNext)
 
 		// Verify ordering by score
-		for i := 1; i < len(result.Data); i++ {
-			assert.LessOrEqual(t, result.Data[i-1].Score, result.Data[i].Score)
+		for i := 1; i < len(results); i++ {
+			assert.LessOrEqual(t, results[i-1].Score, results[i].Score)
 		}
 	})
 
@@ -263,20 +263,20 @@ func TestPaginateCursorWithNumericOrdering(t *testing.T) {
 		// Get first page ordered by price
 		params := NewCursorParams("", 2, "next")
 		var products []ProductWithScore
-		firstPage, err := PaginateCursor(db, params, &products, "price")
+		firstPagination, firstResults, err := PaginateCursor(db, params, &products, "price")
 		require.NoError(t, err)
 
 		// Get second page
 		var nextProducts []ProductWithScore
-		nextParams := NewCursorParams(firstPage.NextCursor, 2, "next")
-		nextPage, err := PaginateCursor(db, nextParams, &nextProducts, "price")
+		nextParams := NewCursorParams(firstPagination.NextCursor, 2, "next")
+		_, nextResults, err := PaginateCursor(db, nextParams, &nextProducts, "price")
 		require.NoError(t, err)
 
-		assert.Len(t, nextPage.Data, 2)
+		assert.Len(t, nextResults, 2)
 
 		// Verify continuation of ordering
-		lastPriceFirstPage := firstPage.Data[len(firstPage.Data)-1].Price
-		firstPriceSecondPage := nextPage.Data[0].Price
+		lastPriceFirstPage := firstResults[len(firstResults)-1].Price
+		firstPriceSecondPage := nextResults[0].Price
 		assert.Less(t, lastPriceFirstPage, firstPriceSecondPage)
 	})
 }
@@ -288,26 +288,26 @@ func TestPaginateCursorPrevDirection(t *testing.T) {
 	// Navigate to middle of dataset first
 	var users []UserWithCUID
 	params := NewCursorParams("", 2, "next")
-	firstPage, err := PaginateCursor(db, params, &users, "created_at")
+	firstPagination, firstResults, err := PaginateCursor(db, params, &users, "created_at")
 	require.NoError(t, err)
 
 	var secondPageUsers []UserWithCUID
-	secondParams := NewCursorParams(firstPage.NextCursor, 2, "next")
-	secondPage, err := PaginateCursor(db, secondParams, &secondPageUsers, "created_at")
+	secondParams := NewCursorParams(firstPagination.NextCursor, 2, "next")
+	secondPagination, _, err := PaginateCursor(db, secondParams, &secondPageUsers, "created_at")
 	require.NoError(t, err)
 
 	// Now go backwards from second page cursor
 	var prevUsers []UserWithCUID
-	prevParams := NewCursorParams(secondPage.NextCursor, 2, "prev")
-	prevPage, err := PaginateCursor(db, prevParams, &prevUsers, "created_at")
+	prevParams := NewCursorParams(secondPagination.NextCursor, 2, "prev")
+	prevPagination, prevResults, err := PaginateCursor(db, prevParams, &prevUsers, "created_at")
 	require.NoError(t, err)
 
-	assert.Len(t, prevPage.Data, 2)
-	assert.True(t, prevPage.HasPrev)
-	assert.True(t, prevPage.HasNext)
+	assert.Len(t, prevResults, 2)
+	assert.True(t, prevPagination.HasPrev)
+	assert.True(t, prevPagination.HasNext)
 
 	// Results should be equivalent to first page (but order might be different due to reverse)
-	assert.Equal(t, len(firstPage.Data), len(prevPage.Data))
+	assert.Equal(t, len(firstResults), len(prevResults))
 }
 
 func TestPaginateCursorWithFilters(t *testing.T) {
@@ -319,19 +319,19 @@ func TestPaginateCursorWithFilters(t *testing.T) {
 		filteredQuery := db.Where("price > ?", 50)
 		params := NewCursorParams("", 3, "next")
 		var products []ProductWithScore
-		result, err := PaginateCursor(filteredQuery, params, &products, "price")
+		_, results, err := PaginateCursor(filteredQuery, params, &products, "price")
 		require.NoError(t, err)
 
-		assert.True(t, len(result.Data) > 0)
+		assert.True(t, len(results) > 0)
 
 		// Verify all results match filter
-		for _, product := range result.Data {
+		for _, product := range results {
 			assert.Greater(t, product.Price, 50)
 		}
 
 		// Verify ordering is maintained
-		for i := 1; i < len(result.Data); i++ {
-			assert.LessOrEqual(t, result.Data[i-1].Price, result.Data[i].Price)
+		for i := 1; i < len(results); i++ {
+			assert.LessOrEqual(t, results[i-1].Price, results[i].Price)
 		}
 	})
 
@@ -339,17 +339,17 @@ func TestPaginateCursorWithFilters(t *testing.T) {
 		filteredQuery := db.Where("category_id = ?", 1)
 		params := NewCursorParams("", 2, "next")
 		var products []ProductWithScore
-		firstPage, err := PaginateCursor(filteredQuery, params, &products, "id")
+		firstPagination, _, err := PaginateCursor(filteredQuery, params, &products, "id")
 		require.NoError(t, err)
 
-		if firstPage.HasNext {
+		if firstPagination.HasNext {
 			var nextProducts []ProductWithScore
-			nextParams := NewCursorParams(firstPage.NextCursor, 2, "next")
-			nextPage, err := PaginateCursor(filteredQuery, nextParams, &nextProducts, "id")
+			nextParams := NewCursorParams(firstPagination.NextCursor, 2, "next")
+			_, nextResults, err := PaginateCursor(filteredQuery, nextParams, &nextProducts, "id")
 			require.NoError(t, err)
 
 			// Verify all results still match filter
-			for _, product := range nextPage.Data {
+			for _, product := range nextResults {
 				assert.Equal(t, uint(1), product.CategoryID)
 			}
 		}
@@ -362,14 +362,14 @@ func TestPaginateCursorEmptyResults(t *testing.T) {
 
 	params := NewCursorParams("", 10, "next")
 	var users []UserWithCUID
-	result, err := PaginateCursor(db, params, &users, "id")
+	pagination, results, err := PaginateCursor(db, params, &users, "id")
 	require.NoError(t, err)
 
-	assert.Empty(t, result.Data)
-	assert.False(t, result.HasNext)
-	assert.False(t, result.HasPrev)
-	assert.Empty(t, result.NextCursor)
-	assert.Empty(t, result.PrevCursor)
+	assert.Empty(t, results)
+	assert.False(t, pagination.HasNext)
+	assert.False(t, pagination.HasPrev)
+	assert.Empty(t, pagination.NextCursor)
+	assert.Empty(t, pagination.PrevCursor)
 }
 
 func TestEncodeDecode(t *testing.T) {
@@ -711,10 +711,11 @@ func TestPaginateCursorDatabaseError(t *testing.T) {
 
 	params := NewCursorParams("", 10, "next")
 	var users []UserWithCUID
-	result, err := PaginateCursor(db, params, &users, "id")
+	pagination, results, err := PaginateCursor(db, params, &users, "id")
 
 	assert.Error(t, err)
-	assert.Nil(t, result)
+	assert.Nil(t, pagination)
+	assert.Nil(t, results)
 	assert.Contains(t, err.Error(), "failed to fetch cursor paginated data")
 }
 
@@ -724,9 +725,10 @@ func TestPaginateCursorInvalidCursor(t *testing.T) {
 
 	params := NewCursorParams("invalid-cursor-data", 10, "next")
 	var users []UserWithCUID
-	result, err := PaginateCursor(db, params, &users, "id")
+	pagination, results, err := PaginateCursor(db, params, &users, "id")
 
 	assert.Error(t, err)
-	assert.Nil(t, result)
+	assert.Nil(t, pagination)
+	assert.Nil(t, results)
 	assert.Contains(t, err.Error(), "failed to decode cursor")
 }

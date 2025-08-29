@@ -20,15 +20,16 @@ func (s *ScaffoldGenerator) generateFindAllRoute(name string) error {
 	}
 
 	requestStructBody := "pagination.Params"
-	responseStructBody := fmt.Sprintf("*pagination.Paginated[*types.%s]", str.ToPascalCase(name))
+	responseStructBody := fmt.Sprintf("Data []*types.%s `json:\"data\"`\nPagination *pagination.Pagination `json:\"pagination\"`", str.ToPascalCase(name))
 
 	routeBody := strings.Builder{}
-	routeBody.WriteString(fmt.Sprintf("res, err := h.%sService.FindAllPaginated(r.Context(), req.Params)\n", str.ToCamelCase(name)))
+	routeBody.WriteString(fmt.Sprintf("pagination, data, err := h.%sService.FindAllPaginated(r.Context(), req.Params)\n", str.ToCamelCase(name)))
 	routeBody.WriteString("\tif err != nil {\n\t\treturn nil, err\n\t}\n")
 
 	routeResponse := strings.Builder{}
 	routeResponse.WriteString(fmt.Sprintf("return httpx.JSON.Ok(&%sResponse{\n", str.ToPascalCase(routeName)))
-	routeResponse.WriteString("\t\t\tPaginated: res,\n")
+	routeResponse.WriteString("\t\t\tData: data,\n")
+	routeResponse.WriteString("\t\t\tPagination: pagination,\n")
 	routeResponse.WriteString("\t\t}), nil")
 
 	return s.HTTPGen.GenerateRoute(genhttp.RouteConfig{

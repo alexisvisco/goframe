@@ -66,15 +66,15 @@ func TestPaginationWithDBUtil(t *testing.T) {
 
 		params := NewParams(2, 5) // page 2, 5 items per page
 		var orders []OrderModel
-		result, err := Paginate(contextDB, params, &orders)
+		pagination, results, err := Paginate(contextDB, params, &orders)
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 5)
-		assert.Equal(t, 2, result.Page)
-		assert.Equal(t, int64(12), result.Total)
-		assert.Equal(t, 3, result.TotalPages)
-		assert.True(t, result.HasNext)
-		assert.True(t, result.HasPrev)
+		assert.Len(t, results, 5)
+		assert.Equal(t, 2, pagination.Page)
+		assert.Equal(t, int64(12), pagination.Total)
+		assert.Equal(t, 3, pagination.TotalPages)
+		assert.True(t, pagination.HasNext)
+		assert.True(t, pagination.HasPrev)
 	})
 
 	t.Run("cursor pagination with context", func(t *testing.T) {
@@ -83,13 +83,13 @@ func TestPaginationWithDBUtil(t *testing.T) {
 
 		params := NewCursorParams("", 4, "next")
 		var orders []OrderModel
-		result, err := PaginateCursor(contextDB, params, &orders, "created_at")
+		pagination, results, err := PaginateCursor(contextDB, params, &orders, "created_at")
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 4)
-		assert.True(t, result.HasNext)
-		assert.False(t, result.HasPrev)
-		assert.NotEmpty(t, result.NextCursor)
+		assert.Len(t, results, 4)
+		assert.True(t, pagination.HasNext)
+		assert.False(t, pagination.HasPrev)
+		assert.NotEmpty(t, pagination.NextCursor)
 	})
 }
 
@@ -105,6 +105,7 @@ func TestPaginationInTransaction(t *testing.T) {
 			txDB := dbutil.DB(ctx, db)
 
 			// Update some records in transaction
+			// Update the record with specific columns
 			err := txDB.Model(&OrderModel{}).
 				Where("status = ?", "pending").
 				Update("status", "processing").Error
@@ -114,11 +115,11 @@ func TestPaginationInTransaction(t *testing.T) {
 			filteredQuery := txDB.Where("status = ?", "processing")
 			params := NewParams(1, 10)
 			var orders []OrderModel
-			result, err := Paginate(filteredQuery, params, &orders)
+			_, results, err := Paginate(filteredQuery, params, &orders)
 			require.NoError(t, err)
 
 			// Verify all results have the updated status
-			for _, order := range result.Data {
+			for _, order := range results {
 				assert.Equal(t, "processing", order.Status)
 			}
 
@@ -148,11 +149,11 @@ func TestPaginationInTransaction(t *testing.T) {
 			// Paginate including the new record
 			params := NewCursorParams("", 5, "next")
 			var orders []OrderModel
-			result, err := PaginateCursor(txDB, params, &orders, "amount")
+			pagination, results, err := PaginateCursor(txDB, params, &orders, "amount")
 			require.NoError(t, err)
 
-			assert.True(t, len(result.Data) > 0)
-			assert.True(t, result.HasNext)
+			assert.True(t, len(results) > 0)
+			assert.True(t, pagination.HasNext)
 
 			return nil
 		})
@@ -178,18 +179,18 @@ func TestPaginationWithComplexQueries(t *testing.T) {
 
 		params := NewParams(1, 3)
 		var orders []OrderModel
-		result, err := Paginate(query, params, &orders)
+		_, results, err := Paginate(query, params, &orders)
 		require.NoError(t, err)
 
 		// Verify all results match the filters
-		for _, order := range result.Data {
+		for _, order := range results {
 			assert.Greater(t, order.Amount, 500)
 			assert.Contains(t, []string{"completed", "processing"}, order.Status)
 		}
 
 		// Verify ordering
-		for i := 1; i < len(result.Data); i++ {
-			assert.GreaterOrEqual(t, result.Data[i-1].Amount, result.Data[i].Amount)
+		for i := 1; i < len(results); i++ {
+			assert.GreaterOrEqual(t, results[i-1].Amount, results[i].Amount)
 		}
 	})
 
@@ -204,17 +205,17 @@ func TestPaginationWithComplexQueries(t *testing.T) {
 
 		params := NewCursorParams("", 4, "next")
 		var orders []OrderModel
-		result, err := PaginateCursor(query, params, &orders, "amount")
+		_, results, err := PaginateCursor(query, params, &orders, "amount")
 		require.NoError(t, err)
 
 		// Verify all results exclude cancelled orders
-		for _, order := range result.Data {
+		for _, order := range results {
 			assert.NotEqual(t, "cancelled", order.Status)
 		}
 
 		// Verify descending order by amount
-		for i := 1; i < len(result.Data); i++ {
-			assert.GreaterOrEqual(t, result.Data[i-1].Amount, result.Data[i].Amount)
+		for i := 1; i < len(results); i++ {
+			assert.GreaterOrEqual(t, results[i-1].Amount, results[i].Amount)
 		}
 	})
 }
@@ -231,36 +232,36 @@ func TestPaginationWithCUID(t *testing.T) {
 		// First page
 		params := NewCursorParams("", 3, "next")
 		var firstPageOrders []OrderModel
-		firstPage, err := PaginateCursor(contextDB, params, &firstPageOrders, "id")
+		firstPagination, firstPageResults, err := PaginateCursor(contextDB, params, &firstPageOrders, "id")
 		require.NoError(t, err)
 
-		assert.Len(t, firstPage.Data, 3)
-		assert.True(t, firstPage.HasNext)
-		assert.NotEmpty(t, firstPage.NextCursor)
+		assert.Len(t, firstPageResults, 3)
+		assert.True(t, firstPagination.HasNext)
+		assert.NotEmpty(t, firstPagination.NextCursor)
 
 		// Verify all IDs are valid CUIDs
-		for _, order := range firstPage.Data {
+		for _, order := range firstPageResults {
 			assert.NotEmpty(t, order.ID)
 			assert.True(t, len(order.ID) > 20) // CUIDs are typically longer
 		}
 
 		// Second page using cursor
-		if firstPage.HasNext {
+		if firstPagination.HasNext {
 			var secondPageOrders []OrderModel
-			nextParams := NewCursorParams(firstPage.NextCursor, 3, "next")
-			secondPage, err := PaginateCursor(contextDB, nextParams, &secondPageOrders, "id")
+			nextParams := NewCursorParams(firstPagination.NextCursor, 3, "next")
+			secondPagination, secondPageResults, err := PaginateCursor(contextDB, nextParams, &secondPageOrders, "id")
 			require.NoError(t, err)
 
-			assert.True(t, len(secondPage.Data) > 0)
-			assert.True(t, secondPage.HasPrev)
+			assert.True(t, len(secondPageResults) > 0)
+			assert.True(t, secondPagination.HasPrev)
 
 			// Ensure no ID overlap between pages
 			firstPageIDs := make(map[string]bool)
-			for _, order := range firstPage.Data {
+			for _, order := range firstPageResults {
 				firstPageIDs[order.ID] = true
 			}
 
-			for _, order := range secondPage.Data {
+			for _, order := range secondPageResults {
 				assert.False(t, firstPageIDs[order.ID], "Found duplicate ID between pages")
 			}
 		}
@@ -273,24 +274,24 @@ func TestPaginationWithCUID(t *testing.T) {
 		// Navigate to middle, then go backwards
 		params := NewCursorParams("", 2, "next")
 		var orders []OrderModel
-		firstPage, err := PaginateCursor(contextDB, params, &orders, "id")
+		firstPagination, _, err := PaginateCursor(contextDB, params, &orders, "id")
 		require.NoError(t, err)
 
-		if firstPage.HasNext {
+		if firstPagination.HasNext {
 			// Go to second page
 			var secondPageOrders []OrderModel
-			secondParams := NewCursorParams(firstPage.NextCursor, 2, "next")
-			secondPage, err := PaginateCursor(contextDB, secondParams, &secondPageOrders, "id")
+			secondParams := NewCursorParams(firstPagination.NextCursor, 2, "next")
+			secondPagination, _, err := PaginateCursor(contextDB, secondParams, &secondPageOrders, "id")
 			require.NoError(t, err)
 
 			// Now go backwards
 			var backwardOrders []OrderModel
-			backParams := NewCursorParams(secondPage.NextCursor, 2, "prev")
-			backPage, err := PaginateCursor(contextDB, backParams, &backwardOrders, "id")
+			backParams := NewCursorParams(secondPagination.NextCursor, 2, "prev")
+			backPagination, backPageResults, err := PaginateCursor(contextDB, backParams, &backwardOrders, "id")
 			require.NoError(t, err)
 
-			assert.Len(t, backPage.Data, 2)
-			assert.True(t, backPage.HasPrev)
+			assert.Len(t, backPageResults, 2)
+			assert.True(t, backPagination.HasPrev)
 		}
 	})
 }
@@ -306,33 +307,34 @@ func TestPaginationServicePattern(t *testing.T) {
 	}
 
 	// GetOrdersPaginated demonstrates offset-based pagination in service
-	getOrdersPaginated := func(ctx context.Context, service *OrderService, params Params) (*Paginated[OrderModel], error) {
+	getOrdersPaginated := func(ctx context.Context, service *OrderService, params Params) (*Pagination, []OrderModel, error) {
 		contextDB := dbutil.DB(ctx, service.db)
 		var orders []OrderModel
 		return Paginate(contextDB, params, &orders)
 	}
 
 	// GetOrdersByCursor demonstrates cursor-based pagination in service
-	getOrdersByCursor := func(ctx context.Context, service *OrderService, params CursorParams, orderField string) (*CursorPaginated[OrderModel], error) {
+	getOrdersByCursor := func(ctx context.Context, service *OrderService, params CursorParams, orderField string) (*CursorPagination, []OrderModel, error) {
 		contextDB := dbutil.DB(ctx, service.db)
 		var orders []OrderModel
 		return PaginateCursor(contextDB, params, &orders, orderField)
 	}
 
 	// GetOrdersByStatus demonstrates filtered pagination
-	getOrdersByStatus := func(ctx context.Context, service *OrderService, status string, params Params) (*Paginated[OrderModel], error) {
-		var result *Paginated[OrderModel]
+	getOrdersByStatus := func(ctx context.Context, service *OrderService, status string, params Params) (*Pagination, []OrderModel, error) {
+		var pagination *Pagination
+		var results []OrderModel
 
 		err := dbutil.Transaction(ctx, service.db, func(ctx context.Context) error {
 			txDB := dbutil.DB(ctx, service.db)
 			filteredQuery := txDB.Where("status = ?", status)
 			var orders []OrderModel
 			var err error
-			result, err = Paginate(filteredQuery, params, &orders)
+			pagination, results, err = Paginate(filteredQuery, params, &orders)
 			return err
 		})
 
-		return result, err
+		return pagination, results, err
 	}
 
 	service := &OrderService{db: db}
@@ -340,30 +342,31 @@ func TestPaginationServicePattern(t *testing.T) {
 
 	t.Run("service offset pagination", func(t *testing.T) {
 		params := NewParams(2, 5)
-		result, err := getOrdersPaginated(ctx, service, params)
+		pagination, results, err := getOrdersPaginated(ctx, service, params)
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 5)
-		assert.Equal(t, 2, result.Page)
-		assert.Equal(t, int64(20), result.Total)
+		assert.Len(t, results, 5)
+		assert.Equal(t, 2, pagination.Page)
+		assert.Equal(t, int64(20), pagination.Total)
 	})
 
 	t.Run("service cursor pagination", func(t *testing.T) {
 		params := NewCursorParams("", 7, "next")
-		result, err := getOrdersByCursor(ctx, service, params, "created_at")
+		pagination, results, err := getOrdersByCursor(ctx, service, params, "created_at")
 		require.NoError(t, err)
 
-		assert.Len(t, result.Data, 7)
-		assert.True(t, result.HasNext)
+		assert.Len(t, results, 7)
+		assert.True(t, pagination.HasNext)
 	})
 
 	t.Run("service filtered pagination", func(t *testing.T) {
 		params := NewParams(1, 10)
-		result, err := getOrdersByStatus(ctx, service, "pending", params)
+		var err error
+		_, results, err := getOrdersByStatus(ctx, service, "pending", params)
 		require.NoError(t, err)
 
 		// Verify all results have the requested status
-		for _, order := range result.Data {
+		for _, order := range results {
 			assert.Equal(t, "pending", order.Status)
 		}
 	})
@@ -388,17 +391,19 @@ func TestPaginationErrorHandling(t *testing.T) {
 		// Test offset pagination error
 		params := NewParams(1, 10)
 		var orders []OrderModel
-		result, err := Paginate(contextDB, params, &orders)
+		pagination, results, err := Paginate(contextDB, params, &orders)
 		assert.Error(t, err)
-		assert.Nil(t, result)
+		assert.Nil(t, pagination)
+		assert.Nil(t, results)
 		assert.Contains(t, err.Error(), "failed to count records")
 
 		// Test cursor pagination error
 		cursorParams := NewCursorParams("", 10, "next")
 		var cursorOrders []OrderModel
-		cursorResult, err := PaginateCursor(contextDB, cursorParams, &cursorOrders, "id")
+		cursorPagination, cursorResults, err := PaginateCursor(contextDB, cursorParams, &cursorOrders, "id")
 		assert.Error(t, err)
-		assert.Nil(t, cursorResult)
+		assert.Nil(t, cursorPagination)
+		assert.Nil(t, cursorResults)
 		assert.Contains(t, err.Error(), "failed to fetch cursor paginated data")
 	})
 
@@ -412,10 +417,11 @@ func TestPaginationErrorHandling(t *testing.T) {
 		// Test with malformed cursor
 		params := NewCursorParams("invalid-cursor-123", 10, "next")
 		var orders []OrderModel
-		result, err := PaginateCursor(contextDB, params, &orders, "id")
+		pagination, results, err := PaginateCursor(contextDB, params, &orders, "id")
 
 		assert.Error(t, err)
-		assert.Nil(t, result)
+		assert.Nil(t, pagination)
+		assert.Nil(t, results)
 		assert.Contains(t, err.Error(), "failed to decode cursor")
 	})
 }
