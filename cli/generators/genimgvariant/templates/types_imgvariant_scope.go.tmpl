@@ -58,7 +58,6 @@ func ScopeImageVariantsLoader(field string, opts ...ScopeImageVariantsLoaderOpti
 						q = q.Where("name IN (?)", options.LoadVariantsNames)
 					}
 					return q
-					return db
 				})
 			}
 		} else {
