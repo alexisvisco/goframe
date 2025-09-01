@@ -74,13 +74,13 @@ func tsclientCmd() *cobra.Command {
 			if flagFile != "" {
 				file, err := os.OpenFile(flagFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 				if err != nil {
-					return fmt.Errorf("failed to open output file %s: %w", file, err)
+					return fmt.Errorf("failed to open output file %s: %w", flagFile, err)
 				}
 
 				defer file.Close()
 				content := generator.File()
 				if _, err := file.WriteString(content); err != nil {
-					return fmt.Errorf("failed to write to output file %s: %w", file, err)
+					return fmt.Errorf("failed to write to output file %s: %w", flagFile, err)
 				}
 			} else {
 				fmt.Println(generator.File())
@@ -103,6 +103,7 @@ func collectTypePrefixes(routes []*apidoc.Route, rootImportPath string) map[stri
 	}
 
 	baseMap := make(map[string][]info)
+	visited := make(map[string]bool)
 
 	var visitField func(ft introspect.FieldType)
 	var visitObject func(obj *introspect.ObjectType)
@@ -111,11 +112,19 @@ func collectTypePrefixes(routes []*apidoc.Route, rootImportPath string) map[stri
 		if obj == nil {
 			return
 		}
+
+		// Prevent infinite recursion by tracking visited types
 		if !obj.IsAnonymous {
+			if visited[obj.TypeName] {
+				return
+			}
+			visited[obj.TypeName] = true
+
 			pkgPath := obj.TypeName[:strings.LastIndex(obj.TypeName, ".")]
 			base := obj.TypeName[strings.LastIndex(obj.TypeName, ".")+1:]
 			baseMap[base] = append(baseMap[base], info{obj.TypeName, pkgPath, base})
 		}
+
 		for _, f := range obj.Fields {
 			visitField(f.Type)
 		}
