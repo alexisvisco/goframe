@@ -86,6 +86,15 @@ func (f Field) QueryParam() (*FieldTag, bool) {
 	return nil, false
 }
 
+func (f Field) IsCtx() bool {
+	for _, tag := range f.Tags {
+		if tag.Key == FieldKindCtx {
+			return true
+		}
+	}
+	return false
+}
+
 type FieldKind = string
 
 const (
@@ -98,6 +107,7 @@ const (
 	FieldKindFile     FieldKind = "file"
 	FieldKindFiles    FieldKind = "files"
 	FieldKindOptional FieldKind = "optional"
+	FieldKindCtx      FieldKind = "ctx"
 )
 
 var tags = map[FieldKind]struct{}{
@@ -110,6 +120,7 @@ var tags = map[FieldKind]struct{}{
 	FieldKindFile:     {},
 	FieldKindFiles:    {},
 	FieldKindOptional: {},
+	FieldKindCtx:      {},
 }
 
 type FieldTag struct {
@@ -424,6 +435,7 @@ func (ctx *ParseContext) parseFieldTags(structTag string) []FieldTag {
 		{"file", FieldKindFile},
 		{"files", FieldKindFiles},
 		{"optional", FieldKindOptional},
+		{"ctx", FieldKindCtx},
 	}
 
 	// Process each tag type that exists

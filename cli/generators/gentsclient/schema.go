@@ -91,7 +91,7 @@ func (gen *TypescriptClientGenerator) generateZodSchema(schemaName string, obj i
 	fields := map[string]*strings.Builder{}
 
 	for _, field := range obj.Fields {
-		if field.IsNotSerializable() || hasOnlyCtxTags(field) {
+		if field.IsNotSerializable() || field.IsCtx() {
 			continue
 		}
 		zodType := gen.zodFieldType(field.Type, obj.TypeName, field.Name)
@@ -110,6 +110,7 @@ func (gen *TypescriptClientGenerator) generateZodSchema(schemaName string, obj i
 				introspect.FieldKindHeader: "headers",
 				introspect.FieldKindCookie: "cookies",
 			}
+
 			for _, t := range field.Tags {
 				if fieldKind, ok := fieldKindToSchemaField[t.Key]; ok {
 					if _, exists := fields[fieldKind]; !exists {
