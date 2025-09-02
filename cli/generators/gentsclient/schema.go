@@ -9,6 +9,22 @@ import (
 	"github.com/alexisvisco/goframe/core/helpers/str"
 )
 
+// hasOnlyCtxTags returns true if the field has only ctx tags and no other serializable tags
+func hasOnlyCtxTags(field introspect.Field) bool {
+	hasCtxTag := false
+	hasOtherSerializableTags := false
+
+	for _, tag := range field.Tags {
+		if tag.Key == "ctx" {
+			hasCtxTag = true
+		} else if tag.Key == "json" || tag.Key == "query" || tag.Key == "header" || tag.Key == "form" || tag.Key == "path" || tag.Key == "cookie" || tag.Key == "file" || tag.Key == "files" {
+			hasOtherSerializableTags = true
+		}
+	}
+
+	return hasCtxTag && !hasOtherSerializableTags
+}
+
 func (gen *TypescriptClientGenerator) AddSchema(prefix string, isRequest bool, objectTypes ...introspect.ObjectType) {
 	for _, objectType := range objectTypes {
 		var schemaName string
@@ -62,7 +78,7 @@ func (gen *TypescriptClientGenerator) AddSchema(prefix string, isRequest bool, o
 
 func (gen *TypescriptClientGenerator) hasNoSerializableFields(objectType introspect.ObjectType) bool {
 	for _, field := range objectType.Fields {
-		if !field.IsNotSerializable() {
+		if !field.IsNotSerializable() && !hasOnlyCtxTags(field) {
 			return false
 		}
 	}
@@ -75,7 +91,7 @@ func (gen *TypescriptClientGenerator) generateZodSchema(schemaName string, obj i
 	fields := map[string]*strings.Builder{}
 
 	for _, field := range obj.Fields {
-		if field.IsNotSerializable() {
+		if field.IsNotSerializable() || hasOnlyCtxTags(field) {
 			continue
 		}
 		zodType := gen.zodFieldType(field.Type, obj.TypeName, field.Name)
@@ -355,7 +371,7 @@ func (gen *TypescriptClientGenerator) createInterfaces() string {
 			fields := map[string]*strings.Builder{}
 			usedNames := map[string]map[string]bool{}
 			for _, field := range obj.Fields {
-				if field.IsNotSerializable() {
+				if field.IsNotSerializable() || hasOnlyCtxTags(field) {
 					continue
 				}
 				tsType := gen.tsFieldType(field.Type, obj.TypeName, field.Name)
@@ -418,7 +434,7 @@ func (gen *TypescriptClientGenerator) createInterfaces() string {
 			}
 		} else {
 			for _, field := range obj.Fields {
-				if field.IsNotSerializable() {
+				if field.IsNotSerializable() || hasOnlyCtxTags(field) {
 					continue
 				}
 				tsType := gen.tsFieldType(field.Type, obj.TypeName, field.Name)

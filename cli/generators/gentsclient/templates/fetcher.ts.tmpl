@@ -39,7 +39,7 @@ function setHeaders(options: FetcherOptions, headers: Record<string, unknown>) {
 	options.headers = Object.entries(headers).reduce((acc, [key, value]) => {
 		acc[key] = String(value);
 		return acc;
-	}, {});
+	}, {} as Record<string, string>);
 }
 
 function setCookies(options: FetcherOptions, cookies: Record<string, unknown>) {
@@ -50,7 +50,7 @@ function setCookies(options: FetcherOptions, cookies: Record<string, unknown>) {
 		.map(([key, value]) => `${key}=${String(value)}`)
 		.join('; ');
 	if (cookieHeader) {
-		options.headers['Cookie'] = cookieHeader;
+		(options.headers as Record<string, string>)['Cookie'] = cookieHeader;
 	}
 }
 
@@ -58,9 +58,10 @@ function setRequestBody(options: FetcherOptions, body: any) {
 	if (body === undefined || body === null) {
 		return;
 	}
+
 	if ('json' in body && body.json) {
 		options.headers = options.headers || {};
-		options.headers['Content-Type'] = 'application/json';
+		(options.headers as Record<string, string>)['Content-Type'] = 'application/json';
 		options.body = JSON.stringify(body.json);
 	} else if ('formData' in body && body.formData) {
 		const formData = new FormData();
