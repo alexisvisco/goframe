@@ -9,6 +9,11 @@ import (
 )
 
 func (ctx *ParseContext) ParseEnums(pkg *packages.Package) {
+	// Check if we already parsed enums for this package to avoid redundant work
+	if ctx.EnumsParsed[pkg.PkgPath] {
+		return
+	}
+
 	// Group constants by their type
 	typeConstants := make(map[string][]*types.Const)
 
@@ -76,6 +81,9 @@ func (ctx *ParseContext) ParseEnums(pkg *packages.Package) {
 
 		ctx.Enums[typeName] = enum
 	}
+
+	// Mark this package as having had enums parsed
+	ctx.EnumsParsed[pkg.PkgPath] = true
 }
 
 func (ctx *ParseContext) detectEnum(pkg *packages.Package, named *types.Named) *FieldTypeEnum {
@@ -86,15 +94,23 @@ func (ctx *ParseContext) detectEnum(pkg *packages.Package, named *types.Named) *
 		return enum
 	}
 
-	// If not already parsed, try to parse Enums for the package where this type is defined
-	if named.Obj().Pkg().Path() != pkg.PkgPath {
-		// Load the package where the type is defined
-		typePkg, err := ctx.LoadPackage(named.Obj().Pkg().Path())
-		if err != nil {
+	// Always try to parse enums for the package where this type is defined
+	// even if it's the same package, to ensure we don't miss any
+	targetPkgPath := named.Obj().Pkg().Path()
+
+	// Load the package where the type is defined
+	typePkg, err := ctx.LoadPackage(targetPkgPath)
+	if err != nil {
+		// If we can't load the package, try with the current package
+		// in case it's a local type we haven't processed yet
+		if targetPkgPath != pkg.PkgPath {
 			return nil
 		}
-		ctx.ParseEnums(typePkg)
+		typePkg = pkg
 	}
+
+	// Parse enums for this package - this is safe to call multiple times
+	ctx.ParseEnums(typePkg)
 
 	// Check again after parsing
 	if enum, exists := ctx.Enums[enumKey]; exists {

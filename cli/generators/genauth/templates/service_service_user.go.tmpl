@@ -427,6 +427,9 @@ func (s UserService) ResetPassword(ctx context.Context, code string, password st
 
 func (s UserService) FindByAccessToken(ctx context.Context, accessToken string) (*types.User, error) {
 	var user types.User
+    if strings.HasPrefix(accessToken, "Bearer ") {
+      accessToken = strings.TrimPrefix(accessToken, "Bearer ")
+    }
 	err := dbutil.DB(ctx, s.db).
 		Where("access_token = ?", accessToken).
 		First(&user).Error

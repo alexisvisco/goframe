@@ -220,18 +220,20 @@ const (
 
 // ParseContext holds the parsing state to prevent circular references
 type ParseContext struct {
-	Visited  map[string]*ObjectType    // key: package.TypeName
-	Enums    map[string]*FieldTypeEnum // key: package.TypeName
-	Packages map[string]*packages.Package
-	RootPath string
+	Visited     map[string]*ObjectType    // key: package.TypeName
+	Enums       map[string]*FieldTypeEnum // key: package.TypeName
+	Packages    map[string]*packages.Package
+	EnumsParsed map[string]bool // key: package path - tracks which packages have had enums parsed
+	RootPath    string
 }
 
 func ParseStruct(rootPath, relPkgPath, structName string) (*ObjectType, error) {
 	ctx := &ParseContext{
-		Visited:  make(map[string]*ObjectType),
-		Enums:    make(map[string]*FieldTypeEnum),
-		Packages: make(map[string]*packages.Package),
-		RootPath: rootPath,
+		Visited:     make(map[string]*ObjectType),
+		Enums:       make(map[string]*FieldTypeEnum),
+		Packages:    make(map[string]*packages.Package),
+		EnumsParsed: make(map[string]bool),
+		RootPath:    rootPath,
 	}
 
 	// Load the target package
@@ -470,6 +472,11 @@ func (ctx *ParseContext) parseFieldTags(structTag string) []FieldTag {
 }
 
 func (ctx *ParseContext) isFieldOptional(tags []FieldTag, isPointer bool) bool {
+	// Pointer types are automatically optional
+	if isPointer {
+		return true
+	}
+
 	// Check for optional tag
 	for _, tag := range tags {
 		if tag.Key == FieldKindOptional {

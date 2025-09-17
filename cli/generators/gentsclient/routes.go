@@ -10,8 +10,11 @@ import (
 
 func (gen *TypescriptClientGenerator) hasRequestFields(route apidoc.Route) bool {
 	objectType := route.Request
+	if objectType == nil {
+		return false
+	}
 	for _, field := range objectType.Fields {
-		if !field.IsNotSerializable() {
+		if !field.IsNotSerializable() && !hasOnlyCtxTags(field) {
 			return true
 		}
 	}
@@ -85,25 +88,30 @@ func (gen *TypescriptClientGenerator) buildRouteFunction(route apidoc.Route, pat
 	responseType := gen.createResponseType(route)
 	hasRequest := gen.hasRequestFields(route)
 
+	// Double-check that we have a schema in lookup if hasRequest is true
+	// This can happen if the schema was skipped during generation
+	if hasRequest {
+		if _, exists := gen.lookup[route.Request.TypeName]; !exists {
+			hasRequest = false
+		}
+	}
+
 	if hasRequest {
 		sb.WriteString(fmt.Sprintf("export async function %s(fetcher: Fetcher, request: %s): Promise<{data: %s, status: number, headers: Headers}> {\n",
 			fnName,
 			gen.schemaNameToExportedType(gen.lookup[route.Request.TypeName]),
 			responseType,
 		))
-	} else {
-		sb.WriteString(fmt.Sprintf("export async function %s(fetcher: Fetcher): Promise<{data: %s, status: number, headers: Headers}> {\n",
-			fnName,
-			responseType,
-		))
-	}
-
-	if hasRequest {
 		sb.WriteString(fmt.Sprintf("%sconst parseResult = %s.safeParse(request);\n", gen.indent(1), gen.lookup[route.Request.TypeName]))
 		sb.WriteString(fmt.Sprintf("%sif (!parseResult.success) {\n", gen.indent(1)))
 		sb.WriteString(fmt.Sprintf("%sthrow new RequestParseError(parseResult.error);\n", gen.indent(2)))
 		sb.WriteString(fmt.Sprintf("%s}\n", gen.indent(1)))
 		sb.WriteString(fmt.Sprintf("%sconst safeRequest = parseResult.data;\n", gen.indent(1)))
+	} else {
+		sb.WriteString(fmt.Sprintf("export async function %s(fetcher: Fetcher): Promise<{data: %s, status: number, headers: Headers}> {\n",
+			fnName,
+			responseType,
+		))
 	}
 
 	sb.WriteString(fmt.Sprintf("%slet options : FetcherOptions = {\n", gen.indent(1)))
@@ -131,7 +139,9 @@ func (gen *TypescriptClientGenerator) buildRouteFunction(route apidoc.Route, pat
 
 	sb.WriteString(fmt.Sprintf("\n%sconst statusesAllowedToSchema: { pattern: RegExp, schema: ZodSchema<any>, raw?: boolean }[] = [%s];\n", gen.indent(1), gen.getAllowedStatusCodesToSchema(route.StatusToResponse)))
 
-	constCall := `try {
+	var constCall string
+	if hasRequest {
+		constCall = `try {
     const response = await fetcher(options);
     return await handleResponse(response, statusesAllowedToSchema);
   } catch (error) {
@@ -141,6 +151,18 @@ func (gen *TypescriptClientGenerator) buildRouteFunction(route apidoc.Route, pat
       throw new FetchError(error as Error);
     }
   }`
+	} else {
+		constCall = `try {
+    const response = await fetcher(options);
+    return await handleResponse(response, statusesAllowedToSchema);
+  } catch (error) {
+    if (error instanceof ErrorResponse || error instanceof ResponseParseError) {
+      throw error;
+    } else {
+      throw new FetchError(error as Error);
+    }
+  }`
+	}
 	sb.WriteString(fmt.Sprintf("%s%s\n", gen.indent(1), constCall))
 	sb.WriteString("}")
 	return sb.String()

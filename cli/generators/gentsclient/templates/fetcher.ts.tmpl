@@ -30,7 +30,13 @@ function setPathParams(options: FetcherOptions, pathParams: Record<string, unkno
 function setSearchParams(options: FetcherOptions, searchParams: Record<string, unknown>) {
 	const urlSearchParams = new URLSearchParams();
 	for (const [key, value] of Object.entries(searchParams)) {
-		urlSearchParams.append(key, String(value));
+        if(Array.isArray(value)){
+            value.forEach((item) => {
+                urlSearchParams.append(key + '[]', String(item));
+            });
+        } else{
+            urlSearchParams.append(key, String(value));
+        }
 	}
 	options.path += (options.path.includes('?') ? '&' : '?') + urlSearchParams.toString();
 }

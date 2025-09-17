@@ -2,82 +2,82 @@
 package types
 
 import (
-	"context"
-	"time"
+  "context"
+  "time"
 )
 
 // User represents an account in the system.
 type User struct {
-	ID                string
-	Email             string
-	EncryptedPassword *string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	EmailVerifiedAt   *time.Time
-	AccessToken       string
+  ID                string     `json:"id"`
+  Email             string     `json:"-"`
+  EncryptedPassword *string    `json:"-"`
+  CreatedAt         time.Time  `json:"created_at"`
+  UpdatedAt         time.Time  `json:"updated_at"`
+  EmailVerifiedAt   *time.Time `json:"-"`
+  AccessToken       string     `json:"-"`
 
-	OAuthProviders []*UserOAuthProvider
-	UserCodes      []*UserCode
+  OAuthProviders []*UserOAuthProvider `json:"-"`
+  UserCodes      []*UserCode          `json:"-"`
 }
 
 // FindOAuthProvider returns the OAuth provider matching the given provider
 // or nil if it does not exist on the user.
 func (u User) FindOAuthProvider(provider OAuthProvider) *UserOAuthProvider {
-	for _, p := range u.OAuthProviders {
-		if p.Provider == provider {
-			return p
-		}
-	}
-	return nil
+  for _, p := range u.OAuthProviders {
+    if p.Provider == provider {
+      return p
+    }
+  }
+  return nil
 }
 
 // UserService describes the business behaviour around users.
 type UserService interface {
-	CreateUserWithPassword(ctx context.Context, user *CreateUserWithPasswordParams) (*User, error)
-	CreateOrGetUserWithMagicLink(ctx context.Context, params *CreateUserWithMagicLinkParams) (*User, error)
-	CreateOrGetUserWithOAuth(ctx context.Context, params *CreateOrGetUserWithOAuthParams) (*CreateOrGetUserWithOAuthResult, error)
-	LoginWithPassword(ctx context.Context, params *LoginWithPasswordParams) (*User, error)
-	VerifyUserEmail(ctx context.Context, code string) (*User, error)
-	VerifyMagicLink(ctx context.Context, code string) (*User, error)
-	VerifyOAuthProvider(ctx context.Context, providerID string, code string) (*User, error)
-	RequestPasswordReset(ctx context.Context, email string) error
-	ResetPassword(ctx context.Context, code string, password string) (*User, error)
-	FindByAccessToken(ctx context.Context, accessToken string) (*User, error)
+  CreateUserWithPassword(ctx context.Context, user *CreateUserWithPasswordParams) (*User, error)
+  CreateOrGetUserWithMagicLink(ctx context.Context, params *CreateUserWithMagicLinkParams) (*User, error)
+  CreateOrGetUserWithOAuth(ctx context.Context, params *CreateOrGetUserWithOAuthParams) (*CreateOrGetUserWithOAuthResult, error)
+  LoginWithPassword(ctx context.Context, params *LoginWithPasswordParams) (*User, error)
+  VerifyUserEmail(ctx context.Context, code string) (*User, error)
+  VerifyMagicLink(ctx context.Context, code string) (*User, error)
+  VerifyOAuthProvider(ctx context.Context, providerID string, code string) (*User, error)
+  RequestPasswordReset(ctx context.Context, email string) error
+  ResetPassword(ctx context.Context, code string, password string) (*User, error)
+  FindByAccessToken(ctx context.Context, accessToken string) (*User, error)
 }
 
 // CreateUserWithPasswordParams holds data required to create a user with a password.
 type CreateUserWithPasswordParams struct {
-	Email    string `zog:"email"`
-	Password string `zog:"password"`
+  Email    string `zog:"email"`
+  Password string `zog:"password"`
 }
 
 // LoginWithPasswordParams contains credentials for authentication.
 type LoginWithPasswordParams struct {
-	Email    string `zog:"email"`
-	Password string `zog:"password"`
+  Email    string `zog:"email"`
+  Password string `zog:"password"`
 }
 
 // CreateUserWithMagicLinkParams defines the parameters to create a magic link login.
 type CreateUserWithMagicLinkParams struct {
-	Email string `zog:"email"`
+  Email string `zog:"email"`
 }
 
 // CreateOrGetUserWithOAuthParams describes the details provided by an OAuth provider.
 type CreateOrGetUserWithOAuthParams struct {
-	Provider         OAuthProvider
-	ProviderID       string
-	Email            string
-	AccessToken      string
-	RefreshToken     string
-	WasConnected     bool
-	EmailNotVerified bool
+  Provider         OAuthProvider
+  ProviderID       string
+  Email            string
+  AccessToken      string
+  RefreshToken     string
+  WasConnected     bool
+  EmailNotVerified bool
 }
 
 // CreateOrGetUserWithOAuthResult returns the user along with its verification status.
 type CreateOrGetUserWithOAuthResult struct {
-	User        *User
-	Verified    bool
-	RedirectURL string
+  User        *User
+  Verified    bool
+  RedirectURL string
 }
 
 var UserContextKey = "goframe.user"

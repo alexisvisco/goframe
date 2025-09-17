@@ -39,10 +39,11 @@ type StatusToResponse struct {
 // - Default types are optional and won't cause errors if they don't exist
 func ParseRoute(rootPath, relPkgPath, structName, method string) (*Route, error) {
 	ctx := &introspect.ParseContext{
-		Visited:  make(map[string]*introspect.ObjectType),
-		Enums:    make(map[string]*introspect.FieldTypeEnum),
-		Packages: make(map[string]*packages.Package),
-		RootPath: rootPath,
+		Visited:     make(map[string]*introspect.ObjectType),
+		Enums:       make(map[string]*introspect.FieldTypeEnum),
+		Packages:    make(map[string]*packages.Package),
+		EnumsParsed: make(map[string]bool),
+		RootPath:    rootPath,
 	}
 
 	// Load the package
