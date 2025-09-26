@@ -1,3 +1,69 @@
+// Package migrate provides database migration functionality for GORM with support for
+// both full and partial rollbacks.
+//
+// # Basic Usage
+//
+// Create migrations that implement the Migration interface:
+//
+//	type CreateUsersTable struct{}
+//
+//	func (m *CreateUsersTable) Up(ctx context.Context) error {
+//		db := dbutil.DB(ctx, nil)
+//		return db.Exec(`CREATE TABLE users (
+//			id SERIAL PRIMARY KEY,
+//			name VARCHAR(255) NOT NULL,
+//			email VARCHAR(255) UNIQUE NOT NULL
+//		)`).Error
+//	}
+//
+//	func (m *CreateUsersTable) Down(ctx context.Context) error {
+//		db := dbutil.DB(ctx, nil)
+//		return db.Exec("DROP TABLE users").Error
+//	}
+//
+//	func (m *CreateUsersTable) Version() (string, time.Time) {
+//		return "create_users_table", time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+//	}
+//
+// # Running Migrations
+//
+//	migrator := migrate.New(db)
+//	migrations := []migrate.Migration{&CreateUsersTable{}}
+//
+//	// Apply all pending migrations
+//	err := migrator.Up(ctx, migrations)
+//
+//	// Rollback all applied migrations
+//	err = migrator.DownAll(ctx, migrations)
+//
+//	// Rollback only the last 3 migrations
+//	err = migrator.DownSteps(ctx, migrations, 3)
+//
+//	// Rollback with explicit steps parameter
+//	err = migrator.Down(ctx, migrations, 2) // rollback 2 steps
+//	err = migrator.Down(ctx, migrations, 0) // rollback all (same as DownAll)
+//
+// # SQL File Migrations
+//
+// Create migrations from SQL files using the expected format:
+//
+//	// 20240101120000_create_users_table.sql
+//	-- migrate:up
+//	CREATE TABLE users (
+//		id SERIAL PRIMARY KEY,
+//		name VARCHAR(255) NOT NULL
+//	);
+//
+//	-- migrate:down
+//	DROP TABLE users;
+//
+//	// Load and use SQL migration
+//	migration := migrate.MigrationFromSQL(fsys, "20240101120000_create_users_table.sql")
+//	migrations := []migrate.Migration{migration}
+//	err := migrator.Up(ctx, migrations)
+//
+// The rollback steps functionality allows precise control over how many migrations
+// to rollback, making it safer to undo recent changes without affecting older migrations.
 package migrate
 
 import (
@@ -142,7 +208,8 @@ func (m *Migrator) Up(ctx context.Context, migrations []Migration, opts ...Optio
 }
 
 // Down executes applied migrations in reverse chronological order.
-func (m *Migrator) Down(ctx context.Context, migrations []Migration, opts ...Option) error {
+// If steps is 0, all applied migrations are rolled back.
+func (m *Migrator) Down(ctx context.Context, migrations []Migration, steps int, opts ...Option) error {
 	cfg := &options{
 		timeout: 15 * time.Second, // default timeout
 		logger:  slog.Default(),   // default logger
@@ -152,8 +219,14 @@ func (m *Migrator) Down(ctx context.Context, migrations []Migration, opts ...Opt
 	}
 
 	if cfg.logger != nil {
-		cfg.logger.InfoContext(ctx, "starting migration down process",
-			"total_migrations", len(migrations))
+		if steps > 0 {
+			cfg.logger.InfoContext(ctx, "starting migration down process with steps limit",
+				"total_migrations", len(migrations),
+				"steps", steps)
+		} else {
+			cfg.logger.InfoContext(ctx, "starting migration down process (all applied migrations)",
+				"total_migrations", len(migrations))
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, cfg.timeout)
@@ -199,6 +272,17 @@ func (m *Migrator) Down(ctx context.Context, migrations []Migration, opts ...Opt
 		return nil
 	}
 
+	// Limit to specified steps if provided
+	if steps > 0 && steps < len(sorted) {
+		totalAvailable := len(sorted)
+		sorted = sorted[:steps]
+		if cfg.logger != nil {
+			cfg.logger.InfoContext(ctx, "limiting rollback to specified steps",
+				"steps", steps,
+				"total_available", totalAvailable)
+		}
+	}
+
 	if cfg.globalTransaction {
 		return m.runInGlobalTransaction(ctx, sorted, false, cfg)
 	}
@@ -217,12 +301,31 @@ func (m *Migrator) Down(ctx context.Context, migrations []Migration, opts ...Opt
 		}
 	}
 
+	rollbackCount := len(sorted)
 	if cfg.logger != nil {
-		cfg.logger.InfoContext(ctx, "migration down process completed successfully",
-			"rollback_count", len(sorted))
+		if steps > 0 {
+			cfg.logger.InfoContext(ctx, "migration down process completed successfully",
+				"rollback_count", rollbackCount,
+				"requested_steps", steps)
+		} else {
+			cfg.logger.InfoContext(ctx, "migration down process completed successfully",
+				"rollback_count", rollbackCount)
+		}
 	}
 
 	return nil
+}
+
+// DownAll executes all applied migrations in reverse chronological order.
+// This is a convenience method that calls Down with steps=0.
+func (m *Migrator) DownAll(ctx context.Context, migrations []Migration, opts ...Option) error {
+	return m.Down(ctx, migrations, 0, opts...)
+}
+
+// DownSteps executes the specified number of applied migrations in reverse chronological order.
+// This is a convenience method that calls Down with the specified steps.
+func (m *Migrator) DownSteps(ctx context.Context, migrations []Migration, steps int, opts ...Option) error {
+	return m.Down(ctx, migrations, steps, opts...)
 }
 
 // runInGlobalTransaction executes all migrations in a single transaction.
@@ -311,7 +414,7 @@ func (m *Migrator) runInGlobalTransaction(ctx context.Context, migrations []Migr
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit().Error; err != nil {
 		if cfg.logger != nil {
 			cfg.logger.ErrorContext(ctx, "failed to commit global transaction", "error", err)
 		}
@@ -358,6 +461,25 @@ func (m *Migrator) getAppliedMigrations(ctx context.Context) (map[string]bool, e
 	}
 
 	return applied, rows.Err()
+}
+
+// Applied returns all applied migration versions sorted chronologically.
+func (m *Migrator) Applied(ctx context.Context) ([]string, error) {
+	rows, err := m.db.WithContext(ctx).Raw("SELECT version FROM schema_migrations ORDER BY version ASC").Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []string
+	for rows.Next() {
+		var version string
+		if err := rows.Scan(&version); err != nil {
+			return nil, err
+		}
+		list = append(list, version)
+	}
+	return list, rows.Err()
 }
 
 // filterPending returns migrations that haven't been applied yet, sorted by timestamp.

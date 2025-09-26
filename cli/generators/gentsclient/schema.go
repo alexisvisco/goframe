@@ -87,7 +87,15 @@ func (gen *TypescriptClientGenerator) hasNoSerializableFields(objectType introsp
 
 func (gen *TypescriptClientGenerator) generateZodSchema(schemaName string, obj introspect.ObjectType, isRequest bool) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("export const %s = z.object({\n", schemaName))
+
+	// Check if this schema contains recursive references
+	if gen.hasRecursiveReference(obj, obj.TypeName) {
+		// Use z.lazy() for recursive schemas
+		sb.WriteString(fmt.Sprintf("export const %s: z.ZodType<%s> = z.lazy(() =>\n", schemaName, gen.schemaNameToExportedType(schemaName)))
+		sb.WriteString(fmt.Sprintf("%sz.object({\n", gen.indent(1)))
+	} else {
+		sb.WriteString(fmt.Sprintf("export const %s = z.object({\n", schemaName))
+	}
 	fields := map[string]*strings.Builder{}
 
 	for _, field := range obj.Fields {
@@ -164,8 +172,58 @@ func (gen *TypescriptClientGenerator) generateZodSchema(schemaName string, obj i
 		}
 	}
 
-	sb.WriteString("}).passthrough();\n")
+	// Close the schema appropriately
+	if gen.hasRecursiveReference(obj, obj.TypeName) {
+		sb.WriteString(fmt.Sprintf("%s}).passthrough(),\n", gen.indent(1)))
+		sb.WriteString(");\n")
+	} else {
+		sb.WriteString("}).passthrough();\n")
+	}
 	return sb.String()
+}
+
+// hasRecursiveReference checks if an object type contains a recursive reference to itself
+func (gen *TypescriptClientGenerator) hasRecursiveReference(obj introspect.ObjectType, targetTypeName string) bool {
+	return gen.checkFieldsForRecursion(obj.Fields, targetTypeName, make(map[string]bool))
+}
+
+// checkFieldsForRecursion recursively checks fields for circular references
+func (gen *TypescriptClientGenerator) checkFieldsForRecursion(fields []introspect.Field, targetTypeName string, visited map[string]bool) bool {
+	for _, field := range fields {
+		if field.IsNotSerializable() || field.IsCtx() {
+			continue
+		}
+		if gen.checkFieldTypeForRecursion(field.Type, targetTypeName, visited) {
+			return true
+		}
+	}
+	return false
+}
+
+// checkFieldTypeForRecursion checks if a field type contains a recursive reference
+func (gen *TypescriptClientGenerator) checkFieldTypeForRecursion(ft introspect.FieldType, targetTypeName string, visited map[string]bool) bool {
+	if ft.Array != nil {
+		return gen.checkFieldTypeForRecursion(ft.Array.ItemType, targetTypeName, visited)
+	} else if ft.Map != nil {
+		return gen.checkFieldTypeForRecursion(ft.Map.Key, targetTypeName, visited) ||
+			gen.checkFieldTypeForRecursion(ft.Map.Value, targetTypeName, visited)
+	} else if ft.Object != nil {
+		// Direct self-reference
+		if ft.Object.TypeName == targetTypeName {
+			return true
+		}
+
+		// Avoid infinite recursion when checking nested objects
+		if visited[ft.Object.TypeName] {
+			return false
+		}
+		visited[ft.Object.TypeName] = true
+		defer func() { delete(visited, ft.Object.TypeName) }()
+
+		// Check nested object fields for indirect recursion
+		return gen.checkFieldsForRecursion(ft.Object.Fields, targetTypeName, visited)
+	}
+	return false
 }
 
 func (gen *TypescriptClientGenerator) zodFieldType(ft introspect.FieldType, parentTypeName, fieldName string) string {

@@ -12,6 +12,7 @@ func NewCmdRootMigrate() *cobra.Command {
 
 	cmd.AddCommand(migrateCmd())
 	cmd.AddCommand(rollbackCmd())
+	cmd.AddCommand(statusCmd())
 	cmd.AddCommand(cleanCmd())
 	cmd.AddCommand(seedsRootCmd())
 

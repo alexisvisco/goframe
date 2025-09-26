@@ -291,10 +291,10 @@ func (g *AuthGenerator) generateMigration() error {
     id                 text                    not null primary key,
     email              varchar(255)            not null,
     encrypted_password varchar(255),
-    email_verified_at  timestamp default null,
+    email_verified_at  timestamp with time zone default null,
     access_token       text,
-    created_at         timestamp default now() not null,
-    updated_at         timestamp default now() not null
+    created_at         timestamp with time zone default timezone('utc', now()) not null,
+    updated_at         timestamp with time zone default timezone('utc', now()) not null
 );
 
 -- index on email
@@ -308,9 +308,9 @@ create table if not exists user_oauth_providers
     provider_id      varchar(255)            not null,
     access_token     text,
     refresh_token    text,
-    verified_at      timestamp default null,
-    created_at       timestamp default now() not null,
-    updated_at       timestamp default now() not null,
+    verified_at      timestamp with time zone default null,
+    created_at       timestamp with time zone default timezone('utc', now()) not null,
+    updated_at       timestamp with time zone default timezone('utc', now()) not null,
     foreign key (user_id) references users (id) on delete cascade
 );
 
@@ -323,14 +323,14 @@ create table if not exists user_codes
     user_id    text                    not null,
     kind       text                    not null,
     metadata   jsonb default '{}'::jsonb,
-    expires_at timestamp default now() not null,
-    created_at timestamp default now() not null
+    expires_at timestamp with time zone not null,
+    created_at timestamp with time zone default timezone('utc', now()) not null
 );
 
 create table if not exists oauth_state_codes (
     id text not null primary key,
     was_connected boolean not null,
-    expires_at timestamp not null
+    expires_at timestamp with time zone not null
 );`,
 		Down: `drop table if exists user_codes;
 drop table if exists user_oauth_providers;

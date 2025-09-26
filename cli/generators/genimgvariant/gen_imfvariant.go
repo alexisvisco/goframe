@@ -132,8 +132,8 @@ func (g *ImageVariantGenerator) createMigrations() error {
 				original_attachment_id TEXT NOT NULL REFERENCES attachments(id) ON DELETE CASCADE,
 				kind TEXT,
     		kind_id TEXT,
-				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+				created_at timestamp with time zone NOT NULL DEFAULT timezone('utc', now()),
+				updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc', now())
 );
 
 CREATE TABLE image_variants (
@@ -142,7 +142,7 @@ CREATE TABLE image_variants (
 				image_variant_set_id TEXT NOT NULL REFERENCES image_variant_sets(id) ON DELETE CASCADE,
 				name TEXT NOT NULL,
 				metadata JSONB,
-				created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+				created_at timestamp with time zone NOT NULL DEFAULT timezone('utc', now())
 );
 
 CREATE UNIQUE INDEX idx_image_variant_set_name_unique ON image_variants(image_variant_set_id, name);`,

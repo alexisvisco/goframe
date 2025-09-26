@@ -56,21 +56,6 @@ func (p *StorageGenerator) CreateMigrations() []generators.FileConfig {
 // getSQLMigration returns the SQL for creating the attachments table based on database type
 func (p *StorageGenerator) getSQLMigration() string {
 	switch p.Gen.DatabaseType {
-	case configuration.DatabaseTypeSQLite:
-		return `
-CREATE TABLE IF NOT EXISTS attachments (
-	id TEXT PRIMARY KEY,
-	filename TEXT NOT NULL,
-	content_type TEXT NOT NULL,
-	byte_size INTEGER NOT NULL,
-	key TEXT NOT NULL UNIQUE,
-	checksum TEXT NOT NULL,
-	created_at DATETIME NOT NULL,
-	deleted_at DATETIME NULL
-);
-CREATE INDEX IF NOT EXISTS idx_attachments_created_at ON attachments(created_at);
-CREATE INDEX IF NOT EXISTS idx_attachments_deleted_at ON attachments(deleted_at);
-		`
 	case configuration.DatabaseTypePostgres:
 		return `
 CREATE TABLE IF NOT EXISTS attachments (
@@ -80,7 +65,7 @@ CREATE TABLE IF NOT EXISTS attachments (
 	byte_size BIGINT NOT NULL,
 	key TEXT NOT NULL UNIQUE,
 	checksum TEXT NOT NULL,
-	created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+	created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc', now()),
 	deleted_at TIMESTAMP WITH TIME ZONE NULL
 );
 CREATE INDEX IF NOT EXISTS idx_attachments_created_at ON attachments(created_at);
