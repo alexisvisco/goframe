@@ -26,6 +26,13 @@ func hasOnlyCtxTags(field introspect.Field) bool {
 }
 
 func (gen *TypescriptClientGenerator) AddSchema(prefix string, isRequest bool, objectTypes ...introspect.ObjectType) {
+	// Reserved schema names that should not be used for user types
+	reservedSchemaNames := map[string]bool{
+		"dateSchema":     true,
+		"durationSchema": true,
+		"errorSchema":    true,
+	}
+
 	for _, objectType := range objectTypes {
 		var schemaName string
 		var lookupKey string
@@ -58,6 +65,15 @@ func (gen *TypescriptClientGenerator) AddSchema(prefix string, isRequest bool, o
 				schemaName = effectivePrefix + "_" + schemaName
 			}
 			schemaName = str.ToCamelCase(schemaName) + "Schema"
+
+			// Check if the generated schema name conflicts with reserved names
+			if reservedSchemaNames[schemaName] {
+				// Add "Type" suffix to avoid conflict with primitive schemas
+				schemaName = str.ToCamelCase(objectType.TypeName[strings.LastIndex(objectType.TypeName, ".")+1:]) + "TypeSchema"
+				if effectivePrefix != "" {
+					schemaName = effectivePrefix + "_" + str.ToCamelCase(objectType.TypeName[strings.LastIndex(objectType.TypeName, ".")+1:]) + "TypeSchema"
+				}
+			}
 		}
 
 		if _, ok := gen.lookup[lookupKey]; ok {

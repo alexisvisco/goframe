@@ -887,3 +887,231 @@ func TestEnumInNestedStructure(t *testing.T) {
 		t.Error("Expected events field to be Record<string, Event>")
 	}
 }
+
+func TestTimeTypeGenerationBug(t *testing.T) {
+	generator := NewTypescriptClientGenerator("internal/testhandler", make(map[string]string))
+
+	// Create a struct that contains a time.Time field
+	dateObject := introspect.ObjectType{
+		TypeName: "DateObject",
+		Fields: []introspect.Field{
+			{
+				Name:     "Time",
+				Type:     introspect.FieldType{Primitive: introspect.FieldTypePrimitiveTime},
+				Optional: false,
+				Tags:     []introspect.FieldTag{{Key: introspect.FieldKindJSON, Value: "time"}},
+			},
+		},
+	}
+
+	generator.AddSchema("DateObject", false, dateObject)
+
+	result := generator.File()
+
+	// Check that dateSchema is correctly generated as a primitive
+	expectedDateSchema := "const dateSchema = z.string().datetime({ offset: true }).transform((value) => new Date(value));"
+	if !strings.Contains(result, expectedDateSchema) {
+		t.Errorf("Expected dateSchema to be generated as primitive, but got:\n%s", result)
+	}
+
+	// Check that DateObject schema uses dateSchema correctly, not recursively
+	expectedObjectSchema := "export const dateObjectDateObjectSchema = z.object({\n  time: dateSchema,\n}).passthrough();"
+	if !strings.Contains(result, expectedObjectSchema) {
+		t.Errorf("Expected DateObject schema to reference dateSchema correctly, but got:\n%s", result)
+	}
+
+	// Most importantly, ensure we don't have a recursive reference
+	unexpectedRecursive := "export const dateSchema = z.object({\n  Time: dateSchema,"
+	if strings.Contains(result, unexpectedRecursive) {
+		t.Errorf("Found recursive dateSchema definition, which is incorrect:\n%s", result)
+	}
+}
+
+func TestDateTypeNamingConflict(t *testing.T) {
+	generator := NewTypescriptClientGenerator("internal/testhandler", make(map[string]string))
+
+	// Create a struct named "Date" that contains a time.Time field
+	// This reproduces the exact issue where a Go type "Date" creates a schema named "dateSchema"
+	// which conflicts with the primitive dateSchema for time.Time
+	dateStruct := introspect.ObjectType{
+		TypeName: "Date",
+		Fields: []introspect.Field{
+			{
+				Name:     "Time",
+				Type:     introspect.FieldType{Primitive: introspect.FieldTypePrimitiveTime},
+				Optional: false,
+				Tags:     []introspect.FieldTag{{Key: introspect.FieldKindJSON, Value: "Time"}},
+			},
+		},
+	}
+
+	// First add the Date struct - this will create a dateSchema entry in lookup
+	generator.AddSchema("", false, dateStruct)
+
+	// Then try to generate the file, which should trigger the createDateSchema() call
+	// when processing the Time field
+	result := generator.File()
+
+	// The bug should be fixed: we should NOT have a recursive definition
+	problematicRecursive := "export const dateSchema = z.object({\n  Time: dateSchema,"
+	if strings.Contains(result, problematicRecursive) {
+		t.Errorf("BUG STILL EXISTS! Found recursive dateSchema definition:\n%s", result)
+	}
+
+	// What we should have after the fix:
+	// 1. A primitive dateSchema for time.Time
+	expectedPrimitiveDateSchema := "const dateSchema = z.string().datetime({ offset: true }).transform((value) => new Date(value));"
+	if !strings.Contains(result, expectedPrimitiveDateSchema) {
+		t.Errorf("Expected primitive dateSchema to be present, but got:\n%s", result)
+	}
+
+	// 2. A differently named schema for the Date struct (should be dateTypeSchema now)
+	expectedStructSchema := "export const dateTypeSchema = z.object({\n  Time: dateSchema,"
+	if !strings.Contains(result, expectedStructSchema) {
+		t.Errorf("Expected Date struct to use dateTypeSchema name to avoid conflict, but got:\n%s", result)
+	}
+
+	// 3. Verify the Date struct schema correctly references the primitive dateSchema
+	if !strings.Contains(result, "Time: dateSchema,") {
+		t.Errorf("Expected Date struct to reference primitive dateSchema, but got:\n%s", result)
+	}
+}
+
+func TestDurationTypeNamingConflict(t *testing.T) {
+	generator := NewTypescriptClientGenerator("internal/testhandler", make(map[string]string))
+
+	// Create a struct named "Duration" that contains a time.Duration field
+	// This should also avoid naming conflicts like the Date type
+	durationStruct := introspect.ObjectType{
+		TypeName: "Duration",
+		Fields: []introspect.Field{
+			{
+				Name:     "Value",
+				Type:     introspect.FieldType{Primitive: introspect.FieldTypePrimitiveDuration},
+				Optional: false,
+				Tags:     []introspect.FieldTag{{Key: introspect.FieldKindJSON, Value: "Value"}},
+			},
+		},
+	}
+
+	generator.AddSchema("", false, durationStruct)
+	result := generator.File()
+
+	// Should not have recursive durationSchema definition
+	problematicRecursive := "export const durationSchema = z.object({\n  Value: durationSchema,"
+	if strings.Contains(result, problematicRecursive) {
+		t.Errorf("Found recursive durationSchema definition:\n%s", result)
+	}
+
+	// Should have primitive durationSchema
+	expectedPrimitiveDurationSchema := "const durationSchema = z.number().int().nonnegative().transform((value) => new Duration(value))"
+	if !strings.Contains(result, expectedPrimitiveDurationSchema) {
+		t.Errorf("Expected primitive durationSchema to be present, but got:\n%s", result)
+	}
+
+	// Should have durationTypeSchema for the Duration struct
+	expectedStructSchema := "export const durationTypeSchema = z.object({\n  Value: durationSchema,"
+	if !strings.Contains(result, expectedStructSchema) {
+		t.Errorf("Expected Duration struct to use durationTypeSchema name, but got:\n%s", result)
+	}
+}
+
+func TestErrorTypeNamingConflict(t *testing.T) {
+	generator := NewTypescriptClientGenerator("internal/testhandler", make(map[string]string))
+
+	// Create a struct named "Error" that contains some fields
+	// This should avoid naming conflicts with the reserved errorSchema
+	errorStruct := introspect.ObjectType{
+		TypeName: "Error",
+		Fields: []introspect.Field{
+			{
+				Name:     "Code",
+				Type:     introspect.FieldType{Primitive: introspect.FieldTypePrimitiveString},
+				Optional: false,
+				Tags:     []introspect.FieldTag{{Key: introspect.FieldKindJSON, Value: "Code"}},
+			},
+			{
+				Name:     "Message",
+				Type:     introspect.FieldType{Primitive: introspect.FieldTypePrimitiveString},
+				Optional: false,
+				Tags:     []introspect.FieldTag{{Key: introspect.FieldKindJSON, Value: "Message"}},
+			},
+		},
+	}
+
+	generator.AddSchema("", false, errorStruct)
+	result := generator.File()
+
+	// Should not have recursive errorSchema definition
+	problematicRecursive := "export const errorSchema = z.object({\n  Code: z.string(),"
+	if strings.Contains(result, problematicRecursive) {
+		t.Errorf("Found recursive errorSchema definition:\n%s", result)
+	}
+
+	// Should have primitive errorSchema
+	expectedPrimitiveErrorSchema := "const errorSchema = z.object({\n\tmessage: z.string().optional(),"
+	if !strings.Contains(result, expectedPrimitiveErrorSchema) {
+		t.Errorf("Expected primitive errorSchema to be present, but got:\n%s", result)
+	}
+
+	// Should have errorTypeSchema for the Error struct
+	expectedStructSchema := "export const errorTypeSchema = z.object({\n  Code: z.string(),"
+	if !strings.Contains(result, expectedStructSchema) {
+		t.Errorf("Expected Error struct to use errorTypeSchema name, but got:\n%s", result)
+	}
+}
+
+func TestUserReportedTimeTimeBug(t *testing.T) {
+	// This test reproduces the exact issue reported by the user:
+	// "il y a un problème avec tsclient quand on a des time.Time il génère :
+	// export const dateSchema = z.object({
+	//   Time: dateSchema,
+	// }).passthrough();
+	// au lieu de :
+	// const dateSchema = z.string().datetime({ offset: true }).transform((value) => new Date(value));"
+
+	generator := NewTypescriptClientGenerator("internal/testhandler", make(map[string]string))
+
+	// Simulate a Go struct that would cause this issue - a struct named something that
+	// would generate "dateSchema" as its schema name
+	problematicStruct := introspect.ObjectType{
+		TypeName: "Date", // This would generate "dateSchema"
+		Fields: []introspect.Field{
+			{
+				Name:     "Time",
+				Type:     introspect.FieldType{Primitive: introspect.FieldTypePrimitiveTime},
+				Optional: false,
+				Tags:     []introspect.FieldTag{{Key: introspect.FieldKindJSON, Value: "Time"}},
+			},
+		},
+	}
+
+	generator.AddSchema("", false, problematicStruct)
+	result := generator.File()
+
+	// Before the fix, this would generate the problematic recursive reference:
+	// export const dateSchema = z.object({
+	//   Time: dateSchema,
+	// }).passthrough();
+
+	// After the fix, we should have:
+	// 1. The correct primitive dateSchema
+	expectedPrimitive := "const dateSchema = z.string().datetime({ offset: true }).transform((value) => new Date(value));"
+	if !strings.Contains(result, expectedPrimitive) {
+		t.Errorf("Missing correct primitive dateSchema. Expected:\n%s\n\nBut got:\n%s", expectedPrimitive, result)
+	}
+
+	// 2. A differently named schema for the Date struct to avoid conflict
+	expectedStructSchema := "export const dateTypeSchema = z.object({\n  Time: dateSchema,\n}).passthrough();"
+	if !strings.Contains(result, expectedStructSchema) {
+		t.Errorf("Expected Date struct to use dateTypeSchema name. Expected:\n%s\n\nBut got:\n%s", expectedStructSchema, result)
+	}
+
+	// 3. Most importantly, we should NOT have the problematic recursive definition
+	problematicPattern := "export const dateSchema = z.object({"
+	if strings.Contains(result, problematicPattern) {
+		t.Errorf("FAILURE: Still generating the problematic recursive dateSchema!\n\nGenerated:\n%s", result)
+	}
+
+	t.Logf("SUCCESS: User's issue has been fixed. Generated code:\n%s", result)
+}
